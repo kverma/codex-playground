@@ -2,8 +2,22 @@
   "name": "minimal-dark",
   "displayName": "Minimal Dark",
   "version": "1.0.0",
-  "css": ["theme.css"],
-  "allowedComponents": ["title-slide", "section-slide", "eyebrow", "subtitle", "two-column", "three-column", "card", "metric", "callout", "chart", "diagram"],
+  "css": [
+    "theme.css"
+  ],
+  "allowedComponents": [
+    "title-slide",
+    "section-slide",
+    "eyebrow",
+    "subtitle",
+    "two-column",
+    "three-column",
+    "card",
+    "metric",
+    "callout",
+    "chart",
+    "diagram"
+  ],
   "width": 1920,
   "height": 1080,
   "rules": {
@@ -15,5 +29,6 @@
     "densityWarningMax": 0.78,
     "densityMaximum": 0.88,
     "requireTitle": true
-  }
+  },
+  "appearance": "dark"
 }
