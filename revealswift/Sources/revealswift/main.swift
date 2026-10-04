@@ -117,6 +117,33 @@ struct CLIError: Error, CustomStringConvertible {
 }
 
 #if canImport(WebKit) && canImport(AppKit)
+@MainActor
+final class RuntimeSchemeHandler: NSObject, WKURLSchemeHandler {
+    func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
+        guard let url = urlSchemeTask.request.url,
+              url.host == "runtime",
+              let asset = EmbeddedRuntime.asset(path: url.path) else {
+            urlSchemeTask.didFailWithError(
+                NSError(domain: "RevealSwift.Runtime", code: 404,
+                        userInfo: [NSLocalizedDescriptionKey: "Embedded runtime asset not found"])
+            )
+            return
+        }
+
+        let response = URLResponse(
+            url: url,
+            mimeType: asset.mimeType,
+            expectedContentLength: asset.data.count,
+            textEncodingName: "utf-8"
+        )
+        urlSchemeTask.didReceive(response)
+        urlSchemeTask.didReceive(asset.data)
+        urlSchemeTask.didFinish()
+    }
+
+    func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {}
+}
+
 struct DeckState: Sendable {
     let index: Int
     let h: Int
@@ -141,6 +168,7 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
 
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .nonPersistent()
+        config.setURLSchemeHandler(RuntimeSchemeHandler(), forURLScheme: "revealswift")
         webView = WKWebView(
             frame: NSRect(x: 0, y: 0, width: width, height: height),
             configuration: config
