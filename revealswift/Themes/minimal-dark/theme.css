@@ -1,0 +1,28 @@
+:root {
+  --rs-bg: #0b0d10;
+  --rs-surface: #16191f;
+  --rs-text: #f5f5f7;
+  --rs-muted: #a1a1a6;
+  --rs-accent: #67a5ff;
+  --rs-radius: 18px;
+  --rs-gap: 32px;
+  --rs-chart-1: #67a5ff;
+  --rs-chart-2: #63d297;
+  --rs-chart-3: #ffb45e;
+}
+html, body { background: var(--rs-bg); }
+.reveal { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; color: var(--rs-text); }
+.reveal .slides { text-align: left; }
+.reveal h1, .reveal h2, .reveal h3 {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  text-transform: none;
+  letter-spacing: -.03em;
+}
+.reveal .slides section { box-sizing: border-box; padding: 72px; }
+.title-slide { display: flex !important; flex-direction: column; justify-content: center; }
+.eyebrow { color: var(--rs-accent); font-size: .55em; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.subtitle, .caption { color: var(--rs-muted); }
+.two-column { display: grid; grid-template-columns: 1fr 1fr; gap: var(--rs-gap); }
+.three-column { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--rs-gap); }
+.card, .callout, .metric { background: var(--rs-surface); border-radius: var(--rs-radius); padding: 28px; }
+.metric-value { font-size: 2.4em; font-weight: 700; }
