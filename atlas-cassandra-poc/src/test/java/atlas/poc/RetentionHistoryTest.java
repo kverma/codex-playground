@@ -25,7 +25,7 @@ class RetentionHistoryTest {
     }
     @Test void twoHundredConcurrentHistoriesIncludeLostAllocationAndAcceptanceReplies() throws Exception {
         for(long seed=1;seed<=200;seed++) {
-            UUID subject=UUID.randomUUID(); var clock=new RetentionClock(); var model=new Model(subject,RetentionContract.KEY,clock);
+            UUID subject=UUID.randomUUID(); var clock=new RetentionClock(); var model=new Retention.Model(subject,RetentionContract.KEY,clock);
             var lostIssues=Collections.synchronizedSet(new HashSet<UUID>()); var lostCommits=Collections.synchronizedSet(new HashSet<UUID>());
             final boolean lose=seed%2==1;
             try(var client=new Delegating(model) {
@@ -98,14 +98,14 @@ class RetentionHistoryTest {
         }
     }
     @Test void blackHoleTransportFailsRecoveryEvenWhenSafetyIsLinearizable() throws Exception {
-        UUID subject=UUID.randomUUID();var clock=new RetentionClock();var model=new Model(subject,RetentionContract.KEY,clock);
+        UUID subject=UUID.randomUUID();var clock=new RetentionClock();var model=new Retention.Model(subject,RetentionContract.KEY,clock);
         var blackHole=new Delegating(model) { public Issued issueDraft(Draft draft) { throw new Failure(Code.INDETERMINATE); } };
         var workload=new RetentionWorkload(subject,blackHole,blackHole,clock);
         assertThrows(AssertionError.class,()->workload.round(901,Path.of("build/evidence/retention-controls/black-hole"),()->{}));
         assertEquals(LINEARIZABLE,workload.result.verdict(),"safety does not certify availability");assertEquals(0,model.view().allocated());
     }
     @Test void boundsAndClockCrossingsFailAsInconclusive() {
-        UUID subject=UUID.randomUUID();var clock=new RetentionClock();var model=new Model(subject,RetentionContract.KEY,clock); View initial=model.view();
+        UUID subject=UUID.randomUUID();var clock=new RetentionClock();var model=new Retention.Model(subject,RetentionContract.KEY,clock); View initial=model.view();
         var a=new RetentionChecker.Call(1,4,clock.millis(),"VIEW",null,null,null,initial,null);
         var b=new RetentionChecker.Call(2,5,clock.millis()+1,"VIEW",null,null,null,initial,null);
         assertEquals(INCONCLUSIVE,new RetentionChecker(subject,RetentionContract.KEY).check(initial,List.of(a,b)).verdict());
