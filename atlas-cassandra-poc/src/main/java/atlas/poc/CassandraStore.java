@@ -25,7 +25,7 @@ public final class CassandraStore implements Store {
         return SimpleStatement.builder(cql).addPositionalValues(args)
             .setConsistencyLevel(DefaultConsistencyLevel.QUORUM)
             .setSerialConsistencyLevel(DefaultConsistencyLevel.SERIAL)
-            .setIdempotent(false).setTimeout(Duration.ofSeconds(20)).build();
+            .setIdempotence(false).setTimeout(Duration.ofSeconds(20)).build();
     }
     private Row row(String key) {
         // SERIAL reads resolve in-flight Paxos before exposing authoritative state.
