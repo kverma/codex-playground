@@ -53,8 +53,8 @@ final class CoreTests: XCTestCase {
         let outerBodyClose = injected.range(of: "</body>", options: [.caseInsensitive, .backwards])!.lowerBound
         XCTAssertLessThan(scriptIndex, outerBodyClose)
 
-        let srcdocEnd = injected.range(of: "Inline iframe E2E")?.upperBound
-        XCTAssertNil(srcdocEnd)
+        let iframeClose = injected.range(of: "</iframe>")!.upperBound
+        XCTAssertGreaterThan(scriptIndex, iframeClose)
         XCTAssertEqual(injected.components(separatedBy: runtimeScript).count - 1, 1)
     }
 
