@@ -39,7 +39,7 @@ jobs:
         run: cd revealswift && test -s review-artifacts/report.json && test -s review-artifacts/contact-sheet.png && test -s review-artifacts/deck.pdf && test -n "$(find review-artifacts/screenshots -name '*.png' -print -quit)"
       - name: Validate embedded Reveal plugins
         run: cd revealswift && .build/release/revealswift inspect Examples/plugins.html --theme Themes/minimal-dark --strict
-      - name: Package macOS arm64 binary
+      - name: Package macOS binaries
         run: |
           cd revealswift
           mkdir -p dist
@@ -47,9 +47,34 @@ jobs:
           chmod +x dist/revealswift-macos-arm64
           codesign --force --sign - --timestamp=none dist/revealswift-macos-arm64
           ./dist/revealswift-macos-arm64 version
+
+          SDK="$(xcrun --sdk macosx --show-sdk-path)"
+          set +e
+          swift build -c release \
+            --triple x86_64-apple-macosx14.0 \
+            --sdk "$SDK" \
+            --scratch-path .build-x86_64
+          X86_STATUS=$?
+          set -e
+
+          if [ "$X86_STATUS" -eq 0 ]; then
+            X86_BIN="$(swift build -c release \
+              --triple x86_64-apple-macosx14.0 \
+              --sdk "$SDK" \
+              --scratch-path .build-x86_64 \
+              --show-bin-path)/revealswift"
+            lipo -create .build/release/revealswift "$X86_BIN" -output dist/revealswift-macos-universal
+            chmod +x dist/revealswift-macos-universal
+            codesign --force --sign - --timestamp=none dist/revealswift-macos-universal
+            file dist/revealswift-macos-universal
+            ./dist/revealswift-macos-universal version
+          else
+            echo "::warning::x86_64 cross-build was not available; arm64 artifact remains valid"
+          fi
+
           cp THIRD_PARTY_NOTICES.md dist/
           cp -R Themes/minimal-dark dist/minimal-dark-theme
-          (cd dist && shasum -a 256 revealswift-macos-arm64 > SHA256SUMS)
+          (cd dist && shasum -a 256 revealswift-macos-* > SHA256SUMS)
       - uses: actions/upload-artifact@v7
         if: always()
         with:
@@ -58,5 +83,5 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: success()
         with:
-          name: revealswift-macos-arm64
+          name: revealswift-macos
           path: revealswift/dist
