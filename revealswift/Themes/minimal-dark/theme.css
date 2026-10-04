@@ -10,6 +10,12 @@
   --rs-chart-2: #63d297;
   --rs-chart-3: #ffb45e;
 }
+html, body, .reveal-viewport {
+  background-color: var(--rs-bg) !important;
+  color: var(--rs-text);
+  color-scheme: dark;
+}
+.reveal { background-color: var(--rs-bg); }
 html, body { background: var(--rs-bg); }
 .reveal {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
