@@ -1,10 +1,6 @@
 import Foundation
 import RevealSwiftCore
 
-#if canImport(WebKit) && canImport(AppKit)
-import WebKit
-import AppKit
-
 struct AuthoringDeckInfo: Codable {
     var title: String
     var theme: String?
@@ -18,6 +14,10 @@ struct AuthoringValidationReport: Codable {
     var warnings: [String]
     var slideCount: Int
 }
+
+#if canImport(WebKit) && canImport(AppKit)
+import WebKit
+import AppKit
 
 @MainActor
 final class RevealDOMEditor: NSObject, WKNavigationDelegate {
@@ -52,7 +52,7 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
     func info(html: String) async throws -> AuthoringDeckInfo {
         let result = try await evaluateJSON("""
         (() => {
-          const doc = new DOMParser().parseFromString((js(html)), 'text/html');
+          const doc = new DOMParser().parseFromString(\(js(html)), 'text/html');
           const container = doc.querySelector('.reveal > .slides') || doc.querySelector('.reveal .slides');
           if (!container) return { error: 'Missing .reveal .slides container' };
           const slides = [...container.children].filter(el => el.tagName === 'SECTION');
@@ -79,7 +79,7 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
     func validate(html: String) async throws -> AuthoringValidationReport {
         let result = try await evaluateJSON("""
         (() => {
-          const doc = new DOMParser().parseFromString((js(html)), 'text/html');
+          const doc = new DOMParser().parseFromString(\(js(html)), 'text/html');
           const errors = [], warnings = [];
           const reveal = doc.querySelector('.reveal');
           const container = doc.querySelector('.reveal > .slides') || doc.querySelector('.reveal .slides');
@@ -92,15 +92,12 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
 
           const ids = new Map();
           slides.forEach((slide, i) => {
-            if (!slide.id) warnings.push(`Slide ${i + 1} has no id; stable ids are recommended for agent editing`);
+            if (!slide.id) warnings.push('Slide ' + (i + 1) + ' has no id; stable ids are recommended for agent editing');
             else {
-              if (ids.has(slide.id)) errors.push(`Duplicate slide id "${slide.id}" at slides ${ids.get(slide.id)} and ${i + 1}`);
+              if (ids.has(slide.id)) errors.push('Duplicate slide id "' + slide.id + '" at slides ' + ids.get(slide.id) + ' and ' + (i + 1));
               ids.set(slide.id, i + 1);
             }
           });
-
-          const parserError = doc.querySelector('parsererror');
-          if (parserError) errors.push('HTML parser reported malformed markup');
 
           return { valid:errors.length === 0, errors, warnings, slideCount:slides.length };
         })()
@@ -113,12 +110,12 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
     func getSlide(html: String, selector: String, outer: Bool) async throws -> String {
         let result = try await evaluateJSON("""
         (() => {
-          const doc = new DOMParser().parseFromString((js(html)), 'text/html');
+          const doc = new DOMParser().parseFromString(\(js(html)), 'text/html');
           const container = doc.querySelector('.reveal > .slides') || doc.querySelector('.reveal .slides');
           if (!container) return { error:'Missing .reveal .slides container' };
-          const slide = (slidePicker(selector));
-          if (!slide) return { error:'Slide not found: (escapedForTemplate(selector))' };
-          return { value: (outer ? "slide.outerHTML" : "slide.innerHTML") };
+          const slide = \(slidePicker(selector));
+          if (!slide) return { error:'Slide not found: ' + \(js(selector)) };
+          return { value: \(outer ? "slide.outerHTML" : "slide.innerHTML") };
         })()
         """)
         if let error = result["error"] as? String { throw CLIError(error) }
@@ -127,9 +124,9 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
 
     func setSlide(html: String, selector: String, body: String) async throws -> String {
         try await mutate(html: html, script: """
-        const slide = (slidePicker(selector));
-        if (!slide) return { error:'Slide not found: (escapedForTemplate(selector))' };
-        slide.innerHTML = (js(body));
+        const slide = \(slidePicker(selector));
+        if (!slide) return { error:'Slide not found: ' + \(js(selector)) };
+        slide.innerHTML = \(js(body));
         """)
     }
 
@@ -137,34 +134,36 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
         let positionScript: String
         if let after {
             positionScript = """
-            const target = (slidePicker(after));
-            if (!target) return { error:'Target slide not found: (escapedForTemplate(after))' };
+            const target = \(slidePicker(after));
+            if (!target) return { error:'Target slide not found: ' + \(js(after)) };
             target.after(slide);
             """
         } else if let before {
             positionScript = """
-            const target = (slidePicker(before));
-            if (!target) return { error:'Target slide not found: (escapedForTemplate(before))' };
+            const target = \(slidePicker(before));
+            if (!target) return { error:'Target slide not found: ' + \(js(before)) };
             target.before(slide);
             """
         } else {
             positionScript = "container.appendChild(slide);"
         }
 
+        let classScript = classes.isEmpty ? "" : "slide.className = \(js(classes.joined(separator: " ")));"
+
         return try await mutate(html: html, script: """
-        if (doc.getElementById((js(id)))) return { error:'Duplicate id: (escapedForTemplate(id))' };
+        if (doc.getElementById(\(js(id)))) return { error:'Duplicate id: ' + \(js(id)) };
         const slide = doc.createElement('section');
-        slide.id = (js(id));
-        (classes.isEmpty ? "" : "slide.className = (js(classes.joined(separator: " ")));")
-        slide.innerHTML = (js(body));
-        (positionScript)
+        slide.id = \(js(id));
+        \(classScript)
+        slide.innerHTML = \(js(body));
+        \(positionScript)
         """)
     }
 
     func removeSlide(html: String, selector: String) async throws -> String {
         try await mutate(html: html, script: """
-        const slide = (slidePicker(selector));
-        if (!slide) return { error:'Slide not found: (escapedForTemplate(selector))' };
+        const slide = \(slidePicker(selector));
+        if (!slide) return { error:'Slide not found: ' + \(js(selector)) };
         slide.remove();
         """)
     }
@@ -173,55 +172,58 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
         guard after != nil || before != nil else { throw CLIError("slide move requires --after or --before") }
         let targetSelector = after ?? before!
         let placement = after != nil ? "target.after(slide);" : "target.before(slide);"
+
         return try await mutate(html: html, script: """
-        const slide = (slidePicker(selector));
-        const target = (slidePicker(targetSelector));
-        if (!slide) return { error:'Slide not found: (escapedForTemplate(selector))' };
-        if (!target) return { error:'Target slide not found: (escapedForTemplate(targetSelector))' };
+        const slide = \(slidePicker(selector));
+        const target = \(slidePicker(targetSelector));
+        if (!slide) return { error:'Slide not found: ' + \(js(selector)) };
+        if (!target) return { error:'Target slide not found: ' + \(js(targetSelector)) };
         if (slide === target) return { error:'Slide and target are the same' };
-        (placement)
+        \(placement)
         """)
     }
 
     func duplicateSlide(html: String, selector: String, newID: String) async throws -> String {
         try await mutate(html: html, script: """
-        const slide = (slidePicker(selector));
-        if (!slide) return { error:'Slide not found: (escapedForTemplate(selector))' };
-        if (doc.getElementById((js(newID)))) return { error:'Duplicate id: (escapedForTemplate(newID))' };
+        const slide = \(slidePicker(selector));
+        if (!slide) return { error:'Slide not found: ' + \(js(selector)) };
+        if (doc.getElementById(\(js(newID)))) return { error:'Duplicate id: ' + \(js(newID)) };
         const clone = slide.cloneNode(true);
-        clone.id = (js(newID));
+        clone.id = \(js(newID));
         slide.after(clone);
         """)
     }
 
     func renameSlide(html: String, selector: String, newID: String) async throws -> String {
         try await mutate(html: html, script: """
-        const slide = (slidePicker(selector));
-        if (!slide) return { error:'Slide not found: (escapedForTemplate(selector))' };
-        const existing = doc.getElementById((js(newID)));
-        if (existing && existing !== slide) return { error:'Duplicate id: (escapedForTemplate(newID))' };
-        slide.id = (js(newID));
+        const slide = \(slidePicker(selector));
+        if (!slide) return { error:'Slide not found: ' + \(js(selector)) };
+        const existing = doc.getElementById(\(js(newID)));
+        if (existing && existing !== slide) return { error:'Duplicate id: ' + \(js(newID)) };
+        slide.id = \(js(newID));
         """)
     }
 
     private func mutate(html: String, script: String) async throws -> String {
         let result = try await evaluateJSON("""
         (() => {
-          const doc = new DOMParser().parseFromString((js(html)), 'text/html');
+          const doc = new DOMParser().parseFromString(\(js(html)), 'text/html');
           const container = doc.querySelector('.reveal > .slides') || doc.querySelector('.reveal .slides');
           if (!container) return { error:'Missing .reveal .slides container' };
-          (script)
-          return { html:'<!doctype html>\n' + doc.documentElement.outerHTML };
+          \(script)
+          return { html:'<!doctype html>\\n' + doc.documentElement.outerHTML };
         })()
         """)
+
         if let error = result["error"] as? String { throw CLIError(error) }
         guard let value = result["html"] as? String else { throw CLIError("DOM mutation did not return HTML") }
         return value
     }
 
     private func evaluateJSON(_ expression: String) async throws -> [String: Any] {
-        let value = try await webView.evaluateJavaScript("JSON.stringify((expression))")
-        guard let json = value as? String, let data = json.data(using: .utf8),
+        let value = try await webView.evaluateJavaScript("JSON.stringify(\(expression))")
+        guard let json = value as? String,
+              let data = json.data(using: .utf8),
               let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw CLIError("Could not decode DOM editor response")
         }
@@ -232,7 +234,7 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
         """
         (() => {
           const slides = [...container.children].filter(el => el.tagName === 'SECTION');
-          const selector = (js(selector));
+          const selector = \(js(selector));
           if (/^[0-9]+$/.test(selector)) {
             const n = Number(selector);
             return n >= 1 && n <= slides.length ? slides[n - 1] : null;
@@ -246,14 +248,12 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
         let data = try! JSONEncoder().encode(value)
         return String(decoding: data, as: UTF8.self)
     }
-
-    private func escapedForTemplate(_ value: String) -> String {
-        value.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "\\'")
-    }
 }
+#endif
 
 extension RevealSwiftCLI {
-    @MainActor static func runDeck(_ args: [String]) async throws {
+    @MainActor
+    static func runDeck(_ args: [String]) async throws {
         guard let subcommand = args.first else { throw CLIError(deckUsage) }
 
         switch subcommand {
@@ -262,13 +262,24 @@ extension RevealSwiftCLI {
             let path = args[1]
             let options = Options(args: Array(args.dropFirst(2)))
             let url = URL(fileURLWithPath: path)
+
             if FileManager.default.fileExists(atPath: url.path), !options.has("--force") {
                 throw CLIError("\(path) already exists; use --force to overwrite")
             }
+
             let title = options.value("--title") ?? url.deletingPathExtension().lastPathComponent
-            let outline = options.value("--outline")?.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } ?? []
+            let outline = options.value("--outline")?
+                .split(separator: ",")
+                .map { String($0).trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty } ?? []
             let slideCount = options.value("--slides").flatMap(Int.init)
-            let html = RevealDeckFactory.create(title: title, theme: options.value("--theme"), outline: outline, slideCount: slideCount)
+
+            let html = RevealDeckFactory.create(
+                title: title,
+                theme: options.value("--theme"),
+                outline: outline,
+                slideCount: slideCount
+            )
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try html.write(to: url, atomically: true, encoding: .utf8)
             print(url.path)
@@ -310,18 +321,17 @@ extension RevealSwiftCLI {
         }
     }
 
-    @MainActor static func runSlide(_ args: [String]) async throws {
+    @MainActor
+    static func runSlide(_ args: [String]) async throws {
         guard let subcommand = args.first, args.count >= 2 else { throw CLIError(slideUsage) }
         let deckURL = URL(fileURLWithPath: args[1])
         let html = try String(contentsOf: deckURL, encoding: .utf8)
+
         let optionsStart: Int
         let selector: String?
 
         switch subcommand {
-        case "list":
-            optionsStart = 2
-            selector = nil
-        case "add":
+        case "list", "add":
             optionsStart = 2
             selector = nil
         default:
@@ -347,12 +357,20 @@ extension RevealSwiftCLI {
 
         case "set":
             let body = try readContent(options)
-            try writeMutation(try await editor.setSlide(html: html, selector: selector!, body: body), original: deckURL, options: options)
+            try writeMutation(
+                try await editor.setSlide(html: html, selector: selector!, body: body),
+                original: deckURL,
+                options: options
+            )
 
         case "add":
             guard let id = options.value("--id") else { throw CLIError("slide add requires --id") }
             let body = try readContent(options, allowEmpty: true)
-            let classes = options.value("--class")?.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } ?? []
+            let classes = options.value("--class")?
+                .split(separator: ",")
+                .map { String($0).trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty } ?? []
+
             let updated = try await editor.addSlide(
                 html: html,
                 id: id,
@@ -364,19 +382,36 @@ extension RevealSwiftCLI {
             try writeMutation(updated, original: deckURL, options: options)
 
         case "remove":
-            try writeMutation(try await editor.removeSlide(html: html, selector: selector!), original: deckURL, options: options)
+            try writeMutation(
+                try await editor.removeSlide(html: html, selector: selector!),
+                original: deckURL,
+                options: options
+            )
 
         case "move":
-            let updated = try await editor.moveSlide(html: html, selector: selector!, after: options.value("--after"), before: options.value("--before"))
+            let updated = try await editor.moveSlide(
+                html: html,
+                selector: selector!,
+                after: options.value("--after"),
+                before: options.value("--before")
+            )
             try writeMutation(updated, original: deckURL, options: options)
 
         case "duplicate":
             guard let newID = options.value("--id") else { throw CLIError("slide duplicate requires --id <new-id>") }
-            try writeMutation(try await editor.duplicateSlide(html: html, selector: selector!, newID: newID), original: deckURL, options: options)
+            try writeMutation(
+                try await editor.duplicateSlide(html: html, selector: selector!, newID: newID),
+                original: deckURL,
+                options: options
+            )
 
         case "rename":
             guard let newID = options.value("--id") else { throw CLIError("slide rename requires --id <new-id>") }
-            try writeMutation(try await editor.renameSlide(html: html, selector: selector!, newID: newID), original: deckURL, options: options)
+            try writeMutation(
+                try await editor.renameSlide(html: html, selector: selector!, newID: newID),
+                original: deckURL,
+                options: options
+            )
 
         default:
             throw CLIError(slideUsage)
@@ -388,7 +423,9 @@ extension RevealSwiftCLI {
 
     private static func readContent(_ options: Options, allowEmpty: Bool = false) throws -> String {
         if let inline = options.value("--html") { return inline }
-        if let path = options.value("--file") { return try String(contentsOfFile: path, encoding: .utf8) }
+        if let path = options.value("--file") {
+            return try String(contentsOfFile: path, encoding: .utf8)
+        }
         if options.has("--stdin") {
             let data = FileHandle.standardInput.readDataToEndOfFile()
             return String(decoding: data, as: UTF8.self)
@@ -399,6 +436,7 @@ extension RevealSwiftCLI {
 
     private static func writeMutation(_ html: String, original: URL, options: Options) throws {
         let output = options.value("--output").map(URL.init(fileURLWithPath:)) ?? original
+        try FileManager.default.createDirectory(at: output.deletingLastPathComponent(), withIntermediateDirectories: true)
         try html.write(to: output, atomically: true, encoding: .utf8)
         print(output.path)
     }
@@ -424,4 +462,3 @@ extension RevealSwiftCLI {
       revealswift slide rename <deck.html> <id|index> --id <new-id>
     """
 }
-#endif
