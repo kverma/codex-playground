@@ -19,6 +19,7 @@ public enum HTMLInjector {
         <script src="\(runtimeBase)/plugin/markdown.js"></script>
         <script src="\(runtimeBase)/plugin/highlight.js"></script>
         <script src="\(runtimeBase)/plugin/notes.js"></script>
+        <script src="\(runtimeBase)/plugin/math.js"></script>
         <script src="\(runtimeBase)/plugin/search.js"></script>
         <script src="\(runtimeBase)/plugin/zoom.js"></script>
         <script>
@@ -34,15 +35,24 @@ public enum HTMLInjector {
             const slides = root.querySelector('.slides');
             if (!slides) throw new Error('Missing .reveal > .slides container');
 
-            const plugins = [
+            const builtInPlugins = [
               window.RevealMarkdown,
               window.RevealHighlight,
               window.RevealNotes,
               window.RevealSearch,
               window.RevealZoom
             ].filter(Boolean);
+            const customPlugins = Array.isArray(window.RevealSwiftPlugins)
+              ? window.RevealSwiftPlugins.filter(Boolean)
+              : [];
+            const plugins = [...builtInPlugins, ...customPlugins];
+            const requestedConfig =
+              window.RevealSwiftConfig && typeof window.RevealSwiftConfig === 'object'
+                ? window.RevealSwiftConfig
+                : {};
 
             const deck = new Reveal(root, {
+              ...requestedConfig,
               width: \(width),
               height: \(height),
               margin: 0,
@@ -62,6 +72,8 @@ public enum HTMLInjector {
               offline: true,
               revealVersion: Reveal.VERSION || "\(EmbeddedRuntime.revealVersion)",
               chartVersion: window.Chart ? Chart.version : null,
+              mathPluginAvailable: Boolean(window.RevealMath),
+              customPluginCount: customPlugins.length,
               domSlides: slides.querySelectorAll('section').length,
               revealSlides: deck.getTotalSlides()
             };
