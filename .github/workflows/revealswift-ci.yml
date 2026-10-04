@@ -29,11 +29,11 @@ jobs:
       - name: Validate bundled theme
         run: cd revealswift && .build/release/revealswift themes validate Themes/minimal-dark
       - name: Review demo deck
-        run: cd revealswift && .build/release/revealswift review Examples/demo.html --theme Themes/minimal-dark --output .review --animation-frames 0,250,500 --pdf
+        run: cd revealswift && .build/release/revealswift review Examples/demo.html --theme Themes/minimal-dark --output review-artifacts --animation-frames 0,250,500 --pdf
       - name: Verify artifacts
-        run: cd revealswift && test -s .review/report.json && test -s .review/deck.pdf && test -n "$(find .review/screenshots -name '*.png' -print -quit)"
+        run: cd revealswift && test -s review-artifacts/report.json && test -s review-artifacts/deck.pdf && test -n "$(find review-artifacts/screenshots -name '*.png' -print -quit)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: revealswift-review
-          path: revealswift/.review
+          path: revealswift/review-artifacts
