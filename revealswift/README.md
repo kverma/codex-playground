@@ -33,7 +33,7 @@ revealswift pdf Examples/demo.html --theme Themes/minimal-dark --output deck.pdf
 revealswift review Examples/demo.html --theme Themes/minimal-dark --output .review --animation-frames 0,250,500 --pdf
 ```
 
-`review` writes `report.json`, a contact sheet, PNGs for slide/fragment/animation states, and optionally a PDF.
+`review` writes `report.json`, a contact sheet, PNGs for slide/fragment/animation states, and optionally a PDF. Add `--fail-on-errors` to exit non-zero for structural failures, or `--strict` to fail on either errors or warnings after the artifacts are written.
 
 ## Theme contract
 
