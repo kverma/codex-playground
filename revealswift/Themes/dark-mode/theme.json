@@ -1,0 +1,19 @@
+{
+  "name": "dark-mode",
+  "displayName": "Dark Mode",
+  "version": "1.0.0",
+  "css": ["theme.css"],
+  "allowedComponents": ["title-slide", "eyebrow", "subtitle", "two-column", "three-column", "card", "metric", "callout", "chart"],
+  "width": 1920,
+  "height": 1080,
+  "rules": {
+    "minimumBodyFontPx": 26,
+    "minimumCaptionFontPx": 18,
+    "minimumMarginPx": 72,
+    "maximumColumns": 3,
+    "densityPreferredMax": 0.68,
+    "densityWarningMax": 0.78,
+    "densityMaximum": 0.88,
+    "requireTitle": true
+  }
+}
