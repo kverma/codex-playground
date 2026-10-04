@@ -43,14 +43,22 @@ public enum InspectorScript {
             }
           }
 
-          let minFont = 9999, occupied = 0;
+          let minFont = 9999;
+          const densityRects = [];
 
           for (const el of visible) {
             const r = el.getBoundingClientRect(), s = getComputedStyle(el);
-            occupied += Math.max(0, Math.min(r.right,root.right)-Math.max(r.left,root.left)) *
-                        Math.max(0, Math.min(r.bottom,root.bottom)-Math.max(r.top,root.top));
-
             const hasDirectText = [...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
+            const backgroundVisible =
+              (s.backgroundImage && s.backgroundImage !== 'none') ||
+              (s.backgroundColor && !['transparent','rgba(0, 0, 0, 0)'].includes(s.backgroundColor));
+            const borderVisible =
+              ['Top','Right','Bottom','Left'].some(side => parseFloat(s['border' + side + 'Width'] || '0') > 0);
+            const mediaLike = ['IMG','CANVAS','SVG','IFRAME','VIDEO','PRE','TABLE'].includes(el.tagName);
+            const semanticVisual = el.hasAttribute('data-rs-component');
+            if (hasDirectText || backgroundVisible || borderVisible || mediaLike || semanticVisual) {
+              densityRects.push(r);
+            }
             if (hasDirectText) {
               const fs = parseFloat(s.fontSize || '9999');
               minFont = Math.min(minFont, fs);
