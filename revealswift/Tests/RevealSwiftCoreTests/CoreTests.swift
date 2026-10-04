@@ -17,6 +17,21 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(HTMLInjector.inject(html: once, themeCSS: nil), once)
     }
 
+    func testInjectorUsesOuterClosingBodyWhenSrcdocContainsBodyTag() {
+        let source = """
+        <html><head></head><body>
+          <div class="reveal"><div class="slides"><section><h2>Iframe</h2>
+            <iframe srcdoc="<!doctype html><html><body>nested</body></html>"></iframe>
+          </section></div></div>
+        </body></html>
+        """
+        let injected = HTMLInjector.inject(html: source, themeCSS: nil)
+        let runtimeIndex = try! XCTUnwrap(injected.range(of: "revealswift://runtime/reveal.js")?.lowerBound)
+        let srcdocCloseIndex = try! XCTUnwrap(injected.range(of: "nested</body></html>")?.upperBound)
+        XCTAssertGreaterThan(runtimeIndex, srcdocCloseIndex)
+        XCTAssertTrue(injected.contains("srcdoc=\"<!doctype html><html><body>nested</body></html>\""))
+    }
+
     func testEmbeddedRuntimeDecodesPinnedAssets() throws {
         let reveal = try XCTUnwrap(EmbeddedRuntime.asset(path: "/reveal.js"))
         let chart = try XCTUnwrap(EmbeddedRuntime.asset(path: "/chart.js"))
