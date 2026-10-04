@@ -63,11 +63,11 @@ struct RevealSwiftCLI {
         switch mode {
         case .inspect:
             let report = try await runner.review(output: nil, screenshots: false, pdf: false, animationFrames: frames)
-            print(String(decoding: try JSONIO.encode(report), as: UTF8.self))
+            try emit(report: report, options: options)
         case .screenshots:
             let dir = URL(fileURLWithPath: options.value("--output") ?? "screenshots", isDirectory: true)
             let report = try await runner.review(output: dir, screenshots: true, pdf: false, animationFrames: frames)
-            print(String(decoding: try JSONIO.encode(report), as: UTF8.self))
+            try emit(report: report, options: options)
         case .pdf:
             let file = URL(fileURLWithPath: options.value("--output") ?? "deck.pdf")
             try await runner.exportPDF(to: file)
@@ -75,11 +75,22 @@ struct RevealSwiftCLI {
         case .review:
             let dir = URL(fileURLWithPath: options.value("--output") ?? ".review", isDirectory: true)
             let report = try await runner.review(output: dir, screenshots: true, pdf: options.has("--pdf"), animationFrames: frames)
-            print(String(decoding: try JSONIO.encode(report), as: UTF8.self))
+            try emit(report: report, options: options)
         }
         #else
         throw CLIError("Rendering requires macOS with WebKit. Core/theme tests can run on this platform.")
         #endif
+    }
+
+    static func emit(report: ReviewReport, options: Options) throws {
+        print(String(decoding: try JSONIO.encode(report), as: UTF8.self))
+        if options.has("--strict") || options.has("--fail-on-warnings") {
+            if report.errors > 0 || report.warnings > 0 {
+                throw CLIError("QA failed: \(report.errors) error(s), \(report.warnings) warning(s)")
+            }
+        } else if options.has("--fail-on-errors"), report.errors > 0 {
+            throw CLIError("QA failed: \(report.errors) error(s)")
+        }
     }
 
     static func printHelp() {
@@ -89,10 +100,10 @@ struct RevealSwiftCLI {
         Usage:
           revealswift version
           revealswift themes validate <theme-dir>
-          revealswift inspect <deck.html> [--theme <dir>] [--animation-frames 0,250,500]
+          revealswift inspect <deck.html> [--theme <dir>] [--animation-frames 0,250,500] [--fail-on-errors|--strict]
           revealswift screenshots <deck.html> [--theme <dir>] [--output <dir>] [--animation-frames 0,250,500]
           revealswift pdf <deck.html> [--theme <dir>] [--output <file.pdf>]
-          revealswift review <deck.html> [--theme <dir>] [--output <dir>] [--animation-frames 0,250,500] [--pdf]
+          revealswift review <deck.html> [--theme <dir>] [--output <dir>] [--animation-frames 0,250,500] [--pdf] [--fail-on-errors|--strict]
         """)
     }
 }
@@ -275,7 +286,7 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
 
     private func inspect(_ state: DeckState, animationTime: Int?) async throws -> SlideMetrics {
         let rules = theme?.manifest.rules ?? ThemeRules()
-        let value = try await webView.evaluateJavaScript(InspectorScript.javascript(rules: rules))
+        let value = try await webView.evaluateJavaScript(InspectorScript.javascript(rules: rules, allowedComponents: theme?.manifest.allowedComponents ?? []))
         guard let raw = try decodeJSONObject(value) as? [String: Any] else {
             throw CLIError("Could not decode inspection result")
         }
