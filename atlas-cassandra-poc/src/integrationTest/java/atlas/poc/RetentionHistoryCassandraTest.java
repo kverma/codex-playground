@@ -27,13 +27,19 @@ class RetentionHistoryCassandraTest {
                 };
                 final boolean partition=seed==2004;
                 try {
-                    new RetentionWorkload(subject,routed,majority,clock).round(seed,Path.of("build/evidence/retention-cassandra"),()->{
+                    var workload=new RetentionWorkload(subject,routed,majority,clock);
+                    workload.round(seed,Path.of("build/evidence/retention-cassandra"),()->{
                         if(partition) try { command("partition"); } catch(Exception e) { throw new RuntimeException(e); }
                     });
-                    if(partition) command("counters");
+                    if(partition) {
+                        command("counters");
+                        for(String kind:List.of("ISSUE","COMMIT"))
+                            assertTrue(workload.history().stream().anyMatch(c->c.kind().equals(kind)&&"INDETERMINATE".equals(c.error())),"partition must yield recorded minority ambiguity for "+kind);
+                    }
                 } finally { if(partition) command("heal"); }
+                View agreed=majority.view();
                 for(Retention.Store store:stores) {
-                    View healed=store.view();assertEquals(3,healed.floor());assertEquals(4,healed.allocated());assertEquals(Set.of(4L),healed.entries().keySet());
+                    View healed=store.view();assertEquals(agreed,healed,"full authoritative state must agree after healing");assertEquals(3,healed.floor());assertEquals(4,healed.allocated());assertEquals(Set.of(4L),healed.entries().keySet());
                 }
             } finally { for(Retention.Store store:stores) store.close(); }
         }

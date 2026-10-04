@@ -328,6 +328,10 @@ checked when visible; unobserved intermediate CAS tokens are not reconstructed.
 Request hashing/record codecs remain shared and retain the existing canonical-vector
 coverage limitation.
 
+Draft preparation occurs outside the checked history: signed input leases and the
+initial view are trusted. The oracle checks authentication and allocation/replay;
+it does not independently qualify the lease issuer or signing-key lifecycle.
+
 Bounds: 24 calls and 100,000 search states. The injected clock is fixed during
 concurrent phases and advances only after joins and exact recovery. Overlapping
 calls with different clock values are INCONCLUSIVE. Ambiguous mutations may have no
