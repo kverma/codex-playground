@@ -1,0 +1,39 @@
+name: RevealSwift CI
+
+on:
+  push:
+    paths:
+      - "revealswift/**"
+      - ".github/workflows/revealswift-ci.yml"
+  pull_request:
+    paths:
+      - "revealswift/**"
+      - ".github/workflows/revealswift-ci.yml"
+
+jobs:
+  linux-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.2"
+      - run: cd revealswift && swift test
+
+  macos-render:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: cd revealswift && swift test
+      - run: cd revealswift && swift build -c release
+      - name: Validate bundled theme
+        run: cd revealswift && .build/release/revealswift themes validate Themes/minimal-dark
+      - name: Review demo deck
+        run: cd revealswift && .build/release/revealswift review Examples/demo.html --theme Themes/minimal-dark --output .review --animation-frames 0,250,500 --pdf
+      - name: Verify artifacts
+        run: cd revealswift && test -s .review/report.json && test -s .review/deck.pdf && test -n "$(find .review/screenshots -name '*.png' -print -quit)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: revealswift-review
+          path: revealswift/.review
