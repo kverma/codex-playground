@@ -185,6 +185,59 @@ Each `diagnostics.json` finding has a stable diagnostic ID plus the exact render
 The annotated PNG uses the same diagnostic ID and render state, with target boxes drawn over the actual screenshot. This gives an agent both machine-readable selectors/text and visual evidence before it edits the Reveal HTML and reruns `review`.
 
 
+### Multimodal visual reviewer handoff
+
+`review` also writes:
+
+```text
+review/
+├── review-manifest.json
+├── visual-review-prompt.md
+└── visual-review.json          # written by the calling reviewer agent
+```
+
+`review-manifest.json` is the contract between RevealSwift and the calling multimodal reviewer. It queues the contact sheet, every rendered slide/fragment/animation state, and any annotated diagnostic overlays. Every queue item has a stable `reviewItemID` plus slide/state identity so visual feedback can be traced back to the exact Reveal state.
+
+The intended two-agent loop is:
+
+```text
+Authoring agent
+    ↓
+revealswift review
+    ↓
+deterministic report + diagnostics
+review-manifest.json
+visual-review-prompt.md
+rendered images
+    ↓
+Independent multimodal reviewer agent
+    ↓
+visual-review.json
+    ↓
+revealswift visual-review validate visual-review.json --strict
+    ↓
+Authoring agent applies structured fixes
+    ↓
+repeat review until deterministic QA + visual review both pass
+```
+
+The reviewer should consume `visual-review-prompt.md`, inspect every image listed by `review-manifest.json`, and write only the structured `visual-review.json`. RevealSwift does not call a specific model provider itself; the harness chooses the multimodal reviewer (for example a separate reviewer invocation of the same model or a different vision-capable model).
+
+Validate reviewer output with:
+
+```bash
+revealswift visual-review validate review/visual-review.json
+```
+
+Use `--strict` when the authoring loop should fail until the reviewer returns `"decision": "pass"`:
+
+```bash
+revealswift visual-review validate review/visual-review.json --strict
+```
+
+A reviewer finding is required to reference a valid `reviewItemID` and includes a severity/category, visible evidence, and a concrete suggested fix. RevealSwift rejects unknown review-item IDs, mismatched slide IDs/indexes, duplicate finding IDs, empty evidence/fixes, unsupported categories, or a `pass` decision that still contains warning/error findings.
+
+
 ## Included reference themes
 
 The repository and CI package include these ready-to-use themes:
