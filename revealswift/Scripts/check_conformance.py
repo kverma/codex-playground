@@ -18,6 +18,7 @@ REQUIRED_PASSES = {
     'core.layout.fit-text','core.layout.stretch-sized','core.layout.stretch-contained','core.layout.computed-size',
     'core.ui.controls','core.ui.progress','core.ui.slide-number','core.links.internal-navigation',
     'core.state.restore','core.api.slide-path','core.api.progress','core.api.slides-attributes','core.api.available-routes','core.api.available-fragments',
+    'core.api.get-slide','core.api.get-slide-background','core.api.scale','core.api.dom-handles','core.api.has-horizontal-slides','core.api.has-vertical-slides','core.api.vertical-slide','core.api.vertical-stack','core.api.plugin-registry','core.api.first-slide','core.api.last-slide',
     'core.keyboard.custom-binding','core.keyboard.remove-binding','core.auto-slide.start','core.auto-slide.stop','core.scroll-view.enter','core.scroll-view.exit',
     'core.visibility.hidden-removed','core.visibility.uncounted-retained','core.visibility.uncounted-not-counted',
     'core.lazy-media.image-load','core.lazy-media.iframe-load','core.lazy-media.iframe-unload',
