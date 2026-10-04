@@ -174,6 +174,10 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
 
     private func waitUntilReady() async throws {
         for _ in 0..<120 {
+            if let error = try await webView.evaluateJavaScript("window.__revealswiftInitError") as? String,
+               !error.isEmpty {
+                throw CLIError("Reveal initialization failed: \\(error)")
+            }
             let value = try await webView.evaluateJavaScript(
                 "Boolean(window.__revealswiftReady && document.fonts.status === 'loaded')"
             )
@@ -211,14 +215,17 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
         }
 
         if result.isEmpty {
-            throw CLIError("Reveal.js reported zero slides")
+            let diagnostics = try? await webView.evaluateJavaScript(
+                "JSON.stringify({dom:document.querySelectorAll('.reveal .slides section').length,runtime:window.__revealswiftRuntime || null})"
+            )
+            throw CLIError("Reveal.js reported zero slides; diagnostics=\\(diagnostics ?? "unavailable")")
         }
         return result
     }
 
     private func go(to state: DeckState) async throws {
         _ = try await webView.evaluateJavaScript(
-            "Reveal.slide(\(state.h), \(state.v), \(state.fragmentState - 1)); true"
+            "window.__revealswiftDeck.slide(\(state.h), \(state.v), \(state.fragmentState - 1)); true"
         )
         try await Task.sleep(for: .milliseconds(100))
     }
