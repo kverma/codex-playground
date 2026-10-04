@@ -150,7 +150,7 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
           const doc = new DOMParser().parseFromString(\(js(html)), 'text/html');
           const container = doc.querySelector('.reveal > .slides') || doc.querySelector('.reveal .slides');
           if (!container) return { error:'Missing .reveal .slides container' };
-          const slide = \(slidePicker(selector));
+          const slide = \(sectionPicker(selector));
           if (!slide) return { error:'Slide not found: ' + \(js(selector)) };
           return { value: \(outer ? "slide.outerHTML" : "slide.innerHTML") };
         })()
@@ -161,7 +161,7 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
 
     func setSlide(html: String, selector: String, body: String) async throws -> String {
         try await mutate(html: html, script: """
-        const slide = \(slidePicker(selector));
+        const slide = \(sectionPicker(selector));
         if (!slide) return { error:'Slide not found: ' + \(js(selector)) };
         slide.innerHTML = \(js(body));
         """)
@@ -244,7 +244,7 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
 
     func appendToSlide(html: String, selector: String, fragment: String, prepend: Bool) async throws -> String {
         try await mutate(html: html, script: """
-        const slide = \(slidePicker(selector));
+        const slide = \(sectionPicker(selector));
         if (!slide) return { error:'Slide not found: ' + \(js(selector)) };
         const template = doc.createElement('template');
         template.innerHTML = \(js(fragment));
@@ -362,6 +362,33 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
         \(classScript)
         child.innerHTML = \(js(body));
         \(insertion)
+        """)
+    }
+
+    func moveVerticalSlide(
+        html: String,
+        stackSelector: String,
+        childSelector: String,
+        after: String?,
+        before: String?
+    ) async throws -> String {
+        guard after != nil || before != nil else { throw CLIError("stack move requires --after or --before") }
+        let targetSelector = after ?? before!
+        let placement = after != nil ? "target.after(child);" : "target.before(child);"
+
+        return try await mutate(html: html, script: """
+        const stack = \(slidePicker(stackSelector));
+        if (!stack) return { error:'Stack not found: ' + \(js(stackSelector)) };
+        const vertical = [...stack.children].filter(el => el.tagName === 'SECTION');
+        const pick = selector => /^[0-9]+$/.test(selector)
+          ? vertical[Number(selector) - 1]
+          : vertical.find(el => el.id === selector);
+        const child = pick(\(js(childSelector)));
+        const target = pick(\(js(targetSelector)));
+        if (!child) return { error:'Vertical slide not found: ' + \(js(childSelector)) };
+        if (!target) return { error:'Target vertical slide not found: ' + \(js(targetSelector)) };
+        if (child === target) return { error:'Vertical slide and target are the same' };
+        \(placement)
         """)
     }
 
@@ -772,6 +799,21 @@ extension RevealSwiftCLI {
                 options: options
             )
 
+        case "move":
+            guard args.count >= 4 else { throw CLIError(stackUsage) }
+            let options = Options(args: Array(args.dropFirst(4)))
+            try writeMutation(
+                try await editor.moveVerticalSlide(
+                    html: html,
+                    stackSelector: args[2],
+                    childSelector: args[3],
+                    after: options.value("--after"),
+                    before: options.value("--before")
+                ),
+                original: deckURL,
+                options: options
+            )
+
         case "remove":
             guard args.count >= 4 else { throw CLIError(stackUsage) }
             let options = Options(args: Array(args.dropFirst(4)))
@@ -851,6 +893,7 @@ extension RevealSwiftCLI {
       revealswift stack create <deck.html> --id <stack-id> [--after <id|index> | --before <id|index>]
       revealswift stack list <deck.html> <stack-id|index>
       revealswift stack add <deck.html> <stack-id|index> --id <vertical-slide-id> [--index N] [--class a,b] [--stdin|--html|--file]
+      revealswift stack move <deck.html> <stack-id|index> <vertical-slide-id|index> (--after <id|index> | --before <id|index>)
       revealswift stack remove <deck.html> <stack-id|index> <vertical-slide-id|index>
     """
 }
