@@ -1,0 +1,155 @@
+name: atlas-cassandra-ha
+services:
+  dc1n1:
+    image: cassandra:4.0.5
+    ports: ["127.0.0.1:9042:9042"]
+    environment:
+      CASSANDRA_CLUSTER_NAME: atlas-ha
+      CASSANDRA_DC: dc1
+      CASSANDRA_RACK: rack1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      CASSANDRA_SEEDS: dc1n1
+      CASSANDRA_NUM_TOKENS: 16
+      MAX_HEAP_SIZE: 1G
+      HEAP_NEWSIZE: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT release_version FROM system.local' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+  dc1n2:
+    image: cassandra:4.0.5
+    ports: ["127.0.0.1:9043:9042"]
+    environment:
+      CASSANDRA_CLUSTER_NAME: atlas-ha
+      CASSANDRA_DC: dc1
+      CASSANDRA_RACK: rack2
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      CASSANDRA_SEEDS: dc1n1
+      CASSANDRA_NUM_TOKENS: 16
+      MAX_HEAP_SIZE: 1G
+      HEAP_NEWSIZE: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT release_version FROM system.local' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+  dc1n3:
+    image: cassandra:4.0.5
+    ports: ["127.0.0.1:9044:9042"]
+    environment:
+      CASSANDRA_CLUSTER_NAME: atlas-ha
+      CASSANDRA_DC: dc1
+      CASSANDRA_RACK: rack3
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      CASSANDRA_SEEDS: dc1n1
+      CASSANDRA_NUM_TOKENS: 16
+      MAX_HEAP_SIZE: 1G
+      HEAP_NEWSIZE: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT release_version FROM system.local' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+  dc2n1:
+    image: cassandra:4.0.5
+    ports: ["127.0.0.1:9142:9042"]
+    environment:
+      CASSANDRA_CLUSTER_NAME: atlas-ha
+      CASSANDRA_DC: dc2
+      CASSANDRA_RACK: rack1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      CASSANDRA_SEEDS: dc1n1
+      CASSANDRA_NUM_TOKENS: 16
+      MAX_HEAP_SIZE: 1G
+      HEAP_NEWSIZE: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT release_version FROM system.local' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+  dc2n2:
+    image: cassandra:4.0.5
+    ports: ["127.0.0.1:9143:9042"]
+    environment:
+      CASSANDRA_CLUSTER_NAME: atlas-ha
+      CASSANDRA_DC: dc2
+      CASSANDRA_RACK: rack2
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      CASSANDRA_SEEDS: dc1n1
+      CASSANDRA_NUM_TOKENS: 16
+      MAX_HEAP_SIZE: 1G
+      HEAP_NEWSIZE: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT release_version FROM system.local' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+  dc2n3:
+    image: cassandra:4.0.5
+    ports: ["127.0.0.1:9144:9042"]
+    environment:
+      CASSANDRA_CLUSTER_NAME: atlas-ha
+      CASSANDRA_DC: dc2
+      CASSANDRA_RACK: rack3
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      CASSANDRA_SEEDS: dc1n1
+      CASSANDRA_NUM_TOKENS: 16
+      MAX_HEAP_SIZE: 1G
+      HEAP_NEWSIZE: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT release_version FROM system.local' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+  dc3n1:
+    image: cassandra:4.0.5
+    ports: ["127.0.0.1:9242:9042"]
+    environment:
+      CASSANDRA_CLUSTER_NAME: atlas-ha
+      CASSANDRA_DC: dc3
+      CASSANDRA_RACK: rack1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      CASSANDRA_SEEDS: dc1n1
+      CASSANDRA_NUM_TOKENS: 16
+      MAX_HEAP_SIZE: 1G
+      HEAP_NEWSIZE: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT release_version FROM system.local' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+  dc3n2:
+    image: cassandra:4.0.5
+    ports: ["127.0.0.1:9243:9042"]
+    environment:
+      CASSANDRA_CLUSTER_NAME: atlas-ha
+      CASSANDRA_DC: dc3
+      CASSANDRA_RACK: rack2
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      CASSANDRA_SEEDS: dc1n1
+      CASSANDRA_NUM_TOKENS: 16
+      MAX_HEAP_SIZE: 1G
+      HEAP_NEWSIZE: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT release_version FROM system.local' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+  dc3n3:
+    image: cassandra:4.0.5
+    ports: ["127.0.0.1:9244:9042"]
+    environment:
+      CASSANDRA_CLUSTER_NAME: atlas-ha
+      CASSANDRA_DC: dc3
+      CASSANDRA_RACK: rack3
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      CASSANDRA_SEEDS: dc1n1
+      CASSANDRA_NUM_TOKENS: 16
+      MAX_HEAP_SIZE: 1G
+      HEAP_NEWSIZE: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT release_version FROM system.local' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30

@@ -15,7 +15,8 @@ make build
 make grade-model
 make up
 make grade-cassandra
-make grade                 # both graders; Cassandra must already be running
+make grade-faults           # real frame loss, timeout and SIGKILL/restart
+make grade                 # model + integration + fault graders; Cassandra must be running
 make down                  # stops this project's containers only
 ```
 
@@ -59,10 +60,13 @@ Automatic revalidation/rebase of independent TermGroup edits is a next experimen
 2. Current Cassandra grader: same contract on real 4.0.5 plus client restart.
    Response loss is simulated by discarding the result after commit; it does not
    exercise a socket timeout or coordinator death during Paxos.
-3. Next: bounded interleaving explorer, deliberately broken protocol variants,
-   counterexample minimization, coordinator kill and network response-loss injection.
-4. Next: 3 DC x 3 nodes, RF3/DC, QUORUM=5; test 2-DC progress, minority rejection,
-   ACK survival, repair/rejoin and ingress failover. A one-node test proves none of these.
+3. Fault grader: actual protocol-v4 proxy drops the batch before send or drops its
+   server response, causing a real driver timeout. The committed-response case then
+   SIGKILLs Cassandra and restarts it before resolving the original receipt. It does
+   not kill during Paxos acceptance; that uncertainty window remains to be tested.
+4. Full-HA grader: 3 DC x 3 nodes, RF3/DC, QUORUM=5; whole ingress-DC kill,
+   surviving-side commit, second DC kill/minority rejection, restart and receipt
+   replay. This grader needs separate execution evidence; single-node CI does not certify it.
 5. Next: TermGroup read sets, shared model epoch/budgets, bounded receipt retention
    and expiry floors, audit reconstruction, WAN latency and payload-size limits.
 
@@ -70,3 +74,27 @@ Receipts are retained indefinitely in this disposable fixture. Production bounde
 retention and REQUEST_TOO_OLD semantics remain unqualified. No release activation,
 HTTP API, Kafka publication or full Atlas schema is implied. Canonical task status
 and proof gates remain unchanged. GitHub CI records smoke evidence only.
+
+## Nine-node DC-loss experiment
+
+Use a Linux Docker host with at least 24 GiB memory and enough disk for nine nodes.
+The stock GitHub smoke job does not provision this topology. Stop the single-node
+fixture first because its port overlaps. Driver discovery uses Docker bridge IPs,
+so Docker Desktop/macOS is not a supported full-HA runner yet.
+
+```sh
+make down
+make ha-up                 # sequential bootstrap, requires nine Up/Normal nodes
+make grade-full-ha
+make ha-down
+```
+
+Report: `build/reports/tests/gradeFullHa/index.html`. Failed fault tests restore
+killed nodes in a finally block; use ha-down for final cleanup. Never point these
+graders at a shared or production cluster. Every topology uses cassandra:4.0.5.
+DC-loss is not a network split, and restart is not repair qualification. Network
+partitions, mid-Paxos kills, repair/rejoin under traffic, WAN timing, bounded
+interleaving exploration and mutant detection remain outstanding.
+
+The application JVM and test proxy run on JDK25. Native protocol v4 is pinned for
+the frame-aware fault proxy. CassandraUnit is unnecessary for these real-server tests.
