@@ -33,8 +33,8 @@ class RetentionHistoryCassandraTest {
                     });
                     if(partition) {
                         command("counters");
-                        for(String kind:List.of("ISSUE","COMMIT"))
-                            assertTrue(workload.history().stream().anyMatch(c->c.kind().equals(kind)&&"INDETERMINATE".equals(c.error())),"partition must yield recorded minority ambiguity for "+kind);
+                        assertTrue(workload.history().stream().anyMatch(c->c.kind().equals("ISSUE")&&Math.floorMod(c.draft().request().operation().getLeastSignificantBits(),3)==0&&"INDETERMINATE".equals(c.error())),"the draft routed to isolated dc1 must be ambiguous");
+                        assertTrue(workload.history().stream().anyMatch(c->c.kind().equals("COMMIT")&&Math.floorMod(c.issued().ticket().sequence()-1,3)==0&&"INDETERMINATE".equals(c.error())),"the commit routed to isolated dc1 must be ambiguous");
                     }
                 } finally { if(partition) command("heal"); }
                 View agreed=majority.view();
