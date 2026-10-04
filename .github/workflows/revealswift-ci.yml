@@ -43,6 +43,39 @@ jobs:
         run: cd revealswift && test -s review-artifacts/report.json && test -s review-artifacts/contact-sheet.png && test -s review-artifacts/deck.pdf && test -n "$(find review-artifacts/screenshots -name '*.png' -print -quit)"
       - name: Validate embedded Reveal plugins
         run: cd revealswift && .build/release/revealswift inspect Examples/plugins.html --theme Themes/minimal-dark --strict
+      - name: Author a deck through the CLI
+        run: |
+          cd revealswift
+          rm -rf authoring-smoke
+          mkdir -p authoring-smoke
+
+          .build/release/revealswift deck create authoring-smoke/agent-deck.html             --title "Agent Authored Deck"             --theme dark-mode             --outline title,architecture,metrics
+
+          printf '%s
+'             '<h2>Architecture</h2>'             '<div class="two-column">'             '  <div class="card fragment" data-rs-component="card"><h3>Runtime</h3><p>Native WebKit rendering.</p></div>'             '  <div class="card fragment" data-rs-component="card"><h3>QA</h3><p>Deterministic review.</p></div>'             '</div>' |             .build/release/revealswift slide set authoring-smoke/agent-deck.html architecture --stdin
+
+          printf '%s
+'             '<h2>Metrics</h2>'             '<div class="three-column">'             '  <div class="metric" data-rs-component="metric"><div class="metric-value">0</div><p>Node installs</p></div>'             '  <div class="metric" data-rs-component="metric"><div class="metric-value">100%</div><p>offline runtime</p></div>'             '  <div class="metric" data-rs-component="metric"><div class="metric-value">2</div><p>CPU architectures</p></div>'             '</div>' |             .build/release/revealswift slide set authoring-smoke/agent-deck.html metrics --stdin
+
+          .build/release/revealswift slide add authoring-smoke/agent-deck.html             --id conclusion --after metrics --class section-slide             --html '<h2>Ready for agents</h2><p>Author, review, and export with one binary.</p>'
+
+          .build/release/revealswift slide duplicate authoring-smoke/agent-deck.html conclusion --id conclusion-copy
+          .build/release/revealswift slide rename authoring-smoke/agent-deck.html conclusion-copy --id appendix
+          .build/release/revealswift slide move authoring-smoke/agent-deck.html appendix --before conclusion
+          .build/release/revealswift slide remove authoring-smoke/agent-deck.html appendix
+
+          .build/release/revealswift deck info authoring-smoke/agent-deck.html
+          .build/release/revealswift deck outline authoring-smoke/agent-deck.html
+          .build/release/revealswift deck validate authoring-smoke/agent-deck.html
+          .build/release/revealswift review authoring-smoke/agent-deck.html             --output authoring-smoke/review             --strict
+
+      - name: Verify authored deck artifacts
+        run: |
+          cd revealswift
+          test -s authoring-smoke/agent-deck.html
+          test -s authoring-smoke/review/report.json
+          test -s authoring-smoke/review/contact-sheet.png
+
       - name: Review reference theme decks
         run: |
           cd revealswift
