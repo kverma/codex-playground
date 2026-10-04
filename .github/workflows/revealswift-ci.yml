@@ -55,6 +55,20 @@ jobs:
 
           echo '<h2>Metrics</h2><div class="three-column"><div class="metric" data-rs-component="metric"><div class="metric-value">0</div><p>Node installs</p></div><div class="metric" data-rs-component="metric"><div class="metric-value">100%</div><p>offline runtime</p></div><div class="metric" data-rs-component="metric"><div class="metric-value">2</div><p>CPU architectures</p></div></div>' | .build/release/revealswift slide set authoring-smoke/agent-deck.html metrics --stdin
 
+          .build/release/revealswift slide prepend authoring-smoke/agent-deck.html architecture --html '<p class="eyebrow">System design</p>'
+          .build/release/revealswift slide append authoring-smoke/agent-deck.html architecture --html '<p class="caption" data-rs-caption>Generated incrementally.</p>'
+          .build/release/revealswift element set-text authoring-smoke/agent-deck.html architecture 'h2' --text 'System Architecture'
+          .build/release/revealswift element add-class authoring-smoke/agent-deck.html architecture '.two-column' --class 'review-grid'
+          .build/release/revealswift element get authoring-smoke/agent-deck.html architecture '.two-column' --outer
+
+          .build/release/revealswift stack create authoring-smoke/agent-deck.html --id deep-dive --after architecture
+          .build/release/revealswift stack add authoring-smoke/agent-deck.html deep-dive --id deep-dive-overview --html '<h2>Deep Dive</h2><div class="card" data-rs-component="card"><h3>Overview</h3><p>Vertical navigation keeps supporting detail grouped.</p></div>'
+          .build/release/revealswift stack add authoring-smoke/agent-deck.html deep-dive --id deep-dive-details --html '<h2>Details</h2><div class="two-column"><div class="card" data-rs-component="card"><h3>Offline</h3><p>Bundled runtime.</p></div><div class="card" data-rs-component="card"><h3>Native</h3><p>WKWebView rendering.</p></div></div>'
+          .build/release/revealswift stack add authoring-smoke/agent-deck.html deep-dive --id deep-dive-temp --html '<h2>Temporary</h2><p>This slide will be removed.</p>'
+          .build/release/revealswift element set-text authoring-smoke/agent-deck.html deep-dive-details 'h2' --text 'Implementation Details'
+          .build/release/revealswift stack list authoring-smoke/agent-deck.html deep-dive
+          .build/release/revealswift stack remove authoring-smoke/agent-deck.html deep-dive deep-dive-temp
+
           .build/release/revealswift slide add authoring-smoke/agent-deck.html --id conclusion --after metrics --class section-slide --html '<h2>Ready for agents</h2><p>Author, review, and export with one binary.</p>'
           .build/release/revealswift slide duplicate authoring-smoke/agent-deck.html conclusion --id conclusion-copy
           .build/release/revealswift slide rename authoring-smoke/agent-deck.html conclusion-copy --id appendix
