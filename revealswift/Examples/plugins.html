@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>RevealSwift Plugin Smoke Test</title></head>
+<body>
+<div class="reveal"><div class="slides">
+<section data-markdown>
+<textarea data-template>
+## Markdown plugin
+
+- Parsed from Markdown
+- Runs from the embedded runtime
+- Requires no Node or CDN
+</textarea>
+</section>
+
+<section>
+  <h2>Highlight plugin</h2>
+  <pre><code class="language-swift" data-trim>
+struct Slide {
+    let title: String
+    let theme: String
+}
+  </code></pre>
+  <aside class="notes">Speaker notes are parsed by the embedded notes plugin.</aside>
+</section>
+</div></div>
+</body>
+</html>
