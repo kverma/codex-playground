@@ -55,7 +55,7 @@ public enum InspectorScript {
               (s.backgroundColor && !['transparent','rgba(0, 0, 0, 0)'].includes(s.backgroundColor));
             const borderVisible =
               ['Top','Right','Bottom','Left'].some(side => parseFloat(s['border' + side + 'Width'] || '0') > 0);
-            const mediaLike = ['IMG','CANVAS','SVG','IFRAME','VIDEO','PRE','TABLE'].includes(el.tagName);
+            const mediaLike = ['IMG','CANVAS','SVG','IFRAME','VIDEO'].includes(el.tagName);
             const semanticVisual = el.hasAttribute('data-rs-component');
             if (hasDirectText || backgroundVisible || borderVisible || mediaLike || semanticVisual) {
               densityRects.push(r);
