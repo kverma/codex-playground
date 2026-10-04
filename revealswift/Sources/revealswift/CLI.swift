@@ -365,12 +365,29 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
         }
 
         let issues: [ReviewIssue] = (raw["issues"] as? [[String: Any]] ?? []).map { item in
-            ReviewIssue(
+            let targets: [ReviewIssueTarget] = (item["targets"] as? [[String: Any]] ?? []).map { target in
+                let bounds: ReviewBounds? = {
+                    guard let rawBounds = target["bounds"] as? [String: Any] else { return nil }
+                    return ReviewBounds(
+                        x: (rawBounds["x"] as? NSNumber)?.doubleValue ?? 0,
+                        y: (rawBounds["y"] as? NSNumber)?.doubleValue ?? 0,
+                        width: (rawBounds["width"] as? NSNumber)?.doubleValue ?? 0,
+                        height: (rawBounds["height"] as? NSNumber)?.doubleValue ?? 0
+                    )
+                }()
+                return ReviewIssueTarget(
+                    selector: target["selector"] as? String ?? "",
+                    text: target["text"] as? String,
+                    bounds: bounds
+                )
+            }
+            return ReviewIssue(
                 severity: Severity(rawValue: item["severity"] as? String ?? "warning") ?? .warning,
                 rule: item["rule"] as? String ?? "unknown",
                 message: item["message"] as? String ?? "",
                 element: item["element"] as? String,
-                amount: (item["amount"] as? NSNumber)?.doubleValue
+                amount: (item["amount"] as? NSNumber)?.doubleValue,
+                targets: targets
             )
         }
 
@@ -385,6 +402,8 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
             elementCount: (raw["elementCount"] as? NSNumber)?.intValue ?? 0,
             occupancy: (raw["occupancy"] as? NSNumber)?.doubleValue ?? 0,
             smallestFontPx: (raw["smallestFontPx"] as? NSNumber)?.doubleValue ?? 0,
+            slideID: raw["slideID"] as? String,
+            slideTitle: raw["slideTitle"] as? String,
             issues: issues
         )
     }
