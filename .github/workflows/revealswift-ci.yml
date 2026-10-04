@@ -11,7 +11,7 @@ on:
       - ".github/workflows/revealswift-ci.yml"
 
 concurrency:
-  group: revealswift-${{ github.ref }}
+  group: revealswift-v2-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
