@@ -218,7 +218,8 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
             let diagnostics = try? await webView.evaluateJavaScript(
                 "JSON.stringify({dom:document.querySelectorAll('.reveal .slides section').length,runtime:window.__revealswiftRuntime || null})"
             )
-            throw CLIError("Reveal.js reported zero slides; diagnostics=\\(diagnostics ?? "unavailable")")
+            let diagnosticText = diagnostics.map { String(describing: $0) } ?? "unavailable"
+            throw CLIError("Reveal.js reported zero slides; diagnostics=\\(diagnosticText)")
         }
         return result
     }
