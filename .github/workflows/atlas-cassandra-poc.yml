@@ -2,14 +2,9 @@ name: Atlas Cassandra POC
 on:
   push:
     paths: ['atlas-cassandra-poc/**', '.github/workflows/atlas-cassandra-poc.yml']
-  pull_request:
-    paths: ['atlas-cassandra-poc/**', '.github/workflows/atlas-cassandra-poc.yml']
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: atlas-poc-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: true
 jobs:
   shallow:
     runs-on: ubuntu-latest

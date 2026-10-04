@@ -69,8 +69,8 @@ The GitHub job installs Ant and provisions both JDKs on its disposable runner.
 Synthetic XML guard checks accept the complete selected suite and reject empty,
 missing, duplicate, wrongly named, skipped, failed and errored results. This is
 verification of report selection, not a replacement for running the upstream tests.
-Workflow concurrency coalesces push/PR runs for the same branch and cancels stale
-revisions, reducing redundant hosted execution.
+CI triggers on pushes and manual dispatch. Push checks attach to the PR's head
+commit, avoiding duplicate push/PR-synchronize execution in this repository.
 
 Upstream in-JVM test flags skip disk sync and use classloader-isolated nodes.
 Passing these upstream tests validates those selected Cassandra behaviors, not
