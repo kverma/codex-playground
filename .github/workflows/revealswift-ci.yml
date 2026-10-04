@@ -34,7 +34,7 @@ jobs:
       - name: Validate bundled theme
         run: cd revealswift && .build/release/revealswift themes validate Themes/minimal-dark
       - name: Review demo deck
-        run: cd revealswift && .build/release/revealswift review Examples/demo.html --theme Themes/minimal-dark --output review-artifacts --animation-frames 0,250,500 --pdf
+        run: cd revealswift && .build/release/revealswift review Examples/demo.html --theme Themes/minimal-dark --output review-artifacts --animation-frames 0,250,500 --pdf --strict
       - name: Verify review artifacts
         run: cd revealswift && test -s review-artifacts/report.json && test -s review-artifacts/contact-sheet.png && test -s review-artifacts/deck.pdf && test -n "$(find review-artifacts/screenshots -name '*.png' -print -quit)"
       - name: Package macOS arm64 binary
