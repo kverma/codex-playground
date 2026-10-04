@@ -49,6 +49,23 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(result.score, 85)
     }
 
+    func testRevealDeckFactoryCreatesNativeRevealHTML() {
+        let html = RevealDeckFactory.create(
+            title: "Atlas Review",
+            theme: "dark-mode",
+            outline: ["Title", "Architecture", "Metrics"]
+        )
+        XCTAssertTrue(html.contains("<div class=\"reveal\">"))
+        XCTAssertTrue(html.contains("<div class=\"slides\">"))
+        XCTAssertTrue(html.contains("<section id=\"title\" class=\"title-slide\">"))
+        XCTAssertTrue(html.contains("<section id=\"architecture\">"))
+        XCTAssertTrue(html.contains("<section id=\"metrics\">"))
+        XCTAssertEqual(RevealDeckFactory.embeddedThemeName(in: html), "dark-mode")
+
+        let changed = RevealDeckFactory.setEmbeddedThemeName("apple-inspired", in: html)
+        XCTAssertEqual(RevealDeckFactory.embeddedThemeName(in: changed), "apple-inspired")
+    }
+
     func testInspectorContainsOverlapAndThemeRules() {
         let js = InspectorScript.javascript(rules: ThemeRules())
         XCTAssertTrue(js.contains("layout.overlap"))
