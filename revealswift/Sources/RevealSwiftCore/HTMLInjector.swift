@@ -39,7 +39,6 @@ public enum HTMLInjector {
               window.RevealMarkdown,
               window.RevealHighlight,
               window.RevealNotes,
-              window.RevealMath?.KaTeX?.(),
               window.RevealSearch,
               window.RevealZoom
             ].filter(Boolean);
@@ -54,10 +53,6 @@ public enum HTMLInjector {
 
             const deck = new Reveal(root, {
               ...requestedConfig,
-              katex: {
-                ...(requestedConfig.katex || {}),
-                local: "\(runtimeBase)/katex"
-              },
               width: \(width),
               height: \(height),
               margin: 0,
@@ -77,7 +72,6 @@ public enum HTMLInjector {
               offline: true,
               revealVersion: Reveal.VERSION || "\(EmbeddedRuntime.revealVersion)",
               chartVersion: window.Chart ? Chart.version : null,
-              katexVersion: window.katex ? window.katex.version : null,
               mathPluginAvailable: Boolean(window.RevealMath),
               customPluginCount: customPlugins.length,
               domSlides: slides.querySelectorAll('section').length,

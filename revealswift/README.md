@@ -168,4 +168,4 @@ Agents should prefer semantic classes such as `.card`, `.metric`, `.two-column`,
 
 Reveal.js, Chart.js, Markdown, Highlight, Notes, Search and Zoom are vendored into generated Swift source and decoded by the runtime. The macOS renderer serves those bytes directly to WKWebView through `revealswift://runtime/*`.
 
-Reveal Math is enabled with an embedded KaTeX 0.19.0 engine and WOFF2 font set. Inline and display equations render entirely offline through the `revealswift://runtime/katex` asset namespace; no CDN, Node, npm, or localhost server is required. Reveal's MathJax factories remain available for custom configurations, but MathJax itself is not embedded.
+Math.js is vendored as well, but offline equation rendering still requires bundling a math engine (KaTeX/MathJax) before the math plugin is enabled by default.

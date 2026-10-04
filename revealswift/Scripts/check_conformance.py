@@ -4,8 +4,8 @@ import sys
 from pathlib import Path
 
 REQUIRED_PASSES = {
-    'runtime.ready','runtime.offline','runtime.reveal-version','runtime.chart-version','runtime.math-plugin-bundle','runtime.katex-version',
-    'plugin.registered.markdown','plugin.registered.highlight','plugin.registered.notes','plugin.registered.katex','plugin.registered.search','plugin.registered.zoom','plugin.registered.custom','plugin.custom-init','plugin.math.factories','plugin.math.local-runtime','plugin.math.rendering','plugin.math.layout','plugin.math.fonts-loaded',
+    'runtime.ready','runtime.offline','runtime.reveal-version','runtime.chart-version','runtime.math-plugin-bundle',
+    'plugin.registered.markdown','plugin.registered.highlight','plugin.registered.notes','plugin.registered.search','plugin.registered.zoom','plugin.registered.custom','plugin.custom-init','plugin.math.factories',
     'core.slide-count','core.horizontal-slides','core.vertical-slides','core.vertical-navigation','core.vertical-indices',
     'core.fragments.declared','core.fragments.next','core.fragments.sequence','core.fragments.previous','core.fragments.events','core.slidechanged-event',
     'core.overview-enter','core.overview-exit','core.pause','core.resume','core.data-state',
@@ -23,7 +23,7 @@ REQUIRED_PASSES = {
     'core.lazy-media.image-load','core.lazy-media.iframe-load','core.lazy-media.iframe-unload',
     'core.background-iframe.generated','core.background-iframe.source','plugin.markdown.notes','plugin.markdown.notes-api','plugin.custom.api',
 }
-EXPECTED_SKIPS = set()
+EXPECTED_SKIPS = {'plugin.math.rendering'}
 
 def main() -> int:
     report_path = Path(sys.argv[1] if len(sys.argv) > 1 else 'conformance-artifacts/conformance.json')
