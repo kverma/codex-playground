@@ -6,7 +6,7 @@
 <section class="title-slide">
   <p class="eyebrow">RevealSwift</p>
   <h1>Agent-native presentations</h1>
-  <p class="subtitle">No Node required.</p>
+  <p class="subtitle">No Node. No browser install. Offline runtime.</p>
 </section>
 <section>
   <h2>Progressive architecture</h2>
@@ -16,16 +16,18 @@
   </div>
 </section>
 <section>
-  <h2>Chart.js works too</h2>
-  <canvas id="c" width="900" height="420"></canvas>
+  <h2>Chart.js is embedded too</h2>
+  <div class="chart">
+    <canvas id="c" data-rs-inline-ok></canvas>
+  </div>
   <script>
     document.addEventListener('DOMContentLoaded', () => setTimeout(() => {
       if (window.Chart) new Chart(document.getElementById('c'), {
         type:'bar',
         data:{labels:['Q1','Q2','Q3','Q4'],datasets:[{label:'Revenue',data:[12,19,27,35]}]},
-        options:{animation:false}
+        options:{responsive:true,maintainAspectRatio:false,animation:false}
       });
-    }, 300));
+    }, 100));
   </script>
 </section>
 </div></div>
