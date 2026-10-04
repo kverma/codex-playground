@@ -286,7 +286,11 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
 
     private func inspect(_ state: DeckState, animationTime: Int?) async throws -> SlideMetrics {
         let rules = theme?.manifest.rules ?? ThemeRules()
-        let value = try await webView.evaluateJavaScript(InspectorScript.javascript(rules: rules, allowedComponents: theme?.manifest.allowedComponents ?? []))
+        let value = try await webView.evaluateJavaScript(InspectorScript.javascript(
+            rules: rules,
+            allowedComponents: theme?.manifest.allowedComponents ?? [],
+            appearance: theme?.manifest.appearance
+        ))
         guard let raw = try decodeJSONObject(value) as? [String: Any] else {
             throw CLIError("Could not decode inspection result")
         }
