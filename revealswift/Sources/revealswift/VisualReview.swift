@@ -267,3 +267,42 @@ enum VisualReviewSupport {
         return errors
     }
 }
+
+
+extension RevealSwiftCLI {
+    static func runVisualReview(_ args: [String]) throws {
+        guard args.first == "validate", args.count >= 2 else {
+            throw CLIError("Usage: revealswift visual-review validate <visual-review.json> [--manifest <review-manifest.json>] [--strict]")
+        }
+
+        let resultURL = URL(fileURLWithPath: args[1])
+        let options = Options(args: Array(args.dropFirst(2)))
+        let manifestURL = options.value("--manifest").map(URL.init(fileURLWithPath:))
+            ?? resultURL.deletingLastPathComponent().appendingPathComponent("review-manifest.json")
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let result = try decoder.decode(VisualReviewResult.self, from: Data(contentsOf: resultURL))
+        let manifest = try decoder.decode(VisualReviewManifest.self, from: Data(contentsOf: manifestURL))
+        let validationErrors = VisualReviewSupport.validate(result: result, manifest: manifest)
+
+        if !validationErrors.isEmpty {
+            throw CLIError("Invalid visual review:\n- " + validationErrors.joined(separator: "\n- "))
+        }
+
+        let summary: [String: Any] = [
+            "valid": true,
+            "decision": result.decision,
+            "findings": result.findings.count,
+            "errors": result.findings.filter { $0.severity == .error }.count,
+            "warnings": result.findings.filter { $0.severity == .warning }.count,
+            "infos": result.findings.filter { $0.severity == .info }.count
+        ]
+        let data = try JSONSerialization.data(withJSONObject: summary, options: [.prettyPrinted, .sortedKeys])
+        print(String(decoding: data, as: UTF8.self))
+
+        if options.has("--strict"), result.decision != "pass" {
+            throw CLIError("Visual review requires changes")
+        }
+    }
+}
