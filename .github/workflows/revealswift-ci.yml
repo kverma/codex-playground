@@ -66,6 +66,9 @@ jobs:
           .build/release/revealswift stack add authoring-smoke/agent-deck.html deep-dive --id deep-dive-details --html '<h2>Details</h2><div class="two-column"><div class="card" data-rs-component="card"><h3>Offline</h3><p>Bundled runtime.</p></div><div class="card" data-rs-component="card"><h3>Native</h3><p>WKWebView rendering.</p></div></div>'
           .build/release/revealswift stack add authoring-smoke/agent-deck.html deep-dive --id deep-dive-temp --html '<h2>Temporary</h2><p>This slide will be removed.</p>'
           .build/release/revealswift element set-text authoring-smoke/agent-deck.html deep-dive-details 'h2' --text 'Implementation Details'
+          .build/release/revealswift slide prepend authoring-smoke/agent-deck.html deep-dive-details --html '<p class="eyebrow">Vertical child</p>'
+          .build/release/revealswift slide get authoring-smoke/agent-deck.html deep-dive-details
+          .build/release/revealswift stack move authoring-smoke/agent-deck.html deep-dive deep-dive-details --before deep-dive-overview
           .build/release/revealswift stack list authoring-smoke/agent-deck.html deep-dive
           .build/release/revealswift stack remove authoring-smoke/agent-deck.html deep-dive deep-dive-temp
 
