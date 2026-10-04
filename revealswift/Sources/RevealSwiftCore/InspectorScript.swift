@@ -198,6 +198,29 @@ public enum InspectorScript {
           if (\(rules.requireTitle ? "true" : "false") && !slide.querySelector('h1,h2,[data-rs-title]'))
             issues.push({severity:'warning', rule:'theme.missingTitle', message:'Slide has no title heading'});
 
+          const resolveSelector = value => {
+            try { return slide.querySelector(value); } catch (_) { return null; }
+          };
+          for (const issue of issues) {
+            if (issue.rule === 'density.high' || issue.rule === 'density.excessive') {
+              issue.targets = densityContributors
+                .slice()
+                .sort((a,b) => b.area-a.area)
+                .slice(0,5)
+                .map(item => resolveSelector(item.element))
+                .filter(Boolean)
+                .map(targetOf);
+            } else if (issue.element) {
+              issue.targets = issue.element
+                .split(' <> ')
+                .map(resolveSelector)
+                .filter(Boolean)
+                .map(targetOf);
+            } else {
+              issue.targets = [];
+            }
+          }
+
           return {words, characters:text.length, elementCount:visible.length, occupancy,
                   smallestFontPx:minFont===9999 ? 0 : minFont, slideID, slideTitle, issues};
         })())
