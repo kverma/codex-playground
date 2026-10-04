@@ -1,5 +1,10 @@
 # RevealSwift
 
+> **Documentation:** [Architecture](ARCHITECTURE.md) · [Feature Map](docs/FEATURE_MAP.md) · [Architecture Decisions](docs/ARCHITECTURE_DECISIONS.md) · [Agent Working Guide](../AGENTS.md)
+
+The **Feature Map** is the quickest way for end users and agents to discover what RevealSwift can do, which command exposes each capability, what artifacts it produces, and what is intentionally out of scope.
+
+
 RevealSwift is a macOS Swift CLI for rendering, validating, screenshotting, reviewing and exporting Reveal.js decks without requiring Node, npm, Playwright, Chrome, or a network connection on the target machine.
 
 ## What v0.1 does
