@@ -50,7 +50,7 @@ enum VisualReviewSupport {
         deck: String,
         generatedAt: Date,
         contactSheet: String?,
-        canonical: [(metric: SlideMetrics, image: String)],
+        screenshots: [(metric: SlideMetrics, image: String)],
         diagnostics: [DiagnosticFinding]
     ) -> VisualReviewManifest {
         var items: [VisualReviewItem] = []
@@ -71,11 +71,20 @@ enum VisualReviewSupport {
             )
         }
 
-        for pair in canonical.sorted(by: { $0.metric.index < $1.metric.index }) {
+        for pair in screenshots.sorted(by: {
+            if $0.metric.index != $1.metric.index { return $0.metric.index < $1.metric.index }
+            if $0.metric.state != $1.metric.state { return $0.metric.state < $1.metric.state }
+            return ($0.metric.animationTimeMs ?? -1) < ($1.metric.animationTimeMs ?? -1)
+        }) {
             let metric = pair.metric
+            let sample = metric.animationTimeMs.map { String(format: "t%04d", $0) } ?? "tbase"
+            let itemID = String(
+                format: "visual-s%03d-h%02d-v%02d-state-%02d-%@",
+                metric.index + 1, metric.horizontal, metric.vertical, metric.state, sample
+            )
             items.append(
                 VisualReviewItem(
-                    id: String(format: "visual-s%03d-canonical", metric.index + 1),
+                    id: itemID,
                     kind: "slide-state",
                     image: pair.image,
                     slideIndex: metric.index + 1,
