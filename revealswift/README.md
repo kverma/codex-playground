@@ -35,6 +35,21 @@ revealswift review Examples/demo.html --theme Themes/minimal-dark --output .revi
 
 `review` writes `report.json`, a contact sheet, PNGs for slide/fragment/animation states, and optionally a PDF. Add `--fail-on-errors` to exit non-zero for structural failures, or `--strict` to fail on either errors or warnings after the artifacts are written.
 
+
+## Included reference themes
+
+The repository and CI package include these ready-to-use themes:
+
+- `minimal-dark` — original minimal technical dark theme
+- `dark-mode` — higher-contrast general dark mode
+- `apple-inspired` — spacious, restrained, system-typography presentation style
+- `google-inspired` — Material-like cards, bright accents, and information-forward layouts
+- `amazon-inspired` — navy/orange operational and commerce-oriented presentation style
+
+The Apple, Google, and Amazon themes are visual-style references only; they do not embed company logos or proprietary brand assets.
+
+CI renders representative decks from `Examples/themes/` with `--strict`, so theme changes are checked for clipping, overlap, density, safe margins, typography, semantic components, and screenshot generation.
+
 ## Theme contract
 
 A theme directory contains `theme.json` plus CSS files. The manifest defines the logical slide width/height and quality thresholds. RevealSwift passes that exact viewport into Reveal so screenshots, QA geometry, and PDF export use the same coordinate system.
