@@ -8,3 +8,10 @@ Keep semantic hashes separate from concurrency tokens and business effective tim
 Use one same-table subject partition for conditional state + receipt mutations.
 Never use LOCAL_SERIAL, a custom LWT timestamp, or acknowledge an ambiguous timeout as failure.
 Run make grade-model and make grade-cassandra; record missing infrastructure honestly.
+Expanded fixture: Transactions.java defines the bounded group contract;
+TransactionCassandraStore.java implements the packed HEAD + receipt candidate.
+HistoryChecker.java is an independent bounded oracle: do not replace its admission
+rules with calls to Transactions.check/apply or treat an INCONCLUSIVE result as passing.
+Run make grade-history against make three-up for cross-DC evidence. Preserve failing
+seeds/intervals, reduced counterexamples, and mutant replay tests. Updating group
+semantics requires synchronized contract, oracle, adapter and README changes.

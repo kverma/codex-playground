@@ -50,8 +50,8 @@ effective-time schedules, provenance and downstream change events are not yet im
 
 The current v3.23 ADR-CONS-004 permits bounded direct payloads in the conditional
 batch and supersedes the older exploration handoff's mandatory payload prewrite.
-This fixture uses whole-subject CAS conservatively: different TermGroups can conflict.
-Automatic revalidation/rebase of independent TermGroup edits is a next experiment.
+The original two-field fixture uses whole-subject CAS conservatively. The expanded
+TermGroup candidate below separately tests logical group versions and physical CAS revalidation.
 
 ## Evidence boundaries and ranked next work
 
@@ -93,8 +93,9 @@ Report: `build/reports/tests/gradeFullHa/index.html`. Failed fault tests restore
 killed nodes in a finally block; use ha-down for final cleanup. Never point these
 graders at a shared or production cluster. Every topology uses cassandra:4.0.5.
 DC-loss is not a network split, and restart is not repair qualification. Network
-partitions, mid-Paxos kills, repair/rejoin under traffic, WAN timing, bounded
-interleaving exploration and mutant detection remain outstanding.
+partitions and repair/rejoin for RF3/DC, phase-specific mid-Paxos kills, WAN timing
+and exhaustive Paxos interleaving exploration remain outstanding. RF1/DC scenario
+tests and the bounded application-history checker are described separately below.
 
 The application JVM and test proxy run on JDK25. Native protocol v4 is pinned for
 the frame-aware fault proxy. CassandraUnit is unnecessary for these real-server tests.
@@ -148,3 +149,79 @@ fault-testing VM. External VM runners should be ephemeral, run trusted revisions
 use narrowly scoped short-lived credentials where supported, export evidence,
 and delete their disks and VM after the job. Provisioning and budget configuration
 are outside this POC; the standard hosted Actions job needs no personal machine.
+
+## TermGroup transaction candidate and history checker
+
+`Transactions` adds one subject/option with Economics (USD cents), Eligibility
+(NEW or NEW,CHURNED), and Royalty (basis points). Every group has an opaque version.
+The subject additionally has a physical generation, admitted model epoch, logical
+payload-byte budget, and exact byte summary. The illustrative validation rule is
+that churned-customer eligibility requires price <= $5; it is a test fixture rule,
+not a universal Atlas product policy.
+
+Requests carry an operation ID, expected model epoch, immutable intended updates,
+and the complete validation read set. Economics/Eligibility edits depend on both
+groups. Royalty edits depend on Royalty. Model/budget admission requires all groups.
+The provider-style edit helper captures these dependencies; omitted dependencies
+are rejected. Budget admission and the model epoch fence are engineering fixture
+operations, not an authenticated public API.
+
+| Concurrent or historical case | Candidate behavior |
+|---|---|
+| Economics then independent Royalty from the same snapshot | Revalidate the original read set against a fresh physical generation; retain both changes |
+| Price increase vs extending churned eligibility | Changed validation dependency causes a logical conflict; no write skew |
+| Independent edits collectively exceed the subject budget | Fresh aggregate validation rejects the overflowing edit |
+| Admission advances the model epoch | Old requests conflict even if their group versions remain unchanged |
+| Exact accepted operation retried after admission/later edits | Return the original before/after receipt |
+| Bounded edit of all three groups | Payload, selectors, model/budget summary and receipt commit together or not at all |
+
+`TransactionCassandraStore` uses the transport's pinned version/replication bootstrap
+and a separate `term_subject` table. A single packed HEAD and OP receipt share one
+subject partition. The packed snapshot has a versioned codec. A SERIAL read resolves
+Paxos; a conditional batch uses serial SERIAL and regular QUORUM. Each failed physical
+CAS rereads and revalidates without refreshing the caller's logical read versions.
+After 32 physical attempts or a transport ambiguity, return INDETERMINATE and preserve
+the exact request for recovery. A second receipt lookup on logical rejection closes
+the race with a competing exact retry.
+
+The byte budget counts canonical group values plus group labels; it does not yet
+measure CQL/codec/receipt overhead or certify Cassandra cell/batch limits. Receipts
+remain unbounded in this disposable POC. Intent hashes bind the fixture's semantic
+profile, admitted epoch and canonical values, excluding observation time, physical
+generations and group CAS tokens. Full production schema, auth and retention remain
+separate gates.
+
+```sh
+make grade-model          # contract, checker and deliberately broken implementations
+make up
+make grade-transactions   # real Cassandra contract, including group/epoch/budget cases
+make down
+make three-up
+make grade-history        # cross-DC histories plus a 2-vs-1 partition
+make three-down
+```
+
+The independent checker does not call the adapter's admission or transition functions.
+It explores serial orders respecting invocation/response precedence and checks reads,
+rejections, exact duplicate results and before/after receipts. Timed-out writes remain
+pending: the checker considers no effect or a recovered acceptance, rather than
+assuming rollback. Workloads explicitly record exact retries to resolve ambiguity.
+
+Bounds: at most 20 operations/history and 100,000 search states. Exceeding either is
+INCONCLUSIVE, which fails the grader. Workload seeds reproduce generated requests;
+saved intervals and UUIDs reproduce the observed schedule in the checker. The model
+grader generates 400 short histories including synthetic lost replies; the real
+Cassandra grader generates 14 histories through coordinators in three DCs, including
+one under partition. These are bounded examples, not exhaustive distributed-system proof.
+
+Four deliberately broken implementations must be NON_LINEARIZABLE: stale dependency
+acceptance, lost independent updates, forgotten receipts, and partial multi-group
+acceptance. Failing histories are reduced greedily while retaining causal references;
+the result is 1-minimal under that constraint, not globally minimal. Saved mutant
+counterexamples are deserialized and checked again to verify replayability.
+
+CI evidence: `build/evidence/history-model/`, `history-cassandra/`, and `mutants/`.
+Every JSON history contains seed, initial state, invocation/response intervals,
+requests, results, verdict and search bound. Unexpected failures produce JUnit errors;
+NON_LINEARIZABLE histories also save a reduced counterexample. The same cloud-only
+workflow runs these graders; no personal machine or paid VM is required.

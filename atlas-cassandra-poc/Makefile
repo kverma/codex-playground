@@ -3,6 +3,8 @@ GRADLE ?= gradle
 help:
 	@echo 'build test grade-model grade-cassandra grade-faults grade up down clean version-check'
 	@echo 'ha-up grade-full-ha ha-down (Linux Docker, 24 GiB+ memory)'
+	@echo 'three-up grade-partition grade-coordinator-crash grade-repair grade-history three-down'
+	@echo 'grade-transactions (requires single-node fixture)'
 	@echo 'Requires JDK 25, Gradle 9.1.0 and Docker Compose v2 for Cassandra.'
 version-check:
 	@$(GRADLE) --version | tee /dev/stderr | grep -q 'Gradle 9.1.0' || (echo 'Install Gradle 9.1.0'; exit 1)
