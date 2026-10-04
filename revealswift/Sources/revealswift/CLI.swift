@@ -565,27 +565,60 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
         }
 
         let screenshotDir = output?.appendingPathComponent("screenshots", isDirectory: true)
+        let diagnosticsDir = output?.appendingPathComponent("diagnostics", isDirectory: true)
         if screenshots, let screenshotDir {
             try FileManager.default.createDirectory(at: screenshotDir, withIntermediateDirectories: true)
+        }
+        if screenshots, let diagnosticsDir {
+            try FileManager.default.createDirectory(at: diagnosticsDir, withIntermediateDirectories: true)
         }
 
         let states = try await allStates()
         let samples: [Int?] = animationFrames.isEmpty ? [nil] : animationFrames.map(Optional.some)
         var metrics: [SlideMetrics] = []
         var canonicalScreenshots: [Int: URL] = [:]
+        var diagnosticFindings: [DiagnosticFinding] = []
 
         for state in states {
             try await go(to: state)
             for sample in samples {
                 try await setAnimationTime(sample)
-                metrics.append(try await inspect(state, animationTime: sample))
+                let metric = try await inspect(state, animationTime: sample)
+                metrics.append(metric)
+
+                var screenshotURL: URL?
                 if screenshots, let screenshotDir {
                     let suffix = sample.map { String(format: "-t%04d", $0) } ?? ""
                     let name = String(format: "slide-%03d-h%02d-v%02d-state-%02d%@.png",
                                       state.index + 1, state.h, state.v, state.fragmentState, suffix)
-                    let screenshotURL = screenshotDir.appendingPathComponent(name)
-                    try await snapshot(to: screenshotURL)
-                    canonicalScreenshots[state.index] = screenshotURL
+                    let url = screenshotDir.appendingPathComponent(name)
+                    try await snapshot(to: url)
+                    screenshotURL = url
+                    canonicalScreenshots[state.index] = url
+                }
+
+                if let screenshotURL, let diagnosticsDir {
+                    for (ordinal, issue) in metric.issues.enumerated() {
+                        let provisional = makeDiagnosticFinding(
+                            metric: metric,
+                            issue: issue,
+                            ordinal: ordinal,
+                            screenshot: nil
+                        )
+                        let relativePath = "diagnostics/\(provisional.id).png"
+                        let finding = makeDiagnosticFinding(
+                            metric: metric,
+                            issue: issue,
+                            ordinal: ordinal,
+                            screenshot: relativePath
+                        )
+                        try createDiagnosticScreenshot(
+                            base: screenshotURL,
+                            finding: finding,
+                            output: diagnosticsDir.appendingPathComponent("\(finding.id).png")
+                        )
+                        diagnosticFindings.append(finding)
+                    }
                 }
             }
         }
@@ -607,7 +640,19 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
             try await exportPDF(to: pdfURL)
             artifacts["pdf"] = "deck.pdf"
         }
-        if output != nil { artifacts["report"] = "report.json" }
+        if let output {
+            artifacts["report"] = "report.json"
+            artifacts["diagnostics"] = "diagnostics.json"
+            if !diagnosticFindings.isEmpty {
+                artifacts["diagnosticScreenshots"] = "diagnostics/"
+            }
+            let diagnosticsReport = DiagnosticsReport(
+                deck: deckURL.lastPathComponent,
+                generatedAt: Date(),
+                findings: diagnosticFindings
+            )
+            try JSONIO.encode(diagnosticsReport).write(to: output.appendingPathComponent("diagnostics.json"))
+        }
 
         let scored = ReportScoring.score(metrics: metrics)
         let report = ReviewReport(
