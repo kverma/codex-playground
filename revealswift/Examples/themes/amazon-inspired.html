@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Amazon Inspired Review</title></head>
+<body>
+<div class="reveal"><div class="slides">
+<section class="title-slide">
+  <p class="eyebrow">Amazon-inspired</p>
+  <h1>Start with the customer.</h1>
+  <p class="subtitle">Operational clarity with strong navy structure and orange emphasis.</p>
+</section>
+<section>
+  <h2>Customer outcomes</h2>
+  <div class="three-column">
+    <div class="metric fragment" data-rs-component="metric"><div class="metric-value">24h</div><p>faster delivery</p></div>
+    <div class="metric fragment" data-rs-component="metric"><div class="metric-value">18%</div><p>cost reduction</p></div>
+    <div class="callout fragment" data-rs-component="callout"><h3>Working backwards</h3><p>Focus the narrative on measurable customer value.</p></div>
+  </div>
+</section>
+<section>
+  <h2>Operational trend</h2>
+  <div class="chart" data-rs-component="chart"><canvas id="theme-chart" data-rs-inline-ok></canvas></div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => setTimeout(() => {
+      if (!window.Chart) return;
+      const s = getComputedStyle(document.documentElement);
+      const colors = [1,2,3].map(i => s.getPropertyValue('--rs-chart-' + i).trim());
+      new Chart(document.getElementById('theme-chart'), {
+        type:'bar',
+        data:{labels:['Speed','Cost','Quality'],datasets:[{data:[88,74,94],backgroundColor:colors}]},
+        options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}}}
+      });
+    }, 100));
+  </script>
+</section>
+</div></div>
+</body>
+</html>
