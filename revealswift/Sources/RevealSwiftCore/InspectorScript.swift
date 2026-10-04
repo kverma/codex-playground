@@ -130,9 +130,45 @@ public enum InspectorScript {
             }
           }
 
+          const clippedDensityRects = densityRects.map(r => ({
+            left: Math.max(root.left, r.left),
+            right: Math.min(root.right, r.right),
+            top: Math.max(root.top, r.top),
+            bottom: Math.min(root.bottom, r.bottom)
+          })).filter(r => r.right > r.left && r.bottom > r.top);
+
+          const densityXs = [...new Set(
+            clippedDensityRects.flatMap(r => [r.left, r.right])
+          )].sort((a,b) => a-b);
+
+          let occupied = 0;
+          for (let i=0; i<densityXs.length-1; i++) {
+            const x1 = densityXs[i], x2 = densityXs[i+1];
+            if (x2 <= x1) continue;
+            const mid = (x1 + x2) / 2;
+            const intervals = clippedDensityRects
+              .filter(r => r.left < mid && r.right > mid)
+              .map(r => [r.top, r.bottom])
+              .sort((a,b) => a[0]-b[0]);
+            if (!intervals.length) continue;
+
+            let start = intervals[0][0], end = intervals[0][1], coveredY = 0;
+            for (let j=1; j<intervals.length; j++) {
+              const [nextStart, nextEnd] = intervals[j];
+              if (nextStart <= end) end = Math.max(end, nextEnd);
+              else {
+                coveredY += end - start;
+                start = nextStart;
+                end = nextEnd;
+              }
+            }
+            coveredY += end - start;
+            occupied += (x2 - x1) * coveredY;
+          }
+
           const text = slide.innerText || '';
           const words = text.trim() ? text.trim().split(/\\s+/).length : 0;
-          const occupancy = Math.min(1, occupied / Math.max(1, root.width*root.height*1.8));
+          const occupancy = Math.min(1, occupied / Math.max(1, root.width*root.height));
           if (occupancy > \(rules.densityMaximum))
             issues.push({severity:'error', rule:'density.excessive', message:`Visual density ${(occupancy*100).toFixed(0)}% exceeds maximum`, amount:occupancy});
           else if (occupancy > \(rules.densityWarningMax))
