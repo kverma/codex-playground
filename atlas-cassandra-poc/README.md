@@ -315,7 +315,11 @@ single-node contract also checks session restart. `make grade-retention` (after
 `make three-up`) checks floor advancement under a 2-vs-1 partition and replay after
 healing. CI stores its scenario events in `build/evidence/retention-three.json`.
 The retention grader also runs six fresh-subject cross-DC histories, including
-one verified partition and post-heal reads of all coordinators. They combine
+one verified partition and post-heal reads of all coordinators. Each coordinator
+must return a full authoritative view within three read attempts; every attempt
+is saved in `build/evidence/retention-healed/`, and all successful views must agree.
+These recovery checks sit outside the bounded history and make no latency-SLO claim.
+The histories combine
 server allocation, concurrent group edits, exact retries, expiry/pruning, closed
 old leases and a new sequence after pruning.
 
