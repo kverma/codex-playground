@@ -376,6 +376,234 @@ extension WebKitRunner {
         }
 
         try {
+          const slide = await goTo('transition-slide');
+          check('core.transition.slide-attribute', slide.dataset.transition === 'zoom', slide.dataset.transition || null);
+          check('core.transition.speed-attribute', slide.dataset.transitionSpeed === 'fast', slide.dataset.transitionSpeed || null);
+          check('core.transition.background-attribute', slide.dataset.backgroundTransition === 'fade',
+            slide.dataset.backgroundTransition || null);
+
+          const before = {
+            transition: deck.getConfig().transition,
+            transitionSpeed: deck.getConfig().transitionSpeed,
+            backgroundTransition: deck.getConfig().backgroundTransition
+          };
+          deck.configure({ transition:'fade', transitionSpeed:'fast', backgroundTransition:'slide' });
+          check('core.transition.configure',
+            deck.getConfig().transition === 'fade' &&
+            deck.getConfig().transitionSpeed === 'fast' &&
+            deck.getConfig().backgroundTransition === 'slide',
+            JSON.stringify({
+              transition:deck.getConfig().transition,
+              transitionSpeed:deck.getConfig().transitionSpeed,
+              backgroundTransition:deck.getConfig().backgroundTransition
+            }));
+          deck.configure(before);
+        } catch (error) {
+          fail('core.transition', String(error));
+        }
+
+        try {
+          const slide = await goTo('layout-helpers');
+          deck.layout();
+          await delay(30);
+          const fit = document.getElementById('fit-text');
+          const stretch = document.getElementById('stretch-image');
+          const fitFont = parseFloat(getComputedStyle(fit).fontSize || '0');
+          const stretchRect = stretch.getBoundingClientRect();
+          const slideRect = slide.getBoundingClientRect();
+          check('core.layout.fit-text', fitFont >= 24, 'font=' + fitFont);
+          check('core.layout.stretch-sized', stretchRect.height > 100 && stretchRect.width > 100,
+            'size=' + stretchRect.width + 'x' + stretchRect.height);
+          check('core.layout.stretch-contained',
+            stretchRect.left >= slideRect.left - 1 &&
+            stretchRect.right <= slideRect.right + 1 &&
+            stretchRect.top >= slideRect.top - 1 &&
+            stretchRect.bottom <= slideRect.bottom + 1);
+          const computed = deck.getComputedSlideSize();
+          check('core.layout.computed-size',
+            computed && computed.width > 0 && computed.height > 0,
+            computed ? JSON.stringify(computed) : null);
+        } catch (error) {
+          fail('core.layout-helpers', String(error));
+        }
+
+        try {
+          const previousConfig = {
+            controls: deck.getConfig().controls,
+            progress: deck.getConfig().progress,
+            slideNumber: deck.getConfig().slideNumber
+          };
+          deck.configure({ controls:true, progress:true, slideNumber:'c/t' });
+          await goTo('links-slide');
+          await delay(20);
+          const controls = root.querySelector('.controls');
+          const progress = root.querySelector('.progress');
+          const number = root.querySelector('.slide-number');
+          check('core.ui.controls', Boolean(controls) && getComputedStyle(controls).display !== 'none');
+          check('core.ui.progress', Boolean(progress) && getComputedStyle(progress).display !== 'none');
+          check('core.ui.slide-number',
+            Boolean(number) && getComputedStyle(number).display !== 'none' && number.textContent.trim().length > 0,
+            number?.textContent?.trim() || null);
+          deck.configure(previousConfig);
+        } catch (error) {
+          fail('core.ui', String(error));
+        }
+
+        try {
+          await goTo('links-slide');
+          const link = document.getElementById('internal-link');
+          link.click();
+          await delay(30);
+          check('core.links.internal-navigation', deck.getCurrentSlide()?.id === 'search-target',
+            deck.getCurrentSlide()?.id || null);
+        } catch (error) {
+          fail('core.links.internal-navigation', String(error));
+        }
+
+        try {
+          await goTo('vertical-b');
+          const saved = deck.getState();
+          const savedPath = deck.getSlidePath();
+          const savedProgress = deck.getProgress();
+          const attrs = deck.getSlidesAttributes();
+          await goTo('search-target');
+          deck.setState(saved);
+          await delay(30);
+          check('core.state.restore', deck.getCurrentSlide()?.id === 'vertical-b',
+            deck.getCurrentSlide()?.id || null);
+          check('core.api.slide-path', typeof savedPath === 'string' && savedPath.length > 0, savedPath || null);
+          check('core.api.progress', typeof savedProgress === 'number' && savedProgress >= 0 && savedProgress <= 1,
+            String(savedProgress));
+          check('core.api.slides-attributes', Array.isArray(attrs) && attrs.length === deck.getSlides().length,
+            'attributes=' + (Array.isArray(attrs) ? attrs.length : -1));
+          const routes = deck.availableRoutes();
+          check('core.api.available-routes',
+            routes && ['left','right','up','down'].every(k => typeof routes[k] === 'boolean'),
+            JSON.stringify(routes));
+          const fragments = deck.availableFragments();
+          check('core.api.available-fragments',
+            fragments && typeof fragments.prev === 'boolean' && typeof fragments.next === 'boolean',
+            JSON.stringify(fragments));
+        } catch (error) {
+          fail('core.state-api', String(error));
+        }
+
+        try {
+          document.activeElement?.blur?.();
+          let keyCount = 0;
+          deck.addKeyBinding({keyCode:88, key:'X', description:'E2E binding'}, () => keyCount++);
+          deck.triggerKey(88);
+          await delay(10);
+          check('core.keyboard.custom-binding', keyCount === 1, 'count=' + keyCount);
+          deck.removeKeyBinding(88);
+          deck.triggerKey(88);
+          await delay(10);
+          check('core.keyboard.remove-binding', keyCount === 1, 'count=' + keyCount);
+        } catch (error) {
+          fail('core.keyboard', String(error));
+        }
+
+        try {
+          const oldAutoSlide = deck.getConfig().autoSlide;
+          deck.configure({ autoSlide:10000 });
+          deck.toggleAutoSlide(true);
+          check('core.auto-slide.start', deck.isAutoSliding() === true);
+          deck.toggleAutoSlide(false);
+          check('core.auto-slide.stop', deck.isAutoSliding() === false);
+          deck.configure({ autoSlide:oldAutoSlide });
+        } catch (error) {
+          fail('core.auto-slide', String(error));
+        }
+
+        try {
+          deck.toggleScrollView(true);
+          await delay(30);
+          check('core.scroll-view.enter', deck.isScrollView() === true);
+          deck.toggleScrollView(false);
+          await delay(30);
+          check('core.scroll-view.exit', deck.isScrollView() === false);
+        } catch (error) {
+          fail('core.scroll-view', String(error));
+          try { deck.toggleScrollView(false); } catch (_) {}
+        }
+
+        try {
+          const hidden = document.getElementById('hidden-slide');
+          const uncounted = document.getElementById('uncounted-slide');
+          check('core.visibility.hidden-removed', hidden === null);
+          check('core.visibility.uncounted-retained',
+            Boolean(uncounted) && uncounted.dataset.visibility === 'uncounted');
+          const pastBefore = deck.getSlidePastCount(uncounted);
+          const nextSlide = deck.getSlides()[deck.getSlides().indexOf(uncounted) + 1];
+          const pastAfter = nextSlide ? deck.getSlidePastCount(nextSlide) : pastBefore;
+          check('core.visibility.uncounted-not-counted',
+            !nextSlide || pastAfter === pastBefore,
+            'before=' + pastBefore + ',after=' + pastAfter);
+        } catch (error) {
+          fail('core.visibility', String(error));
+        }
+
+        try {
+          const slide = document.getElementById('lazy-media');
+          const image = document.getElementById('lazy-image');
+          const frame = document.getElementById('lazy-frame');
+
+          // Reset to the pre-load shape in case Reveal's view-distance logic
+          // already promoted these while initializing nearby slides.
+          if (image?.getAttribute('src') && !image?.getAttribute('data-src')) {
+            image.setAttribute('data-src', image.getAttribute('src'));
+            image.removeAttribute('src');
+            image.removeAttribute('data-lazy-loaded');
+          }
+          if (frame?.getAttribute('src') && !frame?.getAttribute('data-src')) {
+            frame.setAttribute('data-src', frame.getAttribute('src'));
+            frame.removeAttribute('src');
+            frame.removeAttribute('data-lazy-loaded');
+          }
+
+          const oldPreload = deck.getConfig().preloadIframes;
+          deck.configure({ preloadIframes:true });
+          deck.loadSlide(slide);
+          await delay(30);
+          check('core.lazy-media.image-load',
+            Boolean(image?.getAttribute('src')) && image?.hasAttribute('data-lazy-loaded'));
+          check('core.lazy-media.iframe-load',
+            Boolean(frame?.getAttribute('src')) && frame?.hasAttribute('data-lazy-loaded'));
+
+          deck.unloadSlide(slide);
+          check('core.lazy-media.iframe-unload',
+            !frame?.getAttribute('src') && Boolean(frame?.getAttribute('data-src')));
+          deck.configure({ preloadIframes:oldPreload });
+        } catch (error) {
+          fail('core.lazy-media', String(error));
+        }
+
+        try {
+          const slide = await goTo('background-iframe');
+          await delay(30);
+          const background = deck.getSlideBackground(slide);
+          const frame = background?.querySelector('iframe');
+          check('core.background-iframe.generated', Boolean(frame));
+          check('core.background-iframe.source',
+            Boolean(frame?.getAttribute('src') || frame?.getAttribute('data-src')));
+        } catch (error) {
+          fail('core.background-iframe', String(error));
+        }
+
+        try {
+          const slide = await goTo('markdown-advanced');
+          const notes = slide.querySelector('aside.notes');
+          check('plugin.markdown.notes',
+            notes?.textContent?.includes('Markdown speaker note E2E') === true,
+            notes?.textContent?.trim() || null);
+          check('plugin.markdown.notes-api',
+            String(deck.getSlideNotes() || '').includes('Markdown speaker note E2E'),
+            String(deck.getSlideNotes() || '').trim() || null);
+        } catch (error) {
+          fail('plugin.markdown.notes', String(error));
+        }
+
+        try {
           const custom = deck.getPlugin('custom-e2e');
           check('plugin.custom.api', typeof custom?.ping === 'function' && custom.ping() === 'pong');
         } catch (error) {
