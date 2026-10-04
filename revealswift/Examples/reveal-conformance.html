@@ -147,6 +147,70 @@ struct Catalog {
       </div>
     </section>
 
+    <section id="transition-slide" data-transition="zoom" data-transition-speed="fast" data-background-transition="fade">
+      <h2>Transitions</h2>
+      <div class="card" data-rs-component="card"><h3>Per-slide configuration</h3><p>Transition style, speed, and background transition attributes are preserved.</p></div>
+    </section>
+
+    <section id="layout-helpers">
+      <h2 id="fit-text" class="r-fit-text">Fit Text Helper E2E</h2>
+      <img id="stretch-image" class="r-stretch" alt="Stretch helper graphic"
+        src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNDAwIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjQwMCIgcng9IjI0IiBmaWxsPSIjMTYxOTFmIi8+PHBhdGggZD0iTTgwIDMyMEwyNjAgMTUwTDQyMCAyNjBMNjIwIDEwMEw3MjAgMzIwWiIgZmlsbD0iIzY3YTVmZiIvPjx0ZXh0IHg9IjQwMCIgeT0iMzUwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI4IiBmaWxsPSJ3aGl0ZSI+ci1zdHJldGNoPC90ZXh0Pjwvc3ZnPg==">
+      <p class="caption" data-rs-caption>Reveal should size both helpers inside the slide viewport.</p>
+    </section>
+
+    <section id="links-slide">
+      <h2>Internal Links</h2>
+      <div class="card" data-rs-component="card">
+        <h3>Hash navigation</h3>
+        <p><a id="internal-link" href="#/search-target">Jump to the unique search target</a></p>
+      </div>
+    </section>
+
+    <section id="lazy-media">
+      <h2>Lazy Media</h2>
+      <div class="two-column">
+        <div class="card" data-rs-component="card">
+          <h3>Lazy image</h3>
+          <img id="lazy-image" width="320" height="160" alt="Lazy loaded graphic"
+            data-src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMjAiIGhlaWdodD0iMTYwIj48cmVjdCB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE2MCIgcng9IjE4IiBmaWxsPSIjNjNkMjk3Ii8+PHRleHQgeD0iMTYwIiB5PSI4OCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIyNCIgZmlsbD0iIzBiMGQxMCI+TGF6eSBJbWFnZTwvdGV4dD48L3N2Zz4=">
+        </div>
+        <div class="card" data-rs-component="card">
+          <h3>Lazy iframe</h3>
+          <iframe id="lazy-frame" width="320" height="160"
+            data-src="data:text/html,%3Chtml%3E%3Cbody%3E%3Cp%3ELazy%20iframe%20E2E%3C%2Fp%3E%3C%2Fbody%3E%3C%2Fhtml%3E"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section id="background-iframe"
+      data-background-iframe="data:text/html,%3Chtml%3E%3Cbody%20style%3D%22background%3A%23182030%3Bcolor%3Awhite%3Bfont-family%3Asans-serif%22%3E%3Cp%3EBackground%20iframe%20E2E%3C%2Fp%3E%3C%2Fbody%3E%3C%2Fhtml%3E"
+      data-background-interactive>
+      <h2>Background Iframe</h2>
+      <p>Reveal creates and manages iframe-backed slide backgrounds.</p>
+    </section>
+
+    <section id="markdown-advanced" data-markdown data-separator-notes="^Note:">
+      <textarea data-template>
+## Markdown Notes
+
+A paragraph generated from Markdown.
+
+Note:
+Markdown speaker note E2E.
+      </textarea>
+    </section>
+
+    <section id="uncounted-slide" data-visibility="uncounted">
+      <h2>Uncounted Slide</h2>
+      <p>This slide participates in navigation but is excluded from slide counting.</p>
+    </section>
+
+    <section id="hidden-slide" data-visibility="hidden">
+      <h2>Hidden Slide</h2>
+      <p>Reveal removes this slide during initialization.</p>
+    </section>
+
     <section id="math-source">
       <h2>Math Plugin Surface</h2>
       <p>\(E = mc^2\)</p>
