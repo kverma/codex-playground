@@ -117,51 +117,6 @@ revealswift stack remove atlas.html architecture-deep-dive architecture-overview
 
 Vertical children retain normal Reveal.js nested-`<section>` semantics. Content-oriented commands such as `slide get`, `slide set`, `slide append`, and `slide prepend` can address a vertical child by stable ID, while top-level structural move/remove commands remain stack-safe.
 
-Incremental editing avoids replacing a whole slide:
-
-```bash
-revealswift slide prepend atlas.html architecture \
-  --html '<p class="eyebrow">System design</p>'
-
-revealswift slide append atlas.html architecture \
-  --html '<p class="caption" id="arch-note">Updated after review.</p>'
-```
-
-Scoped element edits use ordinary CSS selectors inside a chosen slide:
-
-```bash
-revealswift element get atlas.html architecture 'h2'
-
-revealswift element set-text atlas.html architecture 'h2' \
-  --text 'Serving architecture'
-
-revealswift element set-html atlas.html architecture '#arch-note' \
-  --html 'Reviewed and updated.'
-
-revealswift element add-class atlas.html architecture '.card' --class emphasized
-revealswift element remove-class atlas.html architecture '.card' --class emphasized
-revealswift element remove atlas.html architecture '.obsolete'
-```
-
-Reveal vertical slide stacks are first-class:
-
-```bash
-revealswift stack create atlas.html --id implementation --before conclusion
-
-revealswift stack add atlas.html implementation \
-  --id implementation-overview \
-  --html '<h2>Implementation</h2><p>Overview</p>'
-
-revealswift stack add atlas.html implementation \
-  --id implementation-storage \
-  --html '<h2>Storage</h2><p>Cassandra and Kafka</p>'
-
-revealswift stack list atlas.html implementation
-revealswift stack remove atlas.html implementation implementation-storage
-```
-
-Nested vertical slide IDs can also be used with `element` commands, while top-level `slide move/remove` stays intentionally restricted to the horizontal deck structure.
-
 Stable section IDs are recommended because they let agents edit by meaning instead of by slide number. Numeric 1-based slide selectors are also accepted.
 
 A theme selected with `deck create --theme` is stored in the HTML as a `revealswift-theme` meta tag. Review/export commands automatically resolve that theme from `./Themes/<name>`, a deck-local themes directory, or the themes directory packaged beside the binary. An explicit `--theme <dir>` still overrides it.
