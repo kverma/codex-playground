@@ -5,7 +5,7 @@ struct AuthoringDeckInfo: Codable {
     var title: String
     var theme: String?
     var slideCount: Int
-    var slides: [RevealDeckOutlineItem]
+    var slides: [AuthoringOutlineItem]
 }
 
 struct AuthoringValidationReport: Codable {
@@ -13,6 +13,21 @@ struct AuthoringValidationReport: Codable {
     var errors: [String]
     var warnings: [String]
     var slideCount: Int
+}
+
+struct AuthoringVerticalItem: Codable {
+    var index: Int
+    var id: String
+    var title: String?
+    var classes: [String]
+}
+
+struct AuthoringOutlineItem: Codable {
+    var index: Int
+    var id: String
+    var title: String?
+    var classes: [String]
+    var verticalSlides: [AuthoringVerticalItem]?
 }
 
 #if canImport(WebKit) && canImport(AppKit)
@@ -61,12 +76,21 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
             title: doc.title || '',
             theme,
             slideCount: slides.length,
-            slides: slides.map((slide, i) => ({
-              index: i + 1,
-              id: slide.id || '',
-              title: slide.querySelector(':scope > h1, :scope > h2, :scope > [data-rs-title]')?.textContent?.trim() || null,
-              classes: [...slide.classList]
-            }))
+            slides: slides.map((slide, i) => {
+              const vertical = [...slide.children].filter(el => el.tagName === 'SECTION');
+              return {
+                index: i + 1,
+                id: slide.id || '',
+                title: slide.querySelector(':scope > h1, :scope > h2, :scope > [data-rs-title]')?.textContent?.trim() || null,
+                classes: [...slide.classList],
+                verticalSlides: vertical.length ? vertical.map((child, v) => ({
+                  index: v + 1,
+                  id: child.id || '',
+                  title: child.querySelector(':scope > h1, :scope > h2, :scope > [data-rs-title]')?.textContent?.trim() || null,
+                  classes: [...child.classList]
+                })) : null
+              };
+            })
           };
         })()
         """)
@@ -91,11 +115,24 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
           if (slides.length === 0) errors.push('Deck has no top-level slides');
 
           const ids = new Map();
-          slides.forEach((slide, i) => {
-            if (!slide.id) warnings.push('Slide ' + (i + 1) + ' has no id; stable ids are recommended for agent editing');
+          const recordID = (node, label) => {
+            if (!node.id) warnings.push(label + ' has no id; stable ids are recommended for agent editing');
             else {
-              if (ids.has(slide.id)) errors.push('Duplicate slide id "' + slide.id + '" at slides ' + ids.get(slide.id) + ' and ' + (i + 1));
-              ids.set(slide.id, i + 1);
+              if (ids.has(node.id)) errors.push('Duplicate slide id "' + node.id + '" at ' + ids.get(node.id) + ' and ' + label);
+              ids.set(node.id, label);
+            }
+          };
+
+          slides.forEach((slide, i) => {
+            const vertical = [...slide.children].filter(el => el.tagName === 'SECTION');
+            if (vertical.length) {
+              if (slide.querySelector(':scope > h1, :scope > h2, :scope > p, :scope > div:not(.backgrounds)')) {
+                warnings.push('Vertical stack ' + (slide.id || (i + 1)) + ' contains direct content outside nested <section> slides');
+              }
+              recordID(slide, 'stack ' + (i + 1));
+              vertical.forEach((child, v) => recordID(child, 'stack ' + (i + 1) + ' vertical slide ' + (v + 1)));
+            } else {
+              recordID(slide, 'slide ' + (i + 1));
             }
           });
 
@@ -201,6 +238,144 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
         const existing = doc.getElementById(\(js(newID)));
         if (existing && existing !== slide) return { error:'Duplicate id: ' + \(js(newID)) };
         slide.id = \(js(newID));
+        """)
+    }
+
+
+    func appendToSlide(html: String, selector: String, fragment: String, prepend: Bool) async throws -> String {
+        try await mutate(html: html, script: """
+        const slide = \(slidePicker(selector));
+        if (!slide) return { error:'Slide not found: ' + \(js(selector)) };
+        const template = doc.createElement('template');
+        template.innerHTML = \(js(fragment));
+        if (\(prepend ? "true" : "false")) slide.prepend(template.content);
+        else slide.append(template.content);
+        """)
+    }
+
+    func getElement(html: String, slideSelector: String, cssSelector: String, outer: Bool) async throws -> String {
+        let result = try await evaluateJSON("""
+        (() => {
+          const doc = new DOMParser().parseFromString(\(js(html)), 'text/html');
+          const container = doc.querySelector('.reveal > .slides') || doc.querySelector('.reveal .slides');
+          if (!container) return { error:'Missing .reveal .slides container' };
+          const slide = \(slidePicker(slideSelector));
+          if (!slide) return { error:'Slide not found: ' + \(js(slideSelector)) };
+          let element;
+          try { element = slide.querySelector(\(js(cssSelector))); }
+          catch (error) { return { error:'Invalid CSS selector: ' + \(js(cssSelector)) }; }
+          if (!element) return { error:'Element not found: ' + \(js(cssSelector)) };
+          return { value: \(outer ? "element.outerHTML" : "element.innerHTML") };
+        })()
+        """)
+        if let error = result["error"] as? String { throw CLIError(error) }
+        return result["value"] as? String ?? ""
+    }
+
+    func mutateElement(html: String, slideSelector: String, cssSelector: String, operation: String, value: String? = nil) async throws -> String {
+        let valueJS = value.map(js) ?? "null"
+        return try await mutate(html: html, script: """
+        const slide = \(slidePicker(slideSelector));
+        if (!slide) return { error:'Slide not found: ' + \(js(slideSelector)) };
+        let element;
+        try { element = slide.querySelector(\(js(cssSelector))); }
+        catch (error) { return { error:'Invalid CSS selector: ' + \(js(cssSelector)) }; }
+        if (!element) return { error:'Element not found: ' + \(js(cssSelector)) };
+        const operation = \(js(operation));
+        const value = \(valueJS);
+        if (operation === 'set-text') element.textContent = value || '';
+        else if (operation === 'set-html') element.innerHTML = value || '';
+        else if (operation === 'remove') element.remove();
+        else if (operation === 'add-class') (value || '').split(/\\s+/).filter(Boolean).forEach(c => element.classList.add(c));
+        else if (operation === 'remove-class') (value || '').split(/\\s+/).filter(Boolean).forEach(c => element.classList.remove(c));
+        else return { error:'Unsupported element operation: ' + operation };
+        """)
+    }
+
+    func createStack(html: String, id: String, after: String?, before: String?) async throws -> String {
+        let positionScript: String
+        if let after {
+            positionScript = """
+            const target = \(slidePicker(after));
+            if (!target) return { error:'Target slide not found: ' + \(js(after)) };
+            target.after(stack);
+            """
+        } else if let before {
+            positionScript = """
+            const target = \(slidePicker(before));
+            if (!target) return { error:'Target slide not found: ' + \(js(before)) };
+            target.before(stack);
+            """
+        } else {
+            positionScript = "container.appendChild(stack);"
+        }
+
+        return try await mutate(html: html, script: """
+        if (doc.getElementById(\(js(id)))) return { error:'Duplicate id: ' + \(js(id)) };
+        const stack = doc.createElement('section');
+        stack.id = \(js(id));
+        stack.setAttribute('data-rs-stack', 'true');
+        \(positionScript)
+        """)
+    }
+
+    func listStack(html: String, selector: String) async throws -> [AuthoringVerticalItem] {
+        let result = try await evaluateJSON("""
+        (() => {
+          const doc = new DOMParser().parseFromString(\(js(html)), 'text/html');
+          const container = doc.querySelector('.reveal > .slides') || doc.querySelector('.reveal .slides');
+          if (!container) return { error:'Missing .reveal .slides container' };
+          const stack = \(slidePicker(selector));
+          if (!stack) return { error:'Stack not found: ' + \(js(selector)) };
+          const vertical = [...stack.children].filter(el => el.tagName === 'SECTION');
+          return { slides: vertical.map((child, i) => ({
+            index:i + 1,
+            id:child.id || '',
+            title:child.querySelector(':scope > h1, :scope > h2, :scope > [data-rs-title]')?.textContent?.trim() || null,
+            classes:[...child.classList]
+          })) };
+        })()
+        """)
+        if let error = result["error"] as? String { throw CLIError(error) }
+        let array = result["slides"] as? [[String: Any]] ?? []
+        let data = try JSONSerialization.data(withJSONObject: array)
+        return try JSONDecoder().decode([AuthoringVerticalItem].self, from: data)
+    }
+
+    func addVerticalSlide(html: String, stackSelector: String, id: String, body: String, classes: [String], index: Int?) async throws -> String {
+        let classScript = classes.isEmpty ? "" : "child.className = \(js(classes.joined(separator: " ")));"
+        let insertion = index.map { idx in
+            """
+            const vertical = [...stack.children].filter(el => el.tagName === 'SECTION');
+            const position = Math.max(0, Math.min(vertical.length, \(idx - 1)));
+            if (position >= vertical.length) stack.appendChild(child);
+            else stack.insertBefore(child, vertical[position]);
+            """
+        } ?? "stack.appendChild(child);"
+
+        return try await mutate(html: html, script: """
+        const stack = \(slidePicker(stackSelector));
+        if (!stack) return { error:'Stack not found: ' + \(js(stackSelector)) };
+        if (doc.getElementById(\(js(id)))) return { error:'Duplicate id: ' + \(js(id)) };
+        const child = doc.createElement('section');
+        child.id = \(js(id));
+        \(classScript)
+        child.innerHTML = \(js(body));
+        \(insertion)
+        """)
+    }
+
+    func removeVerticalSlide(html: String, stackSelector: String, childSelector: String) async throws -> String {
+        return try await mutate(html: html, script: """
+        const stack = \(slidePicker(stackSelector));
+        if (!stack) return { error:'Stack not found: ' + \(js(stackSelector)) };
+        const vertical = [...stack.children].filter(el => el.tagName === 'SECTION');
+        const selector = \(js(childSelector));
+        const child = /^[0-9]+$/.test(selector)
+          ? vertical[Number(selector) - 1]
+          : vertical.find(el => el.id === selector);
+        if (!child) return { error:'Vertical slide not found: ' + selector };
+        child.remove();
         """)
     }
 
