@@ -115,7 +115,7 @@ extension WebKitRunner {
           );
           check('plugin.math.factories', mathFactories);
           skip('plugin.math.rendering',
-            'Reveal Math is bundled, but an offline KaTeX/MathJax engine is not bundled yet; rendering is intentionally not asserted.');
+            'Reveal Math / KaTeX / MathJax rendering is intentionally out of scope for RevealSwift conformance.');
         } catch (error) {
           fail('plugin.math.factories', String(error));
         }
