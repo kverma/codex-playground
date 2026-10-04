@@ -1,12 +1,14 @@
 import Foundation
 
 public enum InspectorScript {
-    public static func javascript(rules: ThemeRules, allowedComponents: [String] = []) -> String {
+    public static func javascript(rules: ThemeRules, allowedComponents: [String] = [], appearance: String? = nil) -> String {
         let allowedJSON: String = {
             guard let data = try? JSONEncoder().encode(allowedComponents),
                   let string = String(data: data, encoding: .utf8) else { return "[]" }
             return string
         }()
+
+        let appearanceJS = appearance.map { "\"\($0)\"" } ?? "null"
 
         return """
         JSON.stringify((() => {
@@ -25,6 +27,22 @@ public enum InspectorScript {
             return el.tagName.toLowerCase() + cls;
           };
           const issues = [];
+          const expectedAppearance = \(appearanceJS);
+          const viewport = document.querySelector('.reveal-viewport') || document.body;
+          const viewportBackground = getComputedStyle(viewport).backgroundColor;
+          const rgb = (viewportBackground.match(/[\d.]+/g) || []).slice(0,3).map(Number);
+          if (expectedAppearance && rgb.length === 3) {
+            const luminance = (0.2126*rgb[0] + 0.7152*rgb[1] + 0.0722*rgb[2]) / 255;
+            if (expectedAppearance === 'dark' && luminance > 0.35) {
+              issues.push({severity:'error', rule:'theme.appearanceMismatch',
+                message:`Theme declares dark appearance but viewport is light (${viewportBackground})`, amount:luminance});
+            }
+            if (expectedAppearance === 'light' && luminance < 0.55) {
+              issues.push({severity:'error', rule:'theme.appearanceMismatch',
+                message:`Theme declares light appearance but viewport is dark (${viewportBackground})`, amount:luminance});
+            }
+          }
+
           let minFont = 9999, occupied = 0;
 
           for (const el of visible) {
