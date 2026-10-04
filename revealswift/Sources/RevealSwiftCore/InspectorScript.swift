@@ -3,7 +3,7 @@ import Foundation
 public enum InspectorScript {
     public static func javascript(rules: ThemeRules) -> String {
         """
-        (() => {
+        JSON.stringify((() => {
           const slide = Reveal.getCurrentSlide();
           if (!slide) return {error:'No active slide'};
           const root = slide.getBoundingClientRect();
@@ -62,14 +62,14 @@ public enum InspectorScript {
             issues.push({severity:'warning', rule:'theme.missingTitle', message:'Slide has no title heading'});
           return {words, characters:text.length, elementCount:visible.length, occupancy,
                   smallestFontPx:minFont===9999 ? 0 : minFont, issues};
-        })()
+        })())
         """
     }
 
     public static let enumerateStates = """
-    (() => Reveal.getSlides().map((s, index) => {
+    JSON.stringify((() => Reveal.getSlides().map((s, index) => {
       const p = Reveal.getIndices(s);
       return { index, h:p.h, v:p.v, fragments:s.querySelectorAll('.fragment').length };
-    }))()
+    }))())
     """
 }
