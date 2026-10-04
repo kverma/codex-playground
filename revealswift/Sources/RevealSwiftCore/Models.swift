@@ -30,17 +30,20 @@ public struct ThemeManifest: Codable, Sendable, Equatable {
     public var name: String
     public var displayName: String
     public var version: String
+    public var appearance: String?
     public var css: [String]
     public var allowedComponents: [String]
     public var width: Int
     public var height: Int
     public var rules: ThemeRules
 
-    public init(name: String, displayName: String, version: String = "1.0.0", css: [String] = ["theme.css"],
-                allowedComponents: [String] = [], width: Int = 1920, height: Int = 1080, rules: ThemeRules = .init()) {
+    public init(name: String, displayName: String, version: String = "1.0.0", appearance: String? = nil,
+                css: [String] = ["theme.css"], allowedComponents: [String] = [], width: Int = 1920,
+                height: Int = 1080, rules: ThemeRules = .init()) {
         self.name = name
         self.displayName = displayName
         self.version = version
+        self.appearance = appearance
         self.css = css
         self.allowedComponents = allowedComponents
         self.width = width
