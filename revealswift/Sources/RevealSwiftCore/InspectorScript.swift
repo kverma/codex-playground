@@ -26,7 +26,18 @@ public enum InspectorScript {
             const cls = [...el.classList].slice(0,2).map(c => '.' + CSS.escape(c)).join('');
             return el.tagName.toLowerCase() + cls;
           };
+          const targetOf = el => {
+            const r = el.getBoundingClientRect();
+            const text = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+            return {
+              selector: selector(el),
+              text: text ? text.slice(0, 220) : null,
+              bounds: {x:r.left, y:r.top, width:r.width, height:r.height}
+            };
+          };
           const issues = [];
+          const slideID = slide.id || null;
+          const slideTitle = slide.querySelector(':scope > h1, :scope > h2, :scope > [data-rs-title]')?.textContent?.trim() || null;
           const expectedAppearance = \(appearanceJS);
           const viewport = document.querySelector('.reveal-viewport') || document.body;
           const viewportBackground = getComputedStyle(viewport).backgroundColor;
@@ -188,7 +199,7 @@ public enum InspectorScript {
             issues.push({severity:'warning', rule:'theme.missingTitle', message:'Slide has no title heading'});
 
           return {words, characters:text.length, elementCount:visible.length, occupancy,
-                  smallestFontPx:minFont===9999 ? 0 : minFont, issues};
+                  smallestFontPx:minFont===9999 ? 0 : minFont, slideID, slideTitle, issues};
         })())
         """
     }
