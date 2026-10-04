@@ -37,6 +37,8 @@ jobs:
         run: cd revealswift && .build/release/revealswift review Examples/demo.html --theme Themes/minimal-dark --output review-artifacts --animation-frames 0,250,500 --pdf --strict
       - name: Verify review artifacts
         run: cd revealswift && test -s review-artifacts/report.json && test -s review-artifacts/contact-sheet.png && test -s review-artifacts/deck.pdf && test -n "$(find review-artifacts/screenshots -name '*.png' -print -quit)"
+      - name: Validate embedded Reveal plugins
+        run: cd revealswift && .build/release/revealswift inspect Examples/plugins.html --theme Themes/minimal-dark --strict
       - name: Package macOS arm64 binary
         run: |
           cd revealswift
