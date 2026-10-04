@@ -148,13 +148,13 @@ struct Catalog {
     </section>
 
     <section id="transition-slide" data-transition="zoom" data-transition-speed="fast" data-background-transition="fade">
-      <h2>Transitions</h2>
-      <div class="card" data-rs-component="card"><h3>Per-slide configuration</h3><p>Transition style, speed, and background transition attributes are preserved.</p></div>
+      <h2 data-rs-bleed="allow">Transitions</h2>
+      <div class="card" data-rs-component="card" data-rs-bleed="allow"><h3>Per-slide configuration</h3><p>Transition style, speed, and background transition attributes are preserved.</p></div>
     </section>
 
     <section id="layout-helpers">
       <h2 id="fit-text" class="r-fit-text">Fit Text Helper E2E</h2>
-      <img id="stretch-image" class="r-stretch" alt="Stretch helper graphic"
+      <img id="stretch-image" class="r-stretch" data-rs-inline-ok alt="Stretch helper graphic"
         src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNDAwIj48cmVjdCB3aWR0aD0iODAwIiBoZWlnaHQ9IjQwMCIgcng9IjI0IiBmaWxsPSIjMTYxOTFmIi8+PHBhdGggZD0iTTgwIDMyMEwyNjAgMTUwTDQyMCAyNjBMNjIwIDEwMEw3MjAgMzIwWiIgZmlsbD0iIzY3YTVmZiIvPjx0ZXh0IHg9IjQwMCIgeT0iMzUwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjI4IiBmaWxsPSJ3aGl0ZSI+ci1zdHJldGNoPC90ZXh0Pjwvc3ZnPg==">
       <p class="caption" data-rs-caption>Reveal should size both helpers inside the slide viewport.</p>
     </section>
