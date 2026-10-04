@@ -205,10 +205,10 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
             guard
                 let index = (row["index"] as? NSNumber)?.intValue,
                 let h = (row["h"] as? NSNumber)?.intValue,
-                let v = (row["v"] as? NSNumber)?.intValue,
                 let fragments = (row["fragments"] as? NSNumber)?.intValue
             else { continue }
 
+            let v = (row["v"] as? NSNumber)?.intValue ?? 0
             for state in 0...fragments {
                 result.append(DeckState(index: index, h: h, v: v, fragmentState: state))
             }
