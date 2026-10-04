@@ -124,7 +124,11 @@ Run separately from the single-node and nine-node fixtures; their host ports ove
 The partition script enters only dc1's disposable network namespace and drops both
 directions of peer traffic. It keeps client access available, checks DROP counters,
 and removes the exact rules after the test. The grader checks majority progress,
-minority rejection and a coherent view after healing.
+minority rejection and a coherent view after healing. Majority edits allow at most
+three attempts of the identical request when Cassandra reports an indeterminate
+outcome; every timeout is recorded, and a successful reply must match the original
+operation and request hash. This is bounded recovery evidence, not an edit-latency
+SLO measurement.
 
 The crash grader observes an actual batch frame sent to dc1, suppresses its response,
 then SIGKILLs that coordinator. A surviving DC resolves the same operation, accepts

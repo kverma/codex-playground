@@ -22,7 +22,19 @@ class ThreeNodeTest {
     private Receipt edit(Store store,int cents) throws Exception {
         Request request = new Request(UUID.randomUUID(),store.read().token(),new Intent(cents,true));
         record("invoke",request);
-        Receipt receipt = store.commit(request); record("ack",receipt); return receipt;
+        for(int attempt=1;attempt<=3;attempt++) {
+            try {
+                Receipt receipt=store.commit(request);
+                assertEquals(request.operation(),receipt.operation());
+                assertEquals(request.hash(),receipt.requestHash());
+                record("ack",receipt); return receipt;
+            } catch(Indeterminate ambiguity) {
+                record("majority-indeterminate",request.operation()+" attempt="+attempt+" cause="+ambiguity.getMessage());
+                if(attempt==3) throw ambiguity;
+                // Recovery keeps the exact request: a timeout is not evidence of rollback.
+            }
+        }
+        throw new AssertionError("unreachable");
     }
     private String command(String... args) throws Exception {
         record("fault-command",Arrays.toString(args));
