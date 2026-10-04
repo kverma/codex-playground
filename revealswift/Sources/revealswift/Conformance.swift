@@ -97,7 +97,7 @@ extension WebKitRunner {
         }
 
         try {
-          const ids = ['markdown','highlight','notes','search','zoom'];
+          const ids = ['markdown','highlight','notes','katex','search','zoom'];
           for (const id of ids) check('plugin.registered.' + id, Boolean(deck.getPlugin(id)));
           check('plugin.registered.custom', Boolean(deck.getPlugin('custom-e2e')));
           check('plugin.custom-init', root?.dataset?.customPlugin === 'initialized', root?.dataset?.customPlugin || null);
@@ -114,8 +114,34 @@ extension WebKitRunner {
             typeof RevealMath.MathJax4 === 'function'
           );
           check('plugin.math.factories', mathFactories);
-          skip('plugin.math.rendering',
-            'Reveal Math is bundled, but an offline KaTeX/MathJax engine is not bundled yet; rendering is intentionally not asserted.');
+          check('runtime.katex-version', window.katex?.version === '0.19.0',
+            window.katex?.version || null);
+
+          const katexConfig = deck.getConfig().katex || {};
+          check('plugin.math.local-runtime',
+            katexConfig.local === 'revealswift://runtime/katex',
+            katexConfig.local || null);
+
+          const mathSlide = document.getElementById('math-source');
+          const inlineMath = mathSlide?.querySelector('#math-inline .katex');
+          const displayMath = mathSlide?.querySelector('#math-display .katex-display');
+          check('plugin.math.rendering', Boolean(inlineMath && displayMath),
+            'inline=' + Boolean(inlineMath) + ',display=' + Boolean(displayMath));
+
+          const inlineRect = inlineMath?.getBoundingClientRect();
+          const displayRect = displayMath?.getBoundingClientRect();
+          check('plugin.math.layout',
+            Boolean(inlineRect && displayRect &&
+              inlineRect.width > 0 && inlineRect.height > 0 &&
+              displayRect.width > 0 && displayRect.height > 0),
+            'inline=' + (inlineRect ? inlineRect.width.toFixed(1) + 'x' + inlineRect.height.toFixed(1) : 'missing') +
+              ',display=' + (displayRect ? displayRect.width.toFixed(1) + 'x' + displayRect.height.toFixed(1) : 'missing'));
+
+          const loadedKaTeXFonts = [...document.fonts].filter(font =>
+            font.family.startsWith('KaTeX') && font.status === 'loaded'
+          );
+          check('plugin.math.fonts-loaded', loadedKaTeXFonts.length > 0,
+            'loaded=' + loadedKaTeXFonts.length);
         } catch (error) {
           fail('plugin.math.factories', String(error));
         }
