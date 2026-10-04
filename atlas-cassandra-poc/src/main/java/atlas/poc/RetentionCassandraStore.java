@@ -36,7 +36,7 @@ public final class RetentionCassandraStore extends Base {
                 entries.put(sequence,new Entry(row.getLong("expires_at"),row.getUuid("operation"),row.getString("request_hash"),receipt,row.getString("draft_id")));
             }
             return new View(head.getUuid("generation"),head.getLong("allocated"),head.getLong("floor"),head.getLong("last_expiry"),TransactionCodec.decode(head.getString("state")),entries);
-        } catch(DriverException e) { throw new Failure(Code.INDETERMINATE); }
+        } catch(DriverException e) { throw new Failure(Code.INDETERMINATE,e); }
     }
     protected boolean swap(View before,View after) {
         StringBuilder cql=new StringBuilder("BEGIN BATCH UPDATE atlas_poc.retained_subject_v2 SET generation=?,allocated=?,floor=?,last_expiry=?,state=? WHERE subject=? AND row='HEAD' IF generation=?;");
@@ -54,7 +54,7 @@ public final class RetentionCassandraStore extends Base {
         }
         cql.append("APPLY BATCH");
         try { return PocPolicy.execute(session,statement(cql.toString(),values.toArray()),true,dc).wasApplied(); }
-        catch(DriverException e) { throw new Failure(Code.INDETERMINATE); }
+        catch(DriverException e) { throw new Failure(Code.INDETERMINATE,e); }
     }
     public void close() { transport.close(); }
 }

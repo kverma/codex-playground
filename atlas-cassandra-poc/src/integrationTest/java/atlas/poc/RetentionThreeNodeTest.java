@@ -30,6 +30,7 @@ class RetentionThreeNodeTest {
                 assertEquals(Code.REQUEST_TOO_OLD,assertThrows(Failure.class,()->majority.commit(old,expired)).code);
                 events.add(Map.of("event","majority-compaction","floor",pruned.floor(),"retained",pruned.entries().size()));
             } finally { command("heal"); }
+            command("ready");
             assertEquals(1,minority.view().floor());
             assertEquals(Set.of(young.sequence()),minority.view().entries().keySet());
             assertEquals(Code.REQUEST_TOO_OLD,assertThrows(Failure.class,()->minority.commit(old,expired)).code);
@@ -42,7 +43,7 @@ class RetentionThreeNodeTest {
     }
     private void command(String action) throws Exception {
         Process process=new ProcessBuilder("bash","scripts/three.sh",action).inheritIO().start();
-        if(!process.waitFor(30,TimeUnit.SECONDS)) { process.destroyForcibly(); fail("fault script timeout"); }
+        if(!process.waitFor(action.equals("ready")?120:30,TimeUnit.SECONDS)) { process.destroyForcibly(); fail("fault script timeout"); }
         assertEquals(0,process.exitValue());
     }
 }

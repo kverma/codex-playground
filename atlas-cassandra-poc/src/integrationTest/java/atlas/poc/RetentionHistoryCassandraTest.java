@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @Tag("three") @Tag("Retention")
 class RetentionHistoryCassandraTest {
-    record HealedRead(int dc,int attempt,View view,String error) {}
+    record HealedRead(int dc,int attempt,View view,String error,String cause) {}
     @Test void sixCrossDcHistoriesIncludePartitionRecoveryAndPostHealClosure() throws Exception {
         for(long seed=2000;seed<2006;seed++) {
             UUID subject=UUID.randomUUID();var clock=new RetentionClock();var stores=new ArrayList<Retention.Store>();
@@ -39,6 +39,7 @@ class RetentionHistoryCassandraTest {
                         assertTrue(workload.history().stream().filter(c->c.kind().equals("COMMIT")).limit(3).anyMatch(c->Math.floorMod(c.issued().ticket().sequence()-1,3)==0&&"INDETERMINATE".equals(c.error())),"the commit routed to isolated dc1 must be ambiguous");
                     }
                 } finally { if(partition) command("heal"); }
+                if(partition) command("ready");
                 var healedViews=new ArrayList<View>();
                 for(int dc=1;dc<=3;dc++) healedViews.add(readAfterHeal(stores.get(dc-1),dc,healedReads));
                 View agreed=workload.history().stream().filter(c->c.kind().equals("VIEW")&&c.view()!=null).toList().getLast().view();
@@ -53,19 +54,23 @@ class RetentionHistoryCassandraTest {
         }
     }
     private View readAfterHeal(Retention.Store store,int dc,List<HealedRead> evidence) {
+        Failure last=null;
         for(int attempt=1;attempt<=3;attempt++) {
             try {
-                View view=store.view();evidence.add(new HealedRead(dc,attempt,view,null));return view;
+                View view=store.view();evidence.add(new HealedRead(dc,attempt,view,null,null));return view;
             } catch(Failure e) {
-                evidence.add(new HealedRead(dc,attempt,null,e.code.name()));
+                last=e;
+                String cause=e.getCause()==null?e.toString():e.getCause().toString();
+                evidence.add(new HealedRead(dc,attempt,null,e.code.name(),cause));
+                System.err.println("retention-healed dc="+dc+" attempt="+attempt+" cause="+cause);
                 if(e.code!=Code.INDETERMINATE) throw e;
             }
         }
-        throw new AssertionError("dc"+dc+" must return an authoritative healed view within three attempts");
+        throw new AssertionError("dc"+dc+" must return an authoritative healed view within three attempts",last);
     }
     private void command(String action) throws Exception {
         Process p=new ProcessBuilder("bash","scripts/three.sh",action).inheritIO().start();
-        if(!p.waitFor(30,TimeUnit.SECONDS)) { p.destroyForcibly();fail("fault script timeout"); }
+        if(!p.waitFor(action.equals("ready")?120:30,TimeUnit.SECONDS)) { p.destroyForcibly();fail("fault script timeout"); }
         assertEquals(0,p.exitValue());
     }
 }

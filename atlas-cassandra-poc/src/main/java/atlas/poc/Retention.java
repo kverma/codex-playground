@@ -16,7 +16,8 @@ public final class Retention {
     public enum Code { INVALID_TICKET, REQUEST_TOO_OLD, CAPACITY, INDETERMINATE }
     public static final class Failure extends RuntimeException {
         public final Code code;
-        public Failure(Code code) { super(code.name()); this.code=code; }
+        public Failure(Code code) { this(code,null); }
+        public Failure(Code code,Throwable cause) { super(code.name(),cause); this.code=code; }
         public String outcome() { return "UNKNOWN"; }
     }
     public record Ticket(long sequence,long expiresAt,UUID operation,String requestHash,String signature) {}

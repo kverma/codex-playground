@@ -317,7 +317,11 @@ healing. CI stores its scenario events in `build/evidence/retention-three.json`.
 The retention grader also runs six fresh-subject cross-DC histories, including
 one verified partition and post-heal reads of all coordinators. Each coordinator
 must return a full authoritative view within three read attempts; every attempt
-is saved in `build/evidence/retention-healed/`, and all successful views must agree.
+is saved in `build/evidence/retention-healed/`, including driver causes. Successful
+views must equal the oracle-checked final state. After a partition, `three.sh ready`
+first requires all three peers Up/Normal in every node\'s `nodetool status` view,
+with a bounded 90-second readiness window and saved membership reports. TCP
+reachability alone does not satisfy this recovery witness.
 These recovery checks sit outside the bounded history and make no latency-SLO claim.
 The histories combine
 server allocation, concurrent group edits, exact retries, expiry/pruning, closed

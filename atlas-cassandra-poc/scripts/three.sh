@@ -52,6 +52,28 @@ verify_counters() {
   done
   sudo nsenter -t "$pid" -n iptables -L -n -v -x
 }
+wait_membership() {
+  local deadline=$((SECONDS+90)) attempt=0 healthy node status count
+  local folder="build/evidence/membership-$(date -u +%s%N)"
+  mkdir -p "$folder"
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    attempt=$((attempt+1)); healthy=true
+    for node in dc1 dc2 dc3; do
+      if status=$(timeout 10 "${compose[@]}" exec -T "$node" nodetool status 2>&1); then
+        count=$(echo "$status" | awk '$1 == "UN" {n++} END {print n+0}')
+      else
+        count=0
+      fi
+      printf '%s\n' "$status" > "$folder/$node-attempt-$attempt.txt"
+      printf 'membership attempt=%s node=%s up_normal=%s\n' "$attempt" "$node" "$count"
+      [ "$count" = 3 ] || healthy=false
+    done
+    if [ "$healthy" = true ]; then echo 'All three peers Up/Normal in every Cassandra membership view'; return; fi
+    sleep 2
+  done
+  echo 'Cassandra membership did not recover within the bounded readiness window' >&2
+  return 1
+}
 case "${1:-}" in
   up)
     for node in dc1 dc2 dc3; do
@@ -67,6 +89,7 @@ case "${1:-}" in
       sleep 2
     done
     echo 'Expected three Up/Normal nodes in every node view' >&2; exit 1 ;;
+  ready) wait_membership ;;
   partition|heal|counters)
     # Only enter this disposable container's network namespace. Host rules are unchanged.
     id=$("${compose[@]}" ps -q dc1)
@@ -89,5 +112,5 @@ case "${1:-}" in
     if [ "$1" = partition ]; then blocked_edges; client_open; verify_counters; fi
     if [ "$1" = counters ]; then verify_counters; fi
     if [ "$1" = heal ]; then open_edges; client_open; echo 'All peer edges and client port reachable after healing'; fi ;;
-  *) echo 'Usage: three.sh up|partition|heal|counters' >&2; exit 2 ;;
+  *) echo 'Usage: three.sh up|partition|heal|counters|ready' >&2; exit 2 ;;
 esac
