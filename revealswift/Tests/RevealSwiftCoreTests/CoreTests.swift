@@ -57,5 +57,6 @@ final class CoreTests: XCTestCase {
         XCTAssertTrue(js.contains("theme.safeMargin"))
         XCTAssertTrue(js.contains("theme.tooManyColumns"))
         XCTAssertTrue(js.contains("theme.unknownComponent"))
+        XCTAssertTrue(js.contains("theme.appearanceMismatch"))
     }
 }
