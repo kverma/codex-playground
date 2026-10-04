@@ -4,6 +4,7 @@ set -euo pipefail
 project_dir=$(cd "$(dirname "$0")/.." && pwd)
 evidence_dir="$project_dir/build/evidence/maintainer"
 mkdir -p "$evidence_dir"
+rm -f "$evidence_dir/summary.json"
 : "${CASSANDRA_MAINTAINER_JAVA_HOME:?Set the path to a separate JDK11 installation}"
 command -v ant >/dev/null
 command -v git >/dev/null
@@ -20,6 +21,7 @@ source_dir=$(mktemp -d "$project_dir/build/upstream-4.0.5.XXXXXX")
 collect() {
     local status=$?
     if [[ -d "$source_dir/build/test/output" ]]; then
+        rm -rf "$evidence_dir/test-output"
         cp -a "$source_dir/build/test/output" "$evidence_dir/test-output"
     fi
     echo "$status" > "$evidence_dir/exit-status.txt"
@@ -55,11 +57,12 @@ ant -Duse.jdk11=true test-jvm-dtest-some \
     -Dtest.name=org.apache.cassandra.distributed.test.CasWriteTest \
     -Dtest.methods="$write_methods" 2>&1 | tee "$evidence_dir/cas-write.log"
 # Guard against empty, skipped, or silently unselected suites, independently of Ant's exit code.
-python3 - "$source_dir/build/test/output" "$evidence_dir/summary.json" <<'PY'
+python3 - "$source_dir/build/test/output" "$evidence_dir/summary.json" "$cas_methods" "$write_methods" <<'PY'
 import json, pathlib, sys, xml.etree.ElementTree as ET
-expected = {"org.apache.cassandra.distributed.test.CASTest": 8,
-            "org.apache.cassandra.distributed.test.CasWriteTest": 8}
-counts = dict.fromkeys(expected, 0)
+expected = {"org.apache.cassandra.distributed.test.CASTest": set(sys.argv[3].split(",")),
+            "org.apache.cassandra.distributed.test.CasWriteTest": set(sys.argv[4].split(","))}
+seen = {name: set() for name in expected}
+assert all(len(methods) == 8 for methods in expected.values())
 for path in pathlib.Path(sys.argv[1]).rglob("*.xml"):
     root = ET.parse(path).getroot()
     for case in root.iter("testcase"):
@@ -67,7 +70,9 @@ for path in pathlib.Path(sys.argv[1]).rglob("*.xml"):
         if name not in expected:
             continue
         assert not any(case.find(tag) is not None for tag in ("failure", "error", "skipped")), (path, case.attrib)
-        counts[name] += 1
-assert counts == expected, (counts, expected)
-pathlib.Path(sys.argv[2]).write_text(json.dumps({"tests": counts, "failures": 0, "scope": "upstream phase smoke; not Atlas adapter certification"}, indent=2) + "\n")
+        method = case.get("name")
+        assert method in expected[name] and method not in seen[name], (path, case.attrib)
+        seen[name].add(method)
+assert seen == expected, (seen, expected)
+pathlib.Path(sys.argv[2]).write_text(json.dumps({"tests": {name: sorted(methods) for name, methods in seen.items()}, "failures": 0, "scope": "upstream phase smoke; not Atlas adapter certification"}, indent=2) + "\n")
 PY

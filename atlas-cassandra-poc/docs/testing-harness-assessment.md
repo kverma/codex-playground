@@ -61,10 +61,16 @@ make grade-maintainer
 The script fetches Cassandra4.0.5 source commit
 `ec476e0e259efb62ee19804c3ff46dbbe4d1ded7` into a disposable build directory.
 Gradle invokes upstream Ant with JDK11. It selects eight tests from each class,
-requires exactly 16 successful, non-skipped XML results, and saves source identity,
+requires the exact 16 selected method names with no duplicates, failures or skips,
+and saves source identity,
 Java version, logs and reports under `build/evidence/maintainer/`. Only report
 filenames are shortened to fit filesystem limits; that patch is saved as evidence.
 The GitHub job installs Ant and provisions both JDKs on its disposable runner.
+Synthetic XML guard checks accept the complete selected suite and reject empty,
+missing, duplicate, wrongly named, skipped, failed and errored results. This is
+verification of report selection, not a replacement for running the upstream tests.
+Workflow concurrency coalesces push/PR runs for the same branch and cancels stale
+revisions, reducing redundant hosted execution.
 
 Upstream in-JVM test flags skip disk sync and use classloader-isolated nodes.
 Passing these upstream tests validates those selected Cassandra behaviors, not
