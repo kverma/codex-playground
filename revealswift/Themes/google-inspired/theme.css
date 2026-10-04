@@ -14,6 +14,12 @@
   --rs-gap: 28px;
   --rs-radius: 18px;
 }
+html, body, .reveal-viewport {
+  background-color: var(--rs-bg) !important;
+  color: var(--rs-text);
+  color-scheme: light;
+}
+.reveal { background-color: var(--rs-bg); }
 html, body { background: var(--rs-bg); }
 .reveal {
   font-family: Arial, "Helvetica Neue", sans-serif;
