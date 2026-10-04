@@ -37,6 +37,7 @@ jobs:
             atlas-cassandra-poc/build/reports/
             atlas-cassandra-poc/build/test-results/
             atlas-cassandra-poc/build/cassandra.log
+            atlas-cassandra-poc/build/evidence/
       - run: make down
         if: always()
   three-node:
@@ -58,6 +59,7 @@ jobs:
       - run: make grade-partition
       - run: make grade-coordinator-crash
       - run: make grade-repair
+      - run: make grade-history
       - name: Collect three-node evidence
         if: always()
         run: |

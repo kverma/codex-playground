@@ -6,6 +6,7 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
 }
 val integrationTest by sourceSets.creating
 configurations[integrationTest.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
@@ -38,7 +39,7 @@ tasks.register<Test>("gradeFullHa") {
 }
 tasks.register("gradeModel") { dependsOn(tasks.test) }
 tasks.register("grade") { dependsOn(tasks.test, gradeCassandra, gradeFaults) }
-listOf("Partition", "CoordinatorCrash", "Repair").forEach { scenario ->
+listOf("Partition", "CoordinatorCrash", "Repair", "History").forEach { scenario ->
     tasks.register<Test>("grade$scenario") {
         testClassesDirs = integrationTest.output.classesDirs
         classpath = integrationTest.runtimeClasspath
@@ -46,3 +47,4 @@ listOf("Partition", "CoordinatorCrash", "Repair").forEach { scenario ->
         outputs.upToDateWhen { false }
     }
 }
+tasks.register("gradeTransactions") { dependsOn(tasks.test, gradeCassandra) }

@@ -42,3 +42,8 @@ grade-coordinator-crash: version-check
 	$(GRADLE) --no-daemon gradeCoordinatorCrash
 grade-repair: version-check
 	$(GRADLE) --no-daemon gradeRepair
+.PHONY: grade-history grade-transactions
+grade-history: version-check
+	$(GRADLE) --no-daemon gradeHistory
+grade-transactions: version-check
+	$(GRADLE) --no-daemon gradeTransactions --rerun-tasks

@@ -44,6 +44,7 @@ public final class CassandraStore implements Store {
         session.execute(write("INSERT INTO atlas_poc.subject (subject,row,commit_token,cents,churned) VALUES (?,'HEAD',?,500,false) IF NOT EXISTS", subject, UUID.randomUUID()));
     }
     private final Duration timeout;
+    CqlSession sessionForPoc() { return session; }
     private SimpleStatement write(String cql, Object... args) {
         return SimpleStatement.builder(cql).addPositionalValues(args)
             .setConsistencyLevel(DefaultConsistencyLevel.QUORUM)
