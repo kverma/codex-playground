@@ -57,7 +57,9 @@ public enum InspectorScript {
               ['Top','Right','Bottom','Left'].some(side => parseFloat(s['border' + side + 'Width'] || '0') > 0);
             const mediaLike = ['IMG','CANVAS','SVG','IFRAME','VIDEO'].includes(el.tagName);
             const semanticVisual = el.hasAttribute('data-rs-component');
-            if (hasDirectText || backgroundVisible || borderVisible || mediaLike || semanticVisual) {
+            const insideCodeStructure = Boolean(el.closest('pre, code, table.hljs-ln'));
+            const styledSurface = !insideCodeStructure && (backgroundVisible || borderVisible);
+            if (hasDirectText || styledSurface || mediaLike || semanticVisual) {
               densityRects.push(r);
               densityContributors.push({
                 element: selector(el),
