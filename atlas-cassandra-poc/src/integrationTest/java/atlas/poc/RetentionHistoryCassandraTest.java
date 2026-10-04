@@ -28,8 +28,8 @@ class RetentionHistoryCassandraTest {
                     public View compact() { return majority.compact(); }
                 };
                 final boolean partition=seed==2004;
+                var workload=new RetentionWorkload(subject,routed,majority,clock);
                 try {
-                    var workload=new RetentionWorkload(subject,routed,majority,clock);
                     workload.round(seed,Path.of("build/evidence/retention-cassandra"),()->{
                         if(partition) try { command("partition"); } catch(Exception e) { throw new RuntimeException(e); }
                     });
@@ -41,7 +41,7 @@ class RetentionHistoryCassandraTest {
                 } finally { if(partition) command("heal"); }
                 var healedViews=new ArrayList<View>();
                 for(int dc=1;dc<=3;dc++) healedViews.add(readAfterHeal(stores.get(dc-1),dc,healedReads));
-                View agreed=healedViews.get(1);
+                View agreed=workload.history().stream().filter(c->c.kind().equals("VIEW")&&c.view()!=null).toList().getLast().view();
                 for(View healed:healedViews) {
                     assertEquals(agreed,healed,"full authoritative state must agree after healing");assertEquals(3,healed.floor());assertEquals(4,healed.allocated());assertEquals(Set.of(4L),healed.entries().keySet());
                 }
