@@ -2,13 +2,28 @@ import XCTest
 @testable import RevealSwiftCore
 
 final class CoreTests: XCTestCase {
-    func testInjectorAddsRuntimeOnce() {
+    func testInjectorAddsOfflineRuntimeOnce() {
         let source = "<html><head></head><body><div class='reveal'><div class='slides'></div></div></body></html>"
         let once = HTMLInjector.inject(html: source, themeCSS: ":root{--x:1}")
-        XCTAssertTrue(once.contains("reveal.js@6.0.2"))
-        XCTAssertTrue(once.contains("chart.js@4.5.1"))
+        XCTAssertTrue(once.contains("revealswift://runtime/reveal.js"))
+        XCTAssertTrue(once.contains("revealswift://runtime/chart.js"))
+        XCTAssertTrue(once.contains("revealswift://runtime/plugin/markdown.js"))
+        XCTAssertFalse(once.contains("cdn.jsdelivr.net"))
+        XCTAssertFalse(once.contains("https://"))
         XCTAssertEqual(once.components(separatedBy: HTMLInjector.marker).count - 1, 1)
         XCTAssertEqual(HTMLInjector.inject(html: once, themeCSS: nil), once)
+    }
+
+    func testEmbeddedRuntimeDecodesPinnedAssets() throws {
+        let reveal = try XCTUnwrap(EmbeddedRuntime.asset(path: "/reveal.js"))
+        let chart = try XCTUnwrap(EmbeddedRuntime.asset(path: "/chart.js"))
+        let markdown = try XCTUnwrap(EmbeddedRuntime.asset(path: "/plugin/markdown.js"))
+        XCTAssertGreaterThan(reveal.data.count, 100_000)
+        XCTAssertGreaterThan(chart.data.count, 150_000)
+        XCTAssertGreaterThan(markdown.data.count, 20_000)
+        XCTAssertEqual(reveal.mimeType, "text/javascript")
+        XCTAssertEqual(EmbeddedRuntime.revealVersion, "6.0.2")
+        XCTAssertEqual(EmbeddedRuntime.chartVersion, "4.5.1")
     }
 
     func testThemeLoadAndValidation() throws {
