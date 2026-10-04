@@ -259,13 +259,39 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
                !error.isEmpty {
                 throw CLIError("Reveal initialization failed: \\(error)")
             }
-            let value = try await webView.evaluateJavaScript(
-                "Boolean(window.__revealswiftReady && document.fonts.status === 'loaded')"
-            )
-            if let ready = value as? Bool, ready { return }
+
+            let value = try await webView.evaluateJavaScript("Boolean(window.__revealswiftReady)")
+            if let ready = value as? Bool, ready {
+                _ = try? await webView.callAsyncJavaScript(
+                    """
+                    await Promise.race([
+                      document.fonts.ready,
+                      new Promise(resolve => setTimeout(resolve, 2000))
+                    ]);
+                    return document.fonts.status;
+                    """,
+                    arguments: [:],
+                    in: nil,
+                    contentWorld: .page
+                )
+                return
+            }
             try await Task.sleep(for: .milliseconds(50))
         }
-        throw CLIError("Timed out waiting for Reveal.js and fonts to initialize")
+
+        let diagnostics = try? await webView.evaluateJavaScript(
+            """
+            JSON.stringify({
+              ready: Boolean(window.__revealswiftReady),
+              initError: window.__revealswiftInitError || null,
+              fontStatus: document.fonts ? document.fonts.status : 'unsupported',
+              runtime: window.__revealswiftRuntime || null,
+              revealPresent: Boolean(window.Reveal),
+              slideElements: document.querySelectorAll('.reveal .slides section').length
+            })
+            """
+        )
+        throw CLIError("Timed out waiting for Reveal.js initialization; diagnostics=\\(diagnostics ?? "unavailable")")
     }
 
     private func decodeJSONObject(_ value: Any?) throws -> Any {
