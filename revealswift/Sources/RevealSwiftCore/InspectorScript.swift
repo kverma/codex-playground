@@ -4,7 +4,8 @@ public enum InspectorScript {
     public static func javascript(rules: ThemeRules) -> String {
         """
         JSON.stringify((() => {
-          const slide = Reveal.getCurrentSlide();
+          const RevealSwiftDeck = window.__revealswiftDeck || window.Reveal;
+          const slide = RevealSwiftDeck.getCurrentSlide();
           if (!slide) return {error:'No active slide'};
           const root = slide.getBoundingClientRect();
           const visible = [...slide.querySelectorAll('*')].filter(el => {
@@ -67,9 +68,12 @@ public enum InspectorScript {
     }
 
     public static let enumerateStates = """
-    JSON.stringify((() => Reveal.getSlides().map((s, index) => {
-      const p = Reveal.getIndices(s);
-      return { index, h:p.h, v:p.v, fragments:s.querySelectorAll('.fragment').length };
-    }))())
+    JSON.stringify((() => {
+      const deck = window.__revealswiftDeck || window.Reveal;
+      return deck.getSlides().map((s, index) => {
+        const p = deck.getIndices(s);
+        return { index, h:p.h, v:p.v, fragments:s.querySelectorAll('.fragment').length };
+      });
+    })())
     """
 }
