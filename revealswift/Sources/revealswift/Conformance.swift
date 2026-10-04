@@ -516,29 +516,47 @@ extension WebKitRunner {
         }
 
         try {
+          const previousView = deck.getConfig().view;
+          const previousActivationWidth = deck.getConfig().scrollActivationWidth;
+
+          // Reveal's responsive layout automatically exits manually-enabled
+          // scroll mode when the presentation is wider than
+          // scrollActivationWidth. Mark the view as explicitly scroll while
+          // testing so layout() doesn't immediately undo the activation.
+          deck.configure({ view:'scroll' });
           deck.toggleScrollView(true);
           await delay(30);
           check('core.scroll-view.enter', deck.isScrollView() === true);
+
           deck.toggleScrollView(false);
           await delay(30);
           check('core.scroll-view.exit', deck.isScrollView() === false);
+
+          deck.configure({
+            view: previousView,
+            scrollActivationWidth: previousActivationWidth
+          });
         } catch (error) {
           fail('core.scroll-view', String(error));
           try { deck.toggleScrollView(false); } catch (_) {}
+          try { deck.configure({ view:null }); } catch (_) {}
         }
 
         try {
+          // Scroll-view deactivation reconstructs the slide DOM, so query
+          // fresh nodes here rather than holding references from before it.
           const hidden = document.getElementById('hidden-slide');
           const uncounted = document.getElementById('uncounted-slide');
           check('core.visibility.hidden-removed', hidden === null);
           check('core.visibility.uncounted-retained',
             Boolean(uncounted) && uncounted.dataset.visibility === 'uncounted');
-          const pastBefore = deck.getSlidePastCount(uncounted);
-          const nextSlide = deck.getSlides()[deck.getSlides().indexOf(uncounted) + 1];
+
+          const nextSlide = uncounted?.nextElementSibling;
+          const pastBefore = uncounted ? deck.getSlidePastCount(uncounted) : -1;
           const pastAfter = nextSlide ? deck.getSlidePastCount(nextSlide) : pastBefore;
           check('core.visibility.uncounted-not-counted',
-            !nextSlide || pastAfter === pastBefore,
-            'before=' + pastBefore + ',after=' + pastAfter);
+            Boolean(uncounted) && Boolean(nextSlide) && pastAfter === pastBefore,
+            'next=' + (nextSlide?.id || 'none') + ',before=' + pastBefore + ',after=' + pastAfter);
         } catch (error) {
           fail('core.visibility', String(error));
         }
