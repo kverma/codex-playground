@@ -54,5 +54,8 @@ final class CoreTests: XCTestCase {
         XCTAssertTrue(js.contains("layout.overlap"))
         XCTAssertTrue(js.contains("theme.inlineStyle"))
         XCTAssertTrue(js.contains("density.excessive"))
+        XCTAssertTrue(js.contains("theme.safeMargin"))
+        XCTAssertTrue(js.contains("theme.tooManyColumns"))
+        XCTAssertTrue(js.contains("theme.unknownComponent"))
     }
 }
