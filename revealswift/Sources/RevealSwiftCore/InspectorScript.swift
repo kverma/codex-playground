@@ -30,7 +30,7 @@ public enum InspectorScript {
           const expectedAppearance = \(appearanceJS);
           const viewport = document.querySelector('.reveal-viewport') || document.body;
           const viewportBackground = getComputedStyle(viewport).backgroundColor;
-          const rgb = (viewportBackground.match(/[\d.]+/g) || []).slice(0,3).map(Number);
+          const rgb = (viewportBackground.match(/[0-9.]+/g) || []).slice(0,3).map(Number);
           if (expectedAppearance && rgb.length === 3) {
             const luminance = (0.2126*rgb[0] + 0.7152*rgb[1] + 0.0722*rgb[2]) / 255;
             if (expectedAppearance === 'dark' && luminance > 0.35) {
