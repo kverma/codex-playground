@@ -67,8 +67,9 @@ TermGroup candidate below separately tests logical group versions and physical C
 4. Full-HA grader: 3 DC x 3 nodes, RF3/DC, QUORUM=5; whole ingress-DC kill,
    surviving-side commit, second DC kill/minority rejection, restart and receipt
    replay. This grader needs separate execution evidence; single-node CI does not certify it.
-5. Next: TermGroup read sets, shared model epoch/budgets, bounded receipt retention
-   and expiry floors, audit reconstruction, WAN latency and payload-size limits.
+5. Expanded candidates: TermGroup read sets, shared model epoch/budgets and bounded
+   receipt retention with expiry floors. Next: RF3/DC evidence, audit reconstruction,
+   WAN latency, phase-specific Paxos faults and production payload-size limits.
 
 Receipts are retained indefinitely in this disposable fixture. Production bounded
 retention and REQUEST_TOO_OLD semantics remain unqualified. No release activation,
@@ -225,3 +226,58 @@ Every JSON history contains seed, initial state, invocation/response intervals,
 requests, results, verdict and search bound. Unexpected failures produce JUnit errors;
 NON_LINEARIZABLE histories also save a reduced counterexample. The same cloud-only
 workflow runs these graders; no personal machine or paid VM is required.
+
+## Bounded receipt retention candidate
+
+`Retention` and `RetentionCassandraStore` are a separate experimental adapter;
+the earlier transaction/history fixture deliberately keeps its unbounded ledger.
+A subject HEAD contains the commercial snapshot, physical metadata generation,
+monotonic ticket allocator, expiry floor and last-issued deadline. At most 16
+allocated ticket rows (accepted or unresolved) remain logically live. Issuing a
+17th ticket rejects with CAPACITY until eligible compaction frees space.
+
+The edit helper derives an operation UUID from the subject namespace and next
+allocator sequence. Issue validates this namespace, returns the same signed ticket
+on exact retry, and rejects changed payloads as KEY_REUSE. Tickets bind subject,
+sequence, operation, request hash and expiry using HMAC-SHA256. Changing an expiry,
+request, sequence or subject invalidates the ticket. Reissuing a retired operation
+is REQUEST_TOO_OLD. Allocation response loss therefore has an exact retry path;
+clients must preserve the full request and ticket, not create a new ID to resolve it.
+
+| Situation | Result |
+|---|---|
+| Retained acceptance receipt, including after later edits | Exact original before/after receipt |
+| Deadline passed but accepted receipt is still retained | Exact original receipt |
+| Expired ticket without an available receipt, or sequence at/below floor | REQUEST_TOO_OLD; outcome UNKNOWN; no new acceptance |
+| Ticket never accepted and later retired | Cannot execute through either commit or issue retry |
+| Compaction while retry races | Original receipt or REQUEST_TOO_OLD; commercial state remains unchanged |
+| Minority DC during partition | No authoritative floor advance; ambiguity remains INDETERMINATE |
+| Majority advances floor and partition heals | Old ticket stays closed; younger retained receipt replays |
+
+Each allocation, acceptance and compaction is guarded by the same metadata CAS.
+A SERIAL partition read returns HEAD and bounded ticket/receipt rows. A same-table,
+same-partition conditional batch advances the floor and deletes the contiguous
+expired prefix together. Failed physical CAS attempts reread the floor, so delayed
+requests cannot recreate pruned rows. No TTL or standalone receipt DELETE is used.
+Commercial hashes exclude allocator, expiry, pruning and observation time.
+
+The synthetic policy is a one-hour lifetime measured with an injected server clock,
+with monotonic issued deadlines even if that clock moves backward. This is a test
+parameter, not the selected production retry window. A forward clock jump can expire
+tickets early; clock discipline and cross-DC skew remain qualification gates.
+The fixture key is explicitly synthetic; secure key provisioning, authorization,
+rotation and recovery of key material are not implemented. Restoring an old database
+snapshot without allocator/floor recovery is unsupported.
+
+Compaction removes hot receipts without an audit archive. Audit retention and
+unknown-outcome resolution are separate, still-open gates. Clients encountering
+UNKNOWN must resolve the business outcome and obtain a fresh view before a new edit.
+Logical live-row capacity is bounded; tombstone/disk space, GC grace, repair safety,
+archive availability and long-running storage growth are not certified here.
+
+`make grade-model` and `make grade-cassandra` include retention contracts; the
+single-node contract also checks session restart. `make grade-retention` (after
+`make three-up`) checks floor advancement under a 2-vs-1 partition and replay after
+healing. CI stores its scenario events in `build/evidence/retention-three.json`.
+These scenario assertions do not extend the independent history checker's semantics
+or claim exhaustive retention linearizability.

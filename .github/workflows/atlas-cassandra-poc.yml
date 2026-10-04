@@ -60,6 +60,7 @@ jobs:
       - run: make grade-coordinator-crash
       - run: make grade-repair
       - run: make grade-history
+      - run: make grade-retention
       - name: Collect three-node evidence
         if: always()
         run: |
