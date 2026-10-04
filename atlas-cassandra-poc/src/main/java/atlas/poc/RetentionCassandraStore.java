@@ -11,13 +11,14 @@ import static atlas.poc.Transactions.*;
 public final class RetentionCassandraStore extends Base {
     private final CassandraStore transport;
     private final CqlSession session;
+    private final String dc;
     public RetentionCassandraStore(UUID subject,byte[] key,Clock clock,String host,int port,String dc,String topology) {
-        super(subject,key,clock);
+        super(subject,key,clock); this.dc=dc;
         transport=new CassandraStore(subject,host,port,dc,topology,Duration.ofSeconds(20));
         session=transport.sessionForPoc();
         session.execute("CREATE TABLE IF NOT EXISTS atlas_poc.retained_subject (subject uuid,row text,generation uuid,allocated bigint,floor bigint,last_expiry bigint,state text,expires_at bigint,operation uuid,request_hash text,before_state text,PRIMARY KEY(subject,row))");
         View initial=initialView();
-        session.execute(statement("INSERT INTO atlas_poc.retained_subject(subject,row,generation,allocated,floor,last_expiry,state) VALUES (?,'HEAD',?,0,0,0,?) IF NOT EXISTS",subject,initial.generation(),TransactionCodec.encode(initial.snapshot())));
+        PocPolicy.execute(session,statement("INSERT INTO atlas_poc.retained_subject(subject,row,generation,allocated,floor,last_expiry,state) VALUES (?,'HEAD',?,0,0,0,?) IF NOT EXISTS",subject,initial.generation(),TransactionCodec.encode(initial.snapshot())),true,dc);
     }
     private SimpleStatement statement(String cql,Object... values) {
         return SimpleStatement.builder(cql).addPositionalValues(values).setConsistencyLevel(DefaultConsistencyLevel.QUORUM)
@@ -25,8 +26,8 @@ public final class RetentionCassandraStore extends Base {
     }
     public View view() {
         try {
-            var rows=session.execute(SimpleStatement.builder("SELECT * FROM atlas_poc.retained_subject WHERE subject=?")
-                .addPositionalValues(subject).setConsistencyLevel(DefaultConsistencyLevel.SERIAL).setTimeout(Duration.ofSeconds(20)).build()).all();
+            var rows=PocPolicy.execute(session,SimpleStatement.builder("SELECT * FROM atlas_poc.retained_subject WHERE subject=?")
+                .addPositionalValues(subject).setConsistencyLevel(DefaultConsistencyLevel.SERIAL).setTimeout(Duration.ofSeconds(20)).build(),false,dc).all();
             Row head=rows.stream().filter(r->r.getString("row").equals("HEAD")).findFirst().orElseThrow();
             Map<Long,Entry> entries=new HashMap<>();
             for(Row row:rows) if(!row.getString("row").equals("HEAD")) {
@@ -51,7 +52,7 @@ public final class RetentionCassandraStore extends Base {
             cql.append("DELETE FROM atlas_poc.retained_subject WHERE subject=? AND row=?;"); values.add(subject); values.add("T:"+sequence);
         }
         cql.append("APPLY BATCH");
-        try { return session.execute(statement(cql.toString(),values.toArray())).wasApplied(); }
+        try { return PocPolicy.execute(session,statement(cql.toString(),values.toArray()),true,dc).wasApplied(); }
         catch(DriverException e) { throw new Failure(Code.INDETERMINATE); }
     }
     public void close() { transport.close(); }

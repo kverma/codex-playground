@@ -13,6 +13,7 @@ import static atlas.poc.Protocol.*;
 public final class CassandraStore implements Store {
     private final CqlSession session;
     private final UUID subject;
+    private final String dc;
     public CassandraStore(UUID subject) {
         this(subject, "127.0.0.1", 9042, "dc1", false, Duration.ofSeconds(20));
     }
@@ -24,6 +25,7 @@ public final class CassandraStore implements Store {
         boolean fullHa = topology.equals("full");
         boolean three = topology.equals("three");
         this.subject = subject;
+        this.dc = dc;
         this.timeout = timeout;
         var config = DriverConfigLoader.programmaticBuilder()
             .withString(DefaultDriverOption.PROTOCOL_VERSION, "V4")
@@ -41,7 +43,7 @@ public final class CassandraStore implements Store {
             : "1".equals(replication.get("dc1")) && replication.size() == 2;
         if (!valid) { session.close(); throw new IllegalStateException("Wrong test replication: " + replication); }
         session.execute("CREATE TABLE IF NOT EXISTS atlas_poc.subject (subject uuid, row text, commit_token uuid, request_hash text, cents int, churned boolean, PRIMARY KEY (subject,row))");
-        session.execute(write("INSERT INTO atlas_poc.subject (subject,row,commit_token,cents,churned) VALUES (?,'HEAD',?,500,false) IF NOT EXISTS", subject, UUID.randomUUID()));
+        PocPolicy.execute(session,write("INSERT INTO atlas_poc.subject (subject,row,commit_token,cents,churned) VALUES (?,'HEAD',?,500,false) IF NOT EXISTS", subject, UUID.randomUUID()),true,dc);
     }
     private final Duration timeout;
     CqlSession sessionForPoc() { return session; }
@@ -53,9 +55,9 @@ public final class CassandraStore implements Store {
     }
     private Row row(String key) {
         // SERIAL reads resolve in-flight Paxos before exposing authoritative state.
-        return session.execute(SimpleStatement.builder("SELECT * FROM atlas_poc.subject WHERE subject=? AND row=?")
+        return PocPolicy.execute(session,SimpleStatement.builder("SELECT * FROM atlas_poc.subject WHERE subject=? AND row=?")
             .addPositionalValues(subject,key).setConsistencyLevel(DefaultConsistencyLevel.SERIAL)
-            .setTimeout(timeout).build()).one();
+            .setTimeout(timeout).build(),false,dc).one();
     }
     private Intent intent(Row row) { return new Intent(row.getInt("cents"), row.getBoolean("churned")); }
     public Head read() { Row r = row("HEAD"); return new Head(r.getUuid("commit_token"), intent(r)); }
@@ -68,13 +70,13 @@ public final class CassandraStore implements Store {
             Receipt old = receipt(r);
             if (old != null) return old;
             UUID commit_token = UUID.randomUUID();
-            boolean applied = session.execute(write("""
+            boolean applied = PocPolicy.execute(session,write("""
                 BEGIN BATCH
                   UPDATE atlas_poc.subject SET commit_token=?, cents=?, churned=? WHERE subject=? AND row='HEAD' IF commit_token=?;
                   INSERT INTO atlas_poc.subject (subject,row,commit_token,request_hash,cents,churned) VALUES (?,?,?,?,?,?) IF NOT EXISTS;
                 APPLY BATCH
                 """, commit_token,r.intent().cents(),r.intent().churnedEligible(),subject,r.expected(),
-                subject,"OP:"+r.operation(),commit_token,r.hash(),r.intent().cents(),r.intent().churnedEligible())).wasApplied();
+                subject,"OP:"+r.operation(),commit_token,r.hash(),r.intent().cents(),r.intent().churnedEligible()),true,dc).wasApplied();
             if (applied) return new Receipt(r.operation(),r.hash(),commit_token,r.intent());
             old = receipt(r);
             if (old != null) return old;

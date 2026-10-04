@@ -24,7 +24,7 @@ class HistoryCheckerTest {
             for(int round=0;round<20;round++) workload.round(seed*100L+round,Path.of("build/evidence/history-model"),()->{});
         }
     }
-    @Test void rejectsFourBrokenProtocolVariantsAndRetainsReplayableCounterexamples() throws Exception {
+    @Test void rejectsSixBrokenProtocolVariantsAndRetainsReplayableCounterexamples() throws Exception {
         for(Bug bug:Bug.values()) {
             Store store=new Broken(bug); Snapshot initial=store.read(); var recorder=new HistoryWorkload(store);
             Request stale=edit(new UUID(20,0),initial,Map.of(Group.ECONOMICS,"600"));
@@ -40,6 +40,10 @@ class HistoryCheckerTest {
                 case FORGET_RECEIPTS -> {
                     Request request=edit(new UUID(20,1),initial,Map.of(Group.ROYALTY,"2500"));
                     recorder.write(request,false); recorder.write(request,true);
+                }
+                case ABA_GENERATION, ABA_GROUP_VERSION -> {
+                    recorder.write(edit(new UUID(20,1),initial,Map.of(Group.ROYALTY,"2000")),false);
+                    recorder.write(edit(new UUID(20,2),store.read(),Map.of(Group.ROYALTY,"2500")),false);
                 }
                 case PARTIAL_BATCH -> recorder.write(edit(new UUID(20,1),initial,Map.of(Group.ECONOMICS,"400",Group.ELIGIBILITY,"NEW,CHURNED",Group.ROYALTY,"2500")),false);
             }
@@ -64,7 +68,19 @@ class HistoryCheckerTest {
         assertEquals(HistoryChecker.Verdict.NON_LINEARIZABLE,checker.check(initial,List.of(write,stale)).verdict());
         assertEquals(HistoryChecker.Verdict.INCONCLUSIVE,new HistoryChecker(0).check(initial,List.of(write)).verdict());
     }
-    enum Bug { STALE_DEPENDENCY, LOST_UPDATE, FORGET_RECEIPTS, PARTIAL_BATCH }
+    @Test void historyGraderRejectsAnAlwaysIndeterminateTransport() throws Exception {
+        Snapshot initial=initial();
+        Store blackHole=new Store() {
+            public Snapshot read() { return initial; }
+            public Receipt commit(Request request) { throw new Rejected(Transactions.Error.INDETERMINATE); }
+        };
+        var workload=new HistoryWorkload(blackHole);
+        var failure=assertThrows(AssertionError.class,()->workload.round(777,Path.of("build/evidence/negative-controls/black-hole"),()->{}));
+        assertTrue(failure.getMessage().contains("recovery"));
+        var evidence=new ObjectMapper().readValue(Path.of("build/evidence/negative-controls/black-hole/seed-777.json").toFile(),HistoryChecker.Evidence.class);
+        assertEquals(HistoryChecker.Verdict.LINEARIZABLE,evidence.result().verdict(),"safety must stay distinct from progress");
+    }
+    enum Bug { STALE_DEPENDENCY, LOST_UPDATE, FORGET_RECEIPTS, PARTIAL_BATCH, ABA_GENERATION, ABA_GROUP_VERSION }
     /** Intentionally broken implementations; these must never be used by the real adapter. */
     private static final class Broken implements Store {
         final Bug bug; final Snapshot initial=initial(); Snapshot state=initial;
@@ -85,6 +101,13 @@ class HistoryCheckerTest {
                 var cells=new EnumMap<Group,Cell>(next.cells());
                 for(Group group:Group.values()) if(!request.updates().containsKey(group)) cells.put(group,initial.cells().get(group));
                 next=new Snapshot(next.generation(),next.epoch(),next.budget(),bytes(cells),cells);
+            }
+            if(!receipts.isEmpty() && bug==Bug.ABA_GENERATION)
+                next=new Snapshot(initial.generation(),next.epoch(),next.budget(),next.payloadBytes(),next.cells());
+            if(!receipts.isEmpty() && bug==Bug.ABA_GROUP_VERSION) {
+                var cells=new EnumMap<Group,Cell>(next.cells());
+                cells.put(Group.ROYALTY,new Cell(initial.cells().get(Group.ROYALTY).version(),next.value(Group.ROYALTY)));
+                next=new Snapshot(next.generation(),next.epoch(),next.budget(),next.payloadBytes(),cells);
             }
             Receipt receipt=new Receipt(request.operation(),request.hash(),state,next);
             receipts.put(request.operation(),receipt); state=next; return receipt;

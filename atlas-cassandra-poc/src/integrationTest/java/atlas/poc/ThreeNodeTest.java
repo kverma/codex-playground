@@ -82,7 +82,7 @@ class ThreeNodeTest {
             var pending=pool.submit(()->assertThrows(Indeterminate.class,()->origin.commit(request)));
             assertTrue(proxy.injected.await(20,TimeUnit.SECONDS),"must observe actual batch send");
             try {
-                compose("kill","-s","SIGKILL","dc1");
+                VerifiedKill.kill(List.of("docker","compose","-f","compose.three.yaml"),"dc1");
                 pending.get(30,TimeUnit.SECONDS);
                 Receipt resolved=survivor.commit(request); record("resolved",resolved);
                 edit(survivor,700);
@@ -96,7 +96,7 @@ class ThreeNodeTest {
         try (Store writer=connect(subject,2)) {
             Receipt finalReceipt;
             try {
-                compose("kill","-s","SIGKILL","dc1");
+                VerifiedKill.kill(List.of("docker","compose","-f","compose.three.yaml"),"dc1");
                 for(int i=0;i<5;i++) edit(writer,700+i);
                 compose("up","-d","--wait","--wait-timeout","300","dc1");
                 try(var pool=Executors.newVirtualThreadPerTaskExecutor()) {

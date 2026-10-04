@@ -16,6 +16,20 @@ public abstract class RetentionContract {
         Failure failure=assertThrows(Failure.class,action::run);
         assertEquals(Code.REQUEST_TOO_OLD,failure.code); assertEquals("UNKNOWN",failure.outcome());
     }
+    @Test void exposesAllocatorContentionBetweenIndependentDrafts() {
+        var clock=new RetentionClock();
+        try(Store store=open(UUID.randomUUID(),clock)) {
+            Request economics=store.edit(Map.of(Group.ECONOMICS,"400"));
+            Request royalty=store.edit(Map.of(Group.ROYALTY,"2000"));
+            assertEquals(economics.operation(),royalty.operation(),"known candidate limitation: drafts choose the same unallocated slot");
+            Ticket first=store.issue(economics);
+            assertEquals(Transactions.Error.KEY_REUSE,assertThrows(Rejected.class,()->store.issue(royalty)).error);
+            store.commit(first,economics);
+            Request fresh=store.edit(Map.of(Group.ROYALTY,"2000")); store.commit(store.issue(fresh),fresh);
+            assertEquals("400",store.view().snapshot().value(Group.ECONOMICS));
+            assertEquals("2000",store.view().snapshot().value(Group.ROYALTY));
+        }
+    }
     @Test void originalReceiptSurvivesLaterEditsAndExpiryUntilCompacted() {
         var clock=new RetentionClock();
         try(Store store=open(UUID.randomUUID(),clock)) {

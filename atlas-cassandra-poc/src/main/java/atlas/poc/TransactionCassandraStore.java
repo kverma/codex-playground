@@ -12,21 +12,22 @@ public final class TransactionCassandraStore implements Store {
     private final CassandraStore transport;
     private final CqlSession session;
     private final UUID subject;
+    private final String dc;
     public TransactionCassandraStore(UUID subject,String host,int port,String dc,String topology) {
-        this.subject=subject;
+        this.subject=subject; this.dc=dc;
         transport=new CassandraStore(subject,host,port,dc,topology,Duration.ofSeconds(20));
         session=transport.sessionForPoc();
         session.execute("CREATE TABLE IF NOT EXISTS atlas_poc.term_subject (subject uuid, row text, generation uuid, state text, request_hash text, before_state text, PRIMARY KEY (subject,row))");
         Snapshot initial=initial();
-        session.execute(write("INSERT INTO atlas_poc.term_subject (subject,row,generation,state) VALUES (?,'HEAD',?,?) IF NOT EXISTS",subject,initial.generation(),TransactionCodec.encode(initial)));
+        PocPolicy.execute(session,write("INSERT INTO atlas_poc.term_subject (subject,row,generation,state) VALUES (?,'HEAD',?,?) IF NOT EXISTS",subject,initial.generation(),TransactionCodec.encode(initial)),true,dc);
     }
     private SimpleStatement write(String cql,Object... values) {
         return SimpleStatement.builder(cql).addPositionalValues(values).setConsistencyLevel(DefaultConsistencyLevel.QUORUM)
             .setSerialConsistencyLevel(DefaultConsistencyLevel.SERIAL).setIdempotence(false).setTimeout(Duration.ofSeconds(20)).build();
     }
     private Row row(String key) {
-        return session.execute(SimpleStatement.builder("SELECT * FROM atlas_poc.term_subject WHERE subject=? AND row=?")
-            .addPositionalValues(subject,key).setConsistencyLevel(DefaultConsistencyLevel.SERIAL).setTimeout(Duration.ofSeconds(20)).build()).one();
+        return PocPolicy.execute(session,SimpleStatement.builder("SELECT * FROM atlas_poc.term_subject WHERE subject=? AND row=?")
+            .addPositionalValues(subject,key).setConsistencyLevel(DefaultConsistencyLevel.SERIAL).setTimeout(Duration.ofSeconds(20)).build(),false,dc).one();
     }
     public Snapshot read() {
         try { return TransactionCodec.decode(row("HEAD").getString("state")); }
@@ -47,13 +48,13 @@ public final class TransactionCassandraStore implements Store {
                     // A competing exact retry may have committed between our receipt and HEAD reads.
                     old=receipt(request); if(old!=null) return old; throw rejection;
                 }
-                boolean accepted=session.execute(write("""
+                boolean accepted=PocPolicy.execute(session,write("""
                     BEGIN BATCH
                     UPDATE atlas_poc.term_subject SET generation=?,state=? WHERE subject=? AND row='HEAD' IF generation=?;
                     INSERT INTO atlas_poc.term_subject (subject,row,generation,state,request_hash,before_state) VALUES (?,?,?,?,?,?) IF NOT EXISTS;
                     APPLY BATCH
                     """,after.generation(),TransactionCodec.encode(after),subject,before.generation(),subject,"OP:"+request.operation(),
-                    after.generation(),TransactionCodec.encode(after),request.hash(),TransactionCodec.encode(before))).wasApplied();
+                    after.generation(),TransactionCodec.encode(after),request.hash(),TransactionCodec.encode(before)),true,dc).wasApplied();
                 if(accepted) return new Receipt(request.operation(),request.hash(),before,after);
                 // Preserve logical read versions and intended updates; revalidate against a fresh subject generation.
             }

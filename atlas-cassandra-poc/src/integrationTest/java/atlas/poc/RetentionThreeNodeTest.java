@@ -24,11 +24,14 @@ class RetentionThreeNodeTest {
                 assertEquals(Code.INDETERMINATE,assertThrows(Failure.class,minority::compact).code);
                 events.add(Map.of("event","minority-compaction","outcome","INDETERMINATE"));
                 View pruned=majority.compact(); assertEquals(1,pruned.floor()); assertEquals(later.after(),pruned.snapshot());
+                assertEquals(Set.of(young.sequence()),pruned.entries().keySet(),"old row must actually be pruned");
+                command("counters");
                 assertEquals(later,majority.commit(young,fresh));
                 assertEquals(Code.REQUEST_TOO_OLD,assertThrows(Failure.class,()->majority.commit(old,expired)).code);
                 events.add(Map.of("event","majority-compaction","floor",pruned.floor(),"retained",pruned.entries().size()));
             } finally { command("heal"); }
             assertEquals(1,minority.view().floor());
+            assertEquals(Set.of(young.sequence()),minority.view().entries().keySet());
             assertEquals(Code.REQUEST_TOO_OLD,assertThrows(Failure.class,()->minority.commit(old,expired)).code);
             assertEquals(later,minority.commit(young,fresh)); assertEquals(later.after(),minority.view().snapshot());
             events.add(Map.of("event","healed-expired-retry","outcome","REQUEST_TOO_OLD","original",original,"current",later));

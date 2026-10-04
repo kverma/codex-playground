@@ -25,6 +25,7 @@ class TransactionHistoryTest {
                 workload.round(1101,Path.of("build/evidence/history-cassandra"),()->{
                     try { command("partition"); } catch(Exception e) { throw new RuntimeException(e); }
                 });
+                command("counters");
             } finally { command("heal"); }
             for(long seed=1200;seed<1203;seed++) workload.round(seed,Path.of("build/evidence/history-cassandra"),()->{});
         } finally { for(Store store:stores) store.close(); }

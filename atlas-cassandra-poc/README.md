@@ -135,8 +135,9 @@ then SIGKILLs that coordinator. A surviving DC resolves the same operation, acce
 a later edit and still returns the original receipt on retry. This explores an
 in-flight request; it does not establish which internal Paxos phase was interrupted.
 
-The repair grader kills a replica, writes while it is absent, restarts it, runs full
-repair concurrently with more writes, then repairs again after traffic stops. A
+The repair grader kills a replica, writes while it is absent, restarts it, schedules
+a full repair command alongside more writes, then repairs again after traffic stops.
+It does not witness an internal repair phase overlapping a write; that gate is open. A
 LOCAL_ONE read in that replica's RF1 DC must return the final accepted token. This
 local diagnostic is not an authoritative application read policy.
 
@@ -219,9 +220,9 @@ grader generates 400 short histories including synthetic lost replies; the real
 Cassandra grader generates 14 histories through coordinators in three DCs, including
 one under partition. These are bounded examples, not exhaustive distributed-system proof.
 
-Four deliberately broken implementations must be NON_LINEARIZABLE: stale dependency
-acceptance, lost independent updates, forgotten receipts, and partial multi-group
-acceptance. Failing histories are reduced greedily while retaining causal references;
+Six deliberately broken implementations must be NON_LINEARIZABLE: stale dependency
+acceptance, lost independent updates, forgotten receipts, partial multi-group
+acceptance, recycled physical generations and recycled group versions. Failing histories are reduced greedily while retaining causal references;
 the result is 1-minimal under that constraint, not globally minimal. Saved mutant
 counterexamples are deserialized and checked again to verify replayability.
 
@@ -285,3 +286,36 @@ single-node contract also checks session restart. `make grade-retention` (after
 healing. CI stores its scenario events in `build/evidence/retention-three.json`.
 These scenario assertions do not extend the independent history checker's semantics
 or claim exhaustive retention linearizability.
+
+## Adversarial validation review
+
+See [docs/adversarial-test-review.md](docs/adversarial-test-review.md) for findings,
+fixes, negative controls and remaining proof gates. Green CI verifies these bounded
+Cassandra adapter scenarios; it is not a full Atlas API/compile/publication E2E run.
+
+History grading now separately requires overlapping recorded initial invocations,
+at least one accepted operation, bounded exact-request recovery (up to three attempts),
+and a successful final authoritative read. Up to 17 calls fit the 20-call bound.
+The four-way gate creates overlapping client calls; it does not force a particular
+server-side Paxos schedule. An always-indeterminate transport must fail the progress
+checks even when its history is vacuously LINEARIZABLE.
+
+Partition injection first proves peer links are reachable. It then verifies four
+blocked TCP probes, one positive INPUT/OUTPUT DROP counter per peer, and continued
+host-client port access. Probe traffic contributes to those counters; they prove
+network isolation, not a specific Paxos phase. Healing verifies rule removal and
+link reachability. No-op and OUTPUT-only injectors must fail these checks in
+`make grade-fault-witness`, which runs before the ordinary three-node scenarios.
+
+All successful authoritative adapter calls check the actual driver-reported
+coordinator DC and append consistency/coordinator observations to
+`build/evidence/policy.jsonl`. The policy guard rejects LOCAL_SERIAL,
+LOCAL_QUORUM and automatic idempotent mutation replay. Metadata/bootstrap queries
+are outside that authoritative policy log. Timeout routing is not inferred from an
+ACK that never arrived. Kill evidence in `verified-kills.jsonl` verifies a running
+target followed by stopped state, exit 137 and no OOM before restart.
+
+The retention candidate's draft helper can choose the same next allocator slot for
+two independent drafts, producing KEY_REUSE on the second issue. A contract test now
+exposes this limitation. It is a separate retention experiment, not yet a combined
+independent-TermGroup/retention SDK design; production integration remains open.

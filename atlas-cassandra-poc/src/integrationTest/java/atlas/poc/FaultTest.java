@@ -39,7 +39,7 @@ class FaultTest {
             assertEquals(request.intent(),accepted.intent());
         }
         // SIGKILL (not graceful stop) tests commit-log recovery after a committed lost response.
-        try { compose("kill","-s","SIGKILL","cassandra"); }
+        try { VerifiedKill.kill(java.util.List.of("docker","compose"),"cassandra"); }
         finally { compose("up","-d","--wait","--wait-timeout","300"); }
         try (Store recovered = new CassandraStore(subject)) {
             Receipt original = recovered.commit(request);

@@ -105,19 +105,25 @@ public final class HistoryChecker {
         Receipt prior=state.receipts().get(request.operation());
         if(prior!=null) return prior.equals(receipt)?state:null;
         Snapshot before=state.head(), after=receipt.after();
-        if(!before.equals(receipt.before())||after==null||after.generation()==null||after.generation().equals(before.generation())||
+        if(!before.equals(receipt.before())||after==null||after.generation()==null||after.generation().equals(before.generation())||reusedGeneration(state,after.generation())||
            after.epoch()!=(request.admittedEpoch()==null?before.epoch():request.admittedEpoch())||
            after.budget()!=(request.admittedBudget()==null?before.budget():request.admittedBudget())||after.cells().size()!=3) return null;
         var values=new EnumMap<Group,String>(Group.class);
         for(Group group:Group.values()) {
             Cell actual=after.cells().get(group), old=before.cells().get(group);
             if(actual==null||actual.version()==null||!actual.value().equals(request.updates().getOrDefault(group,old.value()))) return null;
-            if(request.updates().containsKey(group)?actual.version().equals(old.version()):!actual.version().equals(old.version())) return null;
+            if(request.updates().containsKey(group)?actual.version().equals(old.version())||reusedVersion(state,group,actual.version()):!actual.version().equals(old.version())) return null;
             values.put(group,actual.value());
         }
         if(after.payloadBytes()!=countBytes(values)) return null;
         var receipts=new HashMap<>(state.receipts()); receipts.put(request.operation(),receipt);
         return new State(after,Map.copyOf(receipts));
+    }
+    private boolean reusedGeneration(State state,UUID generation) {
+        return state.receipts().values().stream().anyMatch(r->r.before().generation().equals(generation)||r.after().generation().equals(generation));
+    }
+    private boolean reusedVersion(State state,Group group,UUID version) {
+        return state.receipts().values().stream().anyMatch(r->r.before().cells().get(group).version().equals(version)||r.after().cells().get(group).version().equals(version));
     }
     /** Greedy 1-minimal reduction with causal closure, not a globally smallest counterexample. */
     public List<Call> shrink(Snapshot initial,List<Call> calls) {
