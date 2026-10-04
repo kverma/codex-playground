@@ -580,6 +580,7 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
         let samples: [Int?] = animationFrames.isEmpty ? [nil] : animationFrames.map(Optional.some)
         var metrics: [SlideMetrics] = []
         var canonicalScreenshots: [Int: URL] = [:]
+        var visualReviewScreenshots: [(metric: SlideMetrics, image: String)] = []
         var diagnosticFindings: [DiagnosticFinding] = []
 
         for state in states {
@@ -598,6 +599,9 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
                     try await snapshot(to: url)
                     screenshotURL = url
                     canonicalScreenshots[state.index] = url
+                    visualReviewScreenshots.append(
+                        (metric: metric, image: "screenshots/" + name)
+                    )
                 }
 
                 if let screenshotURL, let diagnosticsDir {
@@ -655,6 +659,21 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
                 findings: diagnosticFindings
             )
             try JSONIO.encode(diagnosticsReport).write(to: output.appendingPathComponent("diagnostics.json"))
+
+            let manifest = VisualReviewSupport.makeManifest(
+                deck: deckURL.lastPathComponent,
+                generatedAt: Date(),
+                contactSheet: artifacts["contactSheet"],
+                screenshots: visualReviewScreenshots,
+                diagnostics: diagnosticFindings
+            )
+            try JSONIO.encode(manifest).write(to: output.appendingPathComponent("review-manifest.json"))
+            try Data(VisualReviewSupport.prompt(for: manifest).utf8)
+                .write(to: output.appendingPathComponent("visual-review-prompt.md"))
+
+            artifacts["reviewManifest"] = "review-manifest.json"
+            artifacts["visualReviewPrompt"] = "visual-review-prompt.md"
+            artifacts["visualReviewOutputExpected"] = manifest.outputContract.outputFile
         }
 
         let scored = ReportScoring.score(metrics: metrics)
