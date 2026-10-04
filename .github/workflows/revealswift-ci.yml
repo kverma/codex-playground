@@ -55,7 +55,20 @@ jobs:
           cd revealswift
           test -s diagnostic-artifacts/report.json
           test -s diagnostic-artifacts/diagnostics.json
+          test -s diagnostic-artifacts/review-manifest.json
+          test -s diagnostic-artifacts/visual-review-prompt.md
           python3 Scripts/check_diagnostics.py diagnostic-artifacts
+          python3 Scripts/check_visual_review_manifest.py diagnostic-artifacts
+
+      - name: Validate multimodal reviewer handoff
+        run: |
+          cd revealswift
+          python3 Scripts/mock_visual_reviewer.py diagnostic-artifacts needs_changes
+          .build/release/revealswift visual-review validate diagnostic-artifacts/visual-review.json
+          ! .build/release/revealswift visual-review validate diagnostic-artifacts/visual-review.json --strict
+
+          python3 Scripts/mock_visual_reviewer.py diagnostic-artifacts pass
+          .build/release/revealswift visual-review validate diagnostic-artifacts/visual-review.json --strict
 
       - name: Run Reveal.js behavioral conformance
         run: |
