@@ -183,11 +183,13 @@ final class RuntimeSchemeHandler: NSObject, WKURLSchemeHandler {
             return
         }
 
+        let isText = asset.mimeType.hasPrefix("text/") ||
+            asset.mimeType == "application/javascript"
         let response = URLResponse(
             url: url,
             mimeType: asset.mimeType,
             expectedContentLength: asset.data.count,
-            textEncodingName: "utf-8"
+            textEncodingName: isText ? "utf-8" : nil
         )
         urlSchemeTask.didReceive(response)
         urlSchemeTask.didReceive(asset.data)
