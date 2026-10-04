@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>RevealSwift Demo</title></head>
+<body>
+<div class="reveal"><div class="slides">
+<section class="title-slide">
+  <p class="eyebrow">RevealSwift</p>
+  <h1>Agent-native presentations</h1>
+  <p class="subtitle">No Node required.</p>
+</section>
+<section>
+  <h2>Progressive architecture</h2>
+  <div class="two-column">
+    <div class="card fragment"><h3>Intent</h3><p>Semantic source of truth.</p></div>
+    <div class="card fragment"><h3>Serving</h3><p>Materialized for fast reads.</p></div>
+  </div>
+</section>
+<section>
+  <h2>Chart.js works too</h2>
+  <canvas id="c" width="900" height="420"></canvas>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => setTimeout(() => {
+      if (window.Chart) new Chart(document.getElementById('c'), {
+        type:'bar',
+        data:{labels:['Q1','Q2','Q3','Q4'],datasets:[{label:'Revenue',data:[12,19,27,35]}]},
+        options:{animation:false}
+      });
+    }, 300));
+  </script>
+</section>
+</div></div>
+</body>
+</html>
