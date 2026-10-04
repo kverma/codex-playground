@@ -21,6 +21,75 @@ cd revealswift
 swift build -c release
 ```
 
+## Reveal-native authoring
+
+RevealSwift uses ordinary Reveal.js HTML as the authoring source of truth. Agents do not need to learn a second deck schema.
+
+Create a deck structure:
+
+```bash
+revealswift deck create atlas.html \
+  --title "Atlas Architecture Review" \
+  --theme dark-mode \
+  --outline title,context,architecture,metrics,risks,conclusion
+```
+
+Or create a fixed number of slides:
+
+```bash
+revealswift deck create deck.html --title "Quarterly Review" --theme apple-inspired --slides 8
+```
+
+Inspect the structure:
+
+```bash
+revealswift deck info atlas.html
+revealswift deck outline atlas.html
+revealswift slide list atlas.html
+revealswift slide get atlas.html architecture
+```
+
+Fill a slide with normal Reveal.js HTML:
+
+```bash
+revealswift slide set atlas.html architecture --stdin <<'HTML'
+<h2>Architecture</h2>
+<div class="two-column">
+  <div class="card fragment" data-rs-component="card">
+    <h3>CompiledState</h3>
+    <p>Normalized commercial intent.</p>
+  </div>
+  <div class="card fragment" data-rs-component="card">
+    <h3>ServingState</h3>
+    <p>Materialized storefront representation.</p>
+  </div>
+</div>
+HTML
+```
+
+Structural editing:
+
+```bash
+revealswift slide add atlas.html --id rollout --after risks --html '<h2>Rollout</h2>'
+revealswift slide move atlas.html rollout --before conclusion
+revealswift slide duplicate atlas.html rollout --id rollout-backup
+revealswift slide rename atlas.html rollout-backup --id appendix
+revealswift slide remove atlas.html appendix
+revealswift deck validate atlas.html
+```
+
+Stable section IDs are recommended because they let agents edit by meaning instead of by slide number. Numeric 1-based slide selectors are also accepted.
+
+A theme selected with `deck create --theme` is stored in the HTML as a `revealswift-theme` meta tag. Review/export commands automatically resolve that theme from `./Themes/<name>`, a deck-local themes directory, or the themes directory packaged beside the binary. An explicit `--theme <dir>` still overrides it.
+
+Then run the existing QA/render pipeline without converting formats:
+
+```bash
+revealswift review atlas.html --output review --strict --pdf
+```
+
+The authoring DOM parser treats deck HTML as inert text while making structural edits, so scripts inside the deck are preserved but not executed by edit commands.
+
 ## Commands
 
 ```bash
