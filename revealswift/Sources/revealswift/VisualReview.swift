@@ -141,7 +141,7 @@ enum VisualReviewSupport {
                     "findings"
                 ],
                 allowedDecisions: ["pass", "needs_changes"],
-                allowedSeverities: Severity.allCases.map(\.rawValue),
+                allowedSeverities: ["info", "warning", "error"],
                 allowedCategories: categories
             )
         )
