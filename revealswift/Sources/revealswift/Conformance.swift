@@ -484,6 +484,46 @@ extension WebKitRunner {
           check('core.api.available-fragments',
             fragments && typeof fragments.prev === 'boolean' && typeof fragments.next === 'boolean',
             JSON.stringify(fragments));
+
+          const restoredIndices = deck.getIndices();
+          const restoredSlide = deck.getSlide(restoredIndices.h, restoredIndices.v);
+          const restoredBackground = deck.getSlideBackground(restoredIndices.h, restoredIndices.v);
+          check('core.api.get-slide', restoredSlide === deck.getCurrentSlide(),
+            restoredSlide?.id || null);
+          check('core.api.get-slide-background',
+            Boolean(restoredBackground) && restoredBackground === restoredSlide?.slideBackgroundElement);
+          check('core.api.scale', typeof deck.getScale() === 'number' && deck.getScale() > 0,
+            String(deck.getScale()));
+          check('core.api.dom-handles',
+            deck.getRevealElement() === root &&
+            deck.getSlidesElement() === root.querySelector('.slides') &&
+            Boolean(deck.getViewportElement()) &&
+            Boolean(deck.getBackgroundsElement()));
+          check('core.api.has-horizontal-slides', deck.hasHorizontalSlides() === true);
+          check('core.api.has-vertical-slides', deck.hasVerticalSlides() === true);
+          check('core.api.vertical-slide', deck.isVerticalSlide(restoredSlide) === true);
+          check('core.api.vertical-stack', deck.isVerticalStack(restoredSlide?.parentElement) === true);
+
+          const registeredPlugins = deck.getPlugins();
+          check('core.api.plugin-registry',
+            registeredPlugins && ['markdown','highlight','notes','search','zoom','custom-e2e']
+              .every(id => Boolean(registeredPlugins[id])));
+
+          const first = deck.getSlide(0, 0);
+          const firstIndices = deck.getIndices(first);
+          deck.slide(firstIndices.h, firstIndices.v);
+          await delay(20);
+          check('core.api.first-slide', deck.isFirstSlide() === true);
+
+          const allSlides = deck.getSlides();
+          const last = allSlides[allSlides.length - 1];
+          const lastIndices = deck.getIndices(last);
+          deck.slide(lastIndices.h, lastIndices.v);
+          await delay(20);
+          check('core.api.last-slide', deck.isLastSlide() === true);
+
+          deck.setState(saved);
+          await delay(20);
         } catch (error) {
           fail('core.state-api', String(error));
         }
