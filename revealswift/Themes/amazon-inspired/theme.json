@@ -1,0 +1,19 @@
+{
+  "name": "amazon-inspired",
+  "displayName": "Amazon Inspired",
+  "version": "1.0.0",
+  "css": ["theme.css"],
+  "allowedComponents": ["title-slide", "eyebrow", "subtitle", "two-column", "three-column", "card", "metric", "callout", "chart"],
+  "width": 1920,
+  "height": 1080,
+  "rules": {
+    "minimumBodyFontPx": 26,
+    "minimumCaptionFontPx": 18,
+    "minimumMarginPx": 72,
+    "maximumColumns": 3,
+    "densityPreferredMax": 0.7,
+    "densityWarningMax": 0.8,
+    "densityMaximum": 0.9,
+    "requireTitle": true
+  }
+}
