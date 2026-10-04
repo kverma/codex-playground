@@ -259,7 +259,7 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
           const doc = new DOMParser().parseFromString(\(js(html)), 'text/html');
           const container = doc.querySelector('.reveal > .slides') || doc.querySelector('.reveal .slides');
           if (!container) return { error:'Missing .reveal .slides container' };
-          const slide = \(slidePicker(slideSelector));
+          const slide = \(sectionPicker(slideSelector));
           if (!slide) return { error:'Slide not found: ' + \(js(slideSelector)) };
           let element;
           try { element = slide.querySelector(\(js(cssSelector))); }
@@ -275,7 +275,7 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
     func mutateElement(html: String, slideSelector: String, cssSelector: String, operation: String, value: String? = nil) async throws -> String {
         let valueJS = value.map(js) ?? "null"
         return try await mutate(html: html, script: """
-        const slide = \(slidePicker(slideSelector));
+        const slide = \(sectionPicker(slideSelector));
         if (!slide) return { error:'Slide not found: ' + \(js(slideSelector)) };
         let element;
         try { element = slide.querySelector(\(js(cssSelector))); }
@@ -419,6 +419,21 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
         """
     }
 
+    private func sectionPicker(_ selector: String) -> String {
+        """
+        (() => {
+          const selector = \(js(selector));
+          if (/^[0-9]+$/.test(selector)) {
+            const slides = [...container.children].filter(el => el.tagName === 'SECTION');
+            const n = Number(selector);
+            return n >= 1 && n <= slides.length ? slides[n - 1] : null;
+          }
+          const node = doc.getElementById(selector);
+          return node && node.tagName === 'SECTION' && container.contains(node) ? node : null;
+        })()
+        """
+    }
+
     private func js(_ value: String) -> String {
         let data = try! JSONEncoder().encode(value)
         return String(decoding: data, as: UTF8.self)
@@ -538,6 +553,19 @@ extension RevealSwiftCLI {
                 options: options
             )
 
+        case "append", "prepend":
+            let fragment = try readContent(options)
+            try writeMutation(
+                try await editor.appendToSlide(
+                    html: html,
+                    selector: selector!,
+                    fragment: fragment,
+                    prepend: subcommand == "prepend"
+                ),
+                original: deckURL,
+                options: options
+            )
+
         case "add":
             guard let id = options.value("--id") else { throw CLIError("slide add requires --id") }
             let body = try readContent(options, allowEmpty: true)
@@ -596,6 +624,175 @@ extension RevealSwiftCLI {
         #endif
     }
 
+
+    @MainActor
+    static func runElement(_ args: [String]) async throws {
+        guard let subcommand = args.first, args.count >= 4 else { throw CLIError(elementUsage) }
+        let deckURL = URL(fileURLWithPath: args[1])
+        let slideSelector = args[2]
+        let cssSelector = args[3]
+        let options = Options(args: Array(args.dropFirst(4)))
+        let html = try String(contentsOf: deckURL, encoding: .utf8)
+
+        #if canImport(WebKit) && canImport(AppKit)
+        let editor = RevealDOMEditor()
+        try await editor.prepare()
+
+        switch subcommand {
+        case "get":
+            let value = try await editor.getElement(
+                html: html,
+                slideSelector: slideSelector,
+                cssSelector: cssSelector,
+                outer: options.has("--outer")
+            )
+            print(value)
+
+        case "set-text":
+            let value: String
+            if let text = options.value("--text") { value = text }
+            else if options.has("--stdin") {
+                value = String(decoding: FileHandle.standardInput.readDataToEndOfFile(), as: UTF8.self)
+            } else {
+                throw CLIError("element set-text requires --text <value> or --stdin")
+            }
+            try writeMutation(
+                try await editor.mutateElement(
+                    html: html,
+                    slideSelector: slideSelector,
+                    cssSelector: cssSelector,
+                    operation: "set-text",
+                    value: value
+                ),
+                original: deckURL,
+                options: options
+            )
+
+        case "set-html":
+            let value = try readContent(options)
+            try writeMutation(
+                try await editor.mutateElement(
+                    html: html,
+                    slideSelector: slideSelector,
+                    cssSelector: cssSelector,
+                    operation: "set-html",
+                    value: value
+                ),
+                original: deckURL,
+                options: options
+            )
+
+        case "remove":
+            try writeMutation(
+                try await editor.mutateElement(
+                    html: html,
+                    slideSelector: slideSelector,
+                    cssSelector: cssSelector,
+                    operation: "remove"
+                ),
+                original: deckURL,
+                options: options
+            )
+
+        case "add-class", "remove-class":
+            guard let classes = options.value("--class"), !classes.isEmpty else {
+                throw CLIError("element \(subcommand) requires --class <classes>")
+            }
+            try writeMutation(
+                try await editor.mutateElement(
+                    html: html,
+                    slideSelector: slideSelector,
+                    cssSelector: cssSelector,
+                    operation: subcommand,
+                    value: classes
+                ),
+                original: deckURL,
+                options: options
+            )
+
+        default:
+            throw CLIError(elementUsage)
+        }
+        #else
+        throw CLIError("Element editing requires macOS with WebKit")
+        #endif
+    }
+
+    @MainActor
+    static func runStack(_ args: [String]) async throws {
+        guard let subcommand = args.first, args.count >= 2 else { throw CLIError(stackUsage) }
+        let deckURL = URL(fileURLWithPath: args[1])
+        let html = try String(contentsOf: deckURL, encoding: .utf8)
+
+        #if canImport(WebKit) && canImport(AppKit)
+        let editor = RevealDOMEditor()
+        try await editor.prepare()
+
+        switch subcommand {
+        case "create":
+            let options = Options(args: Array(args.dropFirst(2)))
+            guard let id = options.value("--id") else { throw CLIError("stack create requires --id <id>") }
+            try writeMutation(
+                try await editor.createStack(
+                    html: html,
+                    id: id,
+                    after: options.value("--after"),
+                    before: options.value("--before")
+                ),
+                original: deckURL,
+                options: options
+            )
+
+        case "list":
+            guard args.count >= 3 else { throw CLIError(stackUsage) }
+            let slides = try await editor.listStack(html: html, selector: args[2])
+            print(String(decoding: try JSONIO.encode(slides), as: UTF8.self))
+
+        case "add":
+            guard args.count >= 3 else { throw CLIError(stackUsage) }
+            let stackSelector = args[2]
+            let options = Options(args: Array(args.dropFirst(3)))
+            guard let id = options.value("--id") else { throw CLIError("stack add requires --id <id>") }
+            let body = try readContent(options, allowEmpty: true)
+            let classes = options.value("--class")?
+                .split(separator: ",")
+                .map { String($0).trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty } ?? []
+            let index = options.value("--index").flatMap(Int.init)
+            try writeMutation(
+                try await editor.addVerticalSlide(
+                    html: html,
+                    stackSelector: stackSelector,
+                    id: id,
+                    body: body,
+                    classes: classes,
+                    index: index
+                ),
+                original: deckURL,
+                options: options
+            )
+
+        case "remove":
+            guard args.count >= 4 else { throw CLIError(stackUsage) }
+            let options = Options(args: Array(args.dropFirst(4)))
+            try writeMutation(
+                try await editor.removeVerticalSlide(
+                    html: html,
+                    stackSelector: args[2],
+                    childSelector: args[3]
+                ),
+                original: deckURL,
+                options: options
+            )
+
+        default:
+            throw CLIError(stackUsage)
+        }
+        #else
+        throw CLIError("Vertical stack editing requires macOS with WebKit")
+        #endif
+    }
+
     private static func readContent(_ options: Options, allowEmpty: Bool = false) throws -> String {
         if let inline = options.value("--html") { return inline }
         if let path = options.value("--file") {
@@ -630,10 +827,30 @@ extension RevealSwiftCLI {
       revealswift slide list <deck.html>
       revealswift slide get <deck.html> <id|index> [--outer]
       revealswift slide set <deck.html> <id|index> (--stdin | --html <fragment> | --file <fragment.html>)
+      revealswift slide append <deck.html> <id|index> (--stdin | --html <fragment> | --file <fragment.html>)
+      revealswift slide prepend <deck.html> <id|index> (--stdin | --html <fragment> | --file <fragment.html>)
       revealswift slide add <deck.html> --id <id> [--after <id|index> | --before <id|index>] [--class a,b] [--stdin|--html|--file]
       revealswift slide remove <deck.html> <id|index>
       revealswift slide move <deck.html> <id|index> (--after <id|index> | --before <id|index>)
       revealswift slide duplicate <deck.html> <id|index> --id <new-id>
       revealswift slide rename <deck.html> <id|index> --id <new-id>
+    """
+
+    static let elementUsage = """
+    Usage:
+      revealswift element get <deck.html> <slide-id|index> <css-selector> [--outer]
+      revealswift element set-text <deck.html> <slide-id|index> <css-selector> (--text <value> | --stdin)
+      revealswift element set-html <deck.html> <slide-id|index> <css-selector> (--stdin | --html <fragment> | --file <fragment.html>)
+      revealswift element remove <deck.html> <slide-id|index> <css-selector>
+      revealswift element add-class <deck.html> <slide-id|index> <css-selector> --class <classes>
+      revealswift element remove-class <deck.html> <slide-id|index> <css-selector> --class <classes>
+    """
+
+    static let stackUsage = """
+    Usage:
+      revealswift stack create <deck.html> --id <stack-id> [--after <id|index> | --before <id|index>]
+      revealswift stack list <deck.html> <stack-id|index>
+      revealswift stack add <deck.html> <stack-id|index> --id <vertical-slide-id> [--index N] [--class a,b] [--stdin|--html|--file]
+      revealswift stack remove <deck.html> <stack-id|index> <vertical-slide-id|index>
     """
 }
