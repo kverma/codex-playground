@@ -45,6 +45,7 @@ public enum InspectorScript {
 
           let minFont = 9999;
           const densityRects = [];
+          const densityContributors = [];
 
           for (const el of visible) {
             const r = el.getBoundingClientRect(), s = getComputedStyle(el);
@@ -58,6 +59,13 @@ public enum InspectorScript {
             const semanticVisual = el.hasAttribute('data-rs-component');
             if (hasDirectText || backgroundVisible || borderVisible || mediaLike || semanticVisual) {
               densityRects.push(r);
+              densityContributors.push({
+                element: selector(el),
+                width: r.width,
+                height: r.height,
+                area: Math.max(0, r.width) * Math.max(0, r.height),
+                background: s.backgroundColor || ''
+              });
             }
             if (hasDirectText) {
               const fs = parseFloat(s.fontSize || '9999');
