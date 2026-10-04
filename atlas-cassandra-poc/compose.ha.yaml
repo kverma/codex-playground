@@ -4,6 +4,7 @@ services:
     image: cassandra:4.0.5
     ports: ["127.0.0.1:9042:9042"]
     environment:
+      JAVA_TOOL_OPTIONS: "-XX:-UseContainerSupport -XX:ActiveProcessorCount=2"
       CASSANDRA_CLUSTER_NAME: atlas-ha
       CASSANDRA_DC: dc1
       CASSANDRA_RACK: rack1
@@ -21,6 +22,7 @@ services:
     image: cassandra:4.0.5
     ports: ["127.0.0.1:9043:9042"]
     environment:
+      JAVA_TOOL_OPTIONS: "-XX:-UseContainerSupport -XX:ActiveProcessorCount=2"
       CASSANDRA_CLUSTER_NAME: atlas-ha
       CASSANDRA_DC: dc1
       CASSANDRA_RACK: rack2
@@ -38,6 +40,7 @@ services:
     image: cassandra:4.0.5
     ports: ["127.0.0.1:9044:9042"]
     environment:
+      JAVA_TOOL_OPTIONS: "-XX:-UseContainerSupport -XX:ActiveProcessorCount=2"
       CASSANDRA_CLUSTER_NAME: atlas-ha
       CASSANDRA_DC: dc1
       CASSANDRA_RACK: rack3
@@ -55,6 +58,7 @@ services:
     image: cassandra:4.0.5
     ports: ["127.0.0.1:9142:9042"]
     environment:
+      JAVA_TOOL_OPTIONS: "-XX:-UseContainerSupport -XX:ActiveProcessorCount=2"
       CASSANDRA_CLUSTER_NAME: atlas-ha
       CASSANDRA_DC: dc2
       CASSANDRA_RACK: rack1
@@ -72,6 +76,7 @@ services:
     image: cassandra:4.0.5
     ports: ["127.0.0.1:9143:9042"]
     environment:
+      JAVA_TOOL_OPTIONS: "-XX:-UseContainerSupport -XX:ActiveProcessorCount=2"
       CASSANDRA_CLUSTER_NAME: atlas-ha
       CASSANDRA_DC: dc2
       CASSANDRA_RACK: rack2
@@ -89,6 +94,7 @@ services:
     image: cassandra:4.0.5
     ports: ["127.0.0.1:9144:9042"]
     environment:
+      JAVA_TOOL_OPTIONS: "-XX:-UseContainerSupport -XX:ActiveProcessorCount=2"
       CASSANDRA_CLUSTER_NAME: atlas-ha
       CASSANDRA_DC: dc2
       CASSANDRA_RACK: rack3
@@ -106,6 +112,7 @@ services:
     image: cassandra:4.0.5
     ports: ["127.0.0.1:9242:9042"]
     environment:
+      JAVA_TOOL_OPTIONS: "-XX:-UseContainerSupport -XX:ActiveProcessorCount=2"
       CASSANDRA_CLUSTER_NAME: atlas-ha
       CASSANDRA_DC: dc3
       CASSANDRA_RACK: rack1
@@ -123,6 +130,7 @@ services:
     image: cassandra:4.0.5
     ports: ["127.0.0.1:9243:9042"]
     environment:
+      JAVA_TOOL_OPTIONS: "-XX:-UseContainerSupport -XX:ActiveProcessorCount=2"
       CASSANDRA_CLUSTER_NAME: atlas-ha
       CASSANDRA_DC: dc3
       CASSANDRA_RACK: rack2
@@ -140,6 +148,7 @@ services:
     image: cassandra:4.0.5
     ports: ["127.0.0.1:9244:9042"]
     environment:
+      JAVA_TOOL_OPTIONS: "-XX:-UseContainerSupport -XX:ActiveProcessorCount=2"
       CASSANDRA_CLUSTER_NAME: atlas-ha
       CASSANDRA_DC: dc3
       CASSANDRA_RACK: rack3

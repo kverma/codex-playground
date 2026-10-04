@@ -24,14 +24,16 @@ class ThreeNodeTest {
         record("invoke",request);
         Receipt receipt = store.commit(request); record("ack",receipt); return receipt;
     }
-    private void command(String... args) throws Exception {
+    private String command(String... args) throws Exception {
         record("fault-command",Arrays.toString(args));
         Process p = new ProcessBuilder(args).redirectErrorStream(true).start();
         try (var pool=Executors.newVirtualThreadPerTaskExecutor()) {
             var output=pool.submit(() -> new String(p.getInputStream().readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));
             if (!p.waitFor(330,TimeUnit.SECONDS)) { p.destroyForcibly(); fail("command timeout"); }
-            record("command-output",output.get(10,TimeUnit.SECONDS));
+            String text=output.get(10,TimeUnit.SECONDS);
+            record("command-output",text);
             assertEquals(0,p.exitValue(),Arrays.toString(args));
+            return text;
         }
     }
     private void compose(String... args) throws Exception {
@@ -94,9 +96,7 @@ class ThreeNodeTest {
                 // A final repair gives a definite convergence point after concurrent traffic.
                 compose("exec","-T","dc1","nodetool","repair","-full","atlas_poc");
                 String cql="SELECT commit_token,cents FROM atlas_poc.subject WHERE subject="+subject+" AND row='HEAD';";
-                var result=new ProcessBuilder("docker","compose","-f","compose.three.yaml","exec","-T","dc1","cqlsh","-e","CONSISTENCY LOCAL_ONE; "+cql).redirectErrorStream(true).start();
-                String output=new String(result.getInputStream().readAllBytes(),java.nio.charset.StandardCharsets.UTF_8);
-                assertTrue(result.waitFor(30,TimeUnit.SECONDS)); assertEquals(0,result.exitValue());
+                String output=command("docker","compose","-f","compose.three.yaml","exec","-T","dc1","cqlsh","-e","CONSISTENCY LOCAL_ONE; "+cql);
                 record("repaired-local-read",output);
                 assertTrue(output.contains(finalReceipt.token().toString()),"LOCAL_ONE on RF1/DC verifies repaired replica itself");
                 record("repair-pass",subject);

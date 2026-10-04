@@ -98,3 +98,53 @@ interleaving exploration and mutant detection remain outstanding.
 
 The application JVM and test proxy run on JDK25. Native protocol v4 is pinned for
 the frame-aware fault proxy. CassandraUnit is unnecessary for these real-server tests.
+
+## Three-node GitHub-hosted experiments
+
+The separate `three-node` Actions job runs three real Cassandra 4.0.5 processes,
+one per logical DC with RF1/DC and global QUORUM=2. Each heap is capped at 768 MiB;
+nodes bootstrap sequentially. The full-HA nine-node topology remains a separate gate.
+The pinned image's older JVM hits a cgroup-v2 metrics NullPointerException on the
+hosted kernel when nodetool/JMX starts. Multi-node fixtures disable JVM container
+auto-detection and explicitly cap heap and processor count; the Cassandra image
+version stays unchanged. This workaround is confined to the test containers.
+These tests need Linux, Docker, sudo, nsenter and iptables; CI supplies them.
+
+```sh
+make three-up
+make grade-partition
+make grade-coordinator-crash
+make grade-repair
+make three-down
+```
+
+Run separately from the single-node and nine-node fixtures; their host ports overlap.
+The partition script enters only dc1's disposable network namespace and drops both
+directions of peer traffic. It keeps client access available, checks DROP counters,
+and removes the exact rules after the test. The grader checks majority progress,
+minority rejection and a coherent view after healing.
+
+The crash grader observes an actual batch frame sent to dc1, suppresses its response,
+then SIGKILLs that coordinator. A surviving DC resolves the same operation, accepts
+a later edit and still returns the original receipt on retry. This explores an
+in-flight request; it does not establish which internal Paxos phase was interrupted.
+
+The repair grader kills a replica, writes while it is absent, restarts it, runs full
+repair concurrently with more writes, then repairs again after traffic stops. A
+LOCAL_ONE read in that replica's RF1 DC must return the final accepted token. This
+local diagnostic is not an authoritative application read policy.
+
+CI saves `build/evidence/three-history.jsonl` with UTC invocation/result/fault events,
+Cassandra logs, a final resource snapshot, and JUnit/HTML reports. This is a bounded
+scenario oracle, not a general linearizability checker or production certification.
+One host does not simulate independent power/disk failures or qualify WAN SLOs.
+
+## Cloud execution boundary
+
+Use synthetic POC data and disposable runners. Cassandra client ports are bound
+to host loopback; internode ports remain on Docker's private network. Never expose
+7000/7001/9042 to the internet. Do not attach production credentials or data to a
+fault-testing VM. External VM runners should be ephemeral, run trusted revisions,
+use narrowly scoped short-lived credentials where supported, export evidence,
+and delete their disks and VM after the job. Provisioning and budget configuration
+are outside this POC; the standard hosted Actions job needs no personal machine.

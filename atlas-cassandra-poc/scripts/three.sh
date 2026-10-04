@@ -7,7 +7,7 @@ case "${1:-}" in
       "${compose[@]}" up -d --wait --wait-timeout 300 "$node"
     done
     for attempt in $(seq 1 60); do
-      status=$("${compose[@]}" exec -T dc1 nodetool status)
+      status=$("${compose[@]}" exec -T dc1 nodetool status 2>&1) || { echo "$status" >&2; exit 1; }
       if [ "$(echo "$status" | awk '$1 == "UN" {n++} END {print n+0}')" = 3 ]; then
         echo "$status"; exit 0
       fi
@@ -31,6 +31,9 @@ case "${1:-}" in
         fi
       done
     done
-    sudo nsenter -t "$pid" -n iptables -L -n -v -x ;;
+    sudo nsenter -t "$pid" -n iptables -L -n -v -x
+    if [ "$1" = counters ]; then
+      sudo nsenter -t "$pid" -n iptables -L OUTPUT -n -v -x | awk '/atlas-poc-partition/ {packets += $1} END {exit !(packets > 0)}'
+    fi ;;
   *) echo 'Usage: three.sh up|partition|heal|counters' >&2; exit 2 ;;
 esac
