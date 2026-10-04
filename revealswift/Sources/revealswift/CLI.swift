@@ -421,6 +421,144 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
         try png.write(to: url)
     }
 
+    private func suggestedFix(for issue: ReviewIssue) -> String {
+        switch issue.rule {
+        case "layout.outOfBounds":
+            return "Move or resize the target so its full bounds remain inside the slide viewport."
+        case "layout.clipped":
+            return "Increase the container size, remove unintended overflow clipping, or reduce the enclosed content."
+        case "layout.overlap":
+            return "Reflow the overlapping siblings by adjusting grid/flex sizing, widths, gaps, or by splitting content."
+        case "theme.fontTooSmall":
+            return "Increase the target font size to the theme minimum, or reduce content so larger type fits."
+        case "theme.safeMargin":
+            return "Move the target inward to the theme safe margin; use data-rs-bleed=\"allow\" only for intentional bleed."
+        case "theme.inlineStyle":
+            return "Move visual styling into a reusable theme/class; use data-rs-inline-ok only when the inline mutation is intentional."
+        case "theme.tooManyColumns":
+            return "Reduce the grid column count to the theme maximum or split the content across slides."
+        case "theme.unknownComponent":
+            return "Use a component declared by the theme or explicitly add this semantic component to the theme manifest."
+        case "theme.missingTitle":
+            return "Add an h1/h2 heading or an element marked data-rs-title."
+        case "theme.appearanceMismatch":
+            return "Make the Reveal viewport background match the theme's declared light/dark appearance."
+        case "density.high", "density.excessive":
+            return "Reduce visual groups/text, simplify the layout, or split the content across multiple slides."
+        default:
+            return "Inspect the identified target and adjust the Reveal HTML/CSS until this rule no longer triggers."
+        }
+    }
+
+    private func diagnosticID(metric: SlideMetrics, issue: ReviewIssue, ordinal: Int) -> String {
+        let base = String(
+            format: "diag-s%03d-h%02d-v%02d-state-%02d",
+            metric.index + 1, metric.horizontal, metric.vertical, metric.state
+        )
+        let sample = metric.animationTimeMs.map { String(format: "t%04d", $0) } ?? "tbase"
+        let rule = issue.rule
+            .lowercased()
+            .map { $0.isLetter || $0.isNumber ? $0 : "-" }
+            .reduce(into: "") { result, character in
+                if character != "-" || result.last != "-" { result.append(character) }
+            }
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        return "\(base)-\(sample)-\(rule)-\(String(format: "%02d", ordinal + 1))"
+    }
+
+    private func makeDiagnosticFinding(metric: SlideMetrics, issue: ReviewIssue, ordinal: Int,
+                                       screenshot: String?) -> DiagnosticFinding {
+        let id = diagnosticID(metric: metric, issue: issue, ordinal: ordinal)
+        let slideRef = metric.slideID.map { "#\($0)" } ?? "slide \(metric.index + 1)"
+        let title = metric.slideTitle.map { " \"\($0)\"" } ?? ""
+        let targetText = issue.targets.prefix(3).map { target -> String in
+            let text = target.text?.replacingOccurrences(of: "\n", with: " ") ?? ""
+            return text.isEmpty
+                ? target.selector
+                : "\(target.selector) text=\"\(text)\""
+        }.joined(separator: "; ")
+        let targetClause = targetText.isEmpty ? "" : " Targets: \(targetText)."
+        let fix = suggestedFix(for: issue)
+        let feedback = "\(issue.severity.rawValue.uppercased()) \(issue.rule) on \(slideRef)\(title), " +
+            "state \(metric.state)\(metric.animationTimeMs.map { ", animation \($0)ms" } ?? ""). " +
+            "\(issue.message).\(targetClause) Suggested correction: \(fix)"
+
+        return DiagnosticFinding(
+            id: id,
+            severity: issue.severity,
+            rule: issue.rule,
+            message: issue.message,
+            agentFeedback: feedback,
+            suggestedFix: fix,
+            slideIndex: metric.index + 1,
+            horizontal: metric.horizontal,
+            vertical: metric.vertical,
+            slideID: metric.slideID,
+            slideTitle: metric.slideTitle,
+            state: metric.state,
+            animationTimeMs: metric.animationTimeMs,
+            targets: issue.targets,
+            screenshot: screenshot
+        )
+    }
+
+    private func createDiagnosticScreenshot(base: URL, finding: DiagnosticFinding, output: URL) throws {
+        guard let image = NSImage(contentsOf: base) else {
+            throw CLIError("Could not load base screenshot for diagnostic \(finding.id)")
+        }
+
+        let annotated = NSImage(size: image.size)
+        annotated.lockFocus()
+        image.draw(in: NSRect(origin: .zero, size: image.size))
+
+        let scaleX = image.size.width / CGFloat(width)
+        let scaleY = image.size.height / CGFloat(height)
+        let accent: NSColor = finding.severity == .error ? .systemRed : .systemOrange
+
+        for target in finding.targets {
+            guard let bounds = target.bounds else { continue }
+            let rect = NSRect(
+                x: CGFloat(bounds.x) * scaleX,
+                y: image.size.height - CGFloat(bounds.y + bounds.height) * scaleY,
+                width: max(2, CGFloat(bounds.width) * scaleX),
+                height: max(2, CGFloat(bounds.height) * scaleY)
+            )
+            accent.withAlphaComponent(0.14).setFill()
+            rect.fill()
+            accent.setStroke()
+            let path = NSBezierPath(rect: rect)
+            path.lineWidth = 5
+            path.stroke()
+        }
+
+        let bannerHeight: CGFloat = 58
+        let bannerRect = NSRect(
+            x: 0,
+            y: max(0, image.size.height - bannerHeight),
+            width: image.size.width,
+            height: bannerHeight
+        )
+        NSColor.black.withAlphaComponent(0.78).setFill()
+        bannerRect.fill()
+
+        let label = "\(finding.id)  •  \(finding.severity.rawValue.uppercased())  •  \(finding.rule)" as NSString
+        label.draw(
+            at: NSPoint(x: 18, y: image.size.height - 39),
+            withAttributes: [
+                .font: NSFont.monospacedSystemFont(ofSize: 18, weight: .semibold),
+                .foregroundColor: NSColor.white
+            ]
+        )
+        annotated.unlockFocus()
+
+        guard let tiff = annotated.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let png = bitmap.representation(using: .png, properties: [:]) else {
+            throw CLIError("Could not encode diagnostic screenshot \(finding.id)")
+        }
+        try png.write(to: output)
+    }
+
     func review(output: URL?, screenshots: Bool, pdf: Bool, animationFrames: [Int]) async throws -> ReviewReport {
         if let output {
             try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
