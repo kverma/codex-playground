@@ -33,8 +33,8 @@ class RetentionHistoryCassandraTest {
                     });
                     if(partition) {
                         command("counters");
-                        assertTrue(workload.history().stream().anyMatch(c->c.kind().equals("ISSUE")&&Math.floorMod(c.draft().request().operation().getLeastSignificantBits(),3)==0&&"INDETERMINATE".equals(c.error())),"the draft routed to isolated dc1 must be ambiguous");
-                        assertTrue(workload.history().stream().anyMatch(c->c.kind().equals("COMMIT")&&Math.floorMod(c.issued().ticket().sequence()-1,3)==0&&"INDETERMINATE".equals(c.error())),"the commit routed to isolated dc1 must be ambiguous");
+                        assertTrue(workload.history().stream().filter(c->c.kind().equals("ISSUE")).limit(3).anyMatch(c->Math.floorMod(c.draft().request().operation().getLeastSignificantBits(),3)==0&&"INDETERMINATE".equals(c.error())),"the draft routed to isolated dc1 must be ambiguous");
+                        assertTrue(workload.history().stream().filter(c->c.kind().equals("COMMIT")).limit(3).anyMatch(c->Math.floorMod(c.issued().ticket().sequence()-1,3)==0&&"INDETERMINATE".equals(c.error())),"the commit routed to isolated dc1 must be ambiguous");
                     }
                 } finally { if(partition) command("heal"); }
                 View agreed=majority.view();
