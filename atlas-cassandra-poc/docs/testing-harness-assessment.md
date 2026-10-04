@@ -89,26 +89,56 @@ still a separate task; existing Docker faults do not identify an internal phase.
 | 5 | Adapter phase tests in pinned maintainer harness | Next: instrument actual HEAD/receipt CQL, exact retry, atomicity and floor/delete behavior; prove each selected message was intercepted. |
 | 6 | RF3/DC and independent-host qualification | Nine-node remote run, skew/restore/archive/GC, WAN and disk/power failures remain open. |
 
-The allocator collision and independent retention oracle remain the next
-application-protocol work. Selecting a different harness does not close those
-findings. Atlas proof gates remain UNPROVEN.
+The signed-draft allocator and independent bounded retention oracle address the
+candidate-level collision and specification gaps. Production SDK persistence,
+key/clock policy, longer/skewed histories and adapter phase witnessing remain open.
+Selecting a different harness does not close those gates. Atlas proof gates remain
+UNPROVEN.
 
 ## Verified cloud execution
 
-[Run 37238077480, attempt 2](https://github.com/kverma/codex-playground/actions/runs/37238077480/attempts/2)
-at `e387d20022dc0ff676b78e25a9681887640501b5` passed all four jobs after the
-repository fix. Downloaded XML reports confirm 29 shallow model tests, 52 tests
-in the model/single-node/fault job (including those same 29), six three-node tests
-and 16 upstream tests. That is 58 distinct POC tests plus 16 upstream tests,
-with zero failures, errors or skips.
+[Run 37243518121](https://github.com/kverma/codex-playground/actions/runs/37243518121)
+at executable commit `7ba6fd7d27d54218a8747176872d624d1f1bb17b` passed all four jobs.
+Completed grader logs confirm:
 
-The upstream artifact confirms the exact 16 selected method names, JDK11,
-source commit `ec476e0e259efb62ee19804c3ff46dbbe4d1ded7`, exit status zero and
-report-filename-only patch. The hardened report guard now passed in hosted CI.
-The earlier local negative controls rejected seven malformed-report variants.
-Artifacts also contain 400 model histories and 14 real-Cassandra histories.
+| Job | Distinct passed cases | Counting boundary |
+|---|---:|---|
+| Shallow | 37 | Included again in the POC job. |
+| Model/single-node/fault | 64 | Build and grader repeat model execution; count each class/method once. |
+| Three-node | 7 | Includes the six-seed retention history case and the older retention scenario. |
+| Upstream maintainer | 16 | Eight CASTest and eight CasWriteTest methods; exact-selection guard passed. |
 
-The earlier pre-execution failure is resolved by this successful rerun. The branch
-has only documentation updates after the tested executable revision; those updates
-skip redundant CI. Atlas protocol proof gates and the outstanding work above remain
-unchanged.
+That is **71 distinct POC cases plus 16 upstream tests**, with no failed or skipped
+cases. Upstream logs report zero failures, errors and skips for both eight-test
+suites. Source remains pinned to `ec476e0e259efb62ee19804c3ff46dbbe4d1ded7`;
+upstream Ant runs on JDK11, while Atlas remains JDK25/Gradle9.1.0/Cassandra4.0.5.
+The filename-only upstream report patch and complete XML are published as artifacts.
+
+The new retention cases require 200 model histories (100 with lost replies), six
+real Cassandra histories, seven rejected/replayed storage mutants and a black-hole
+progress control. Existing coverage also runs 400 commercial model histories and
+14 real Cassandra histories. These counts are enforced by successful grader methods;
+earlier downloaded reports independently confirmed the model/mutant counts.
+
+Both retention scenarios recorded three Up/Normal peers from every node before
+their healed-state assertions. Every generated healed view must equal the exact
+final history state, with at most three read attempts per coordinator. Artifacts
+include the membership reports, `retention-healed/`, histories, policy/fault
+witnesses, JUnit reports, Cassandra logs and resource snapshot.
+
+Two intervening runs failed on authoritative reads after TCP healing, including
+one that exhausted three attempts. The harness now distinguishes TCP reachability,
+server peer membership and authoritative read recovery, and retains driver causes.
+The passing run qualifies these stronger conditions; it does not identify the
+specific cause of the earlier ambiguous reads or prove a recovery-latency SLO.
+
+Artifact downloads for the latest runs stalled in this session. The latest result
+and witnesses above were verified from completed job logs and the strict grader
+conditions; the artifact archives are available on the linked GitHub run. Do not
+claim a separate inspection of every latest archive.
+
+The previous [baseline rerun](https://github.com/kverma/codex-playground/actions/runs/37238077480/attempts/2)
+passed after the repository fix. Its earlier runner-start blocker remains resolved.
+Documentation-only changes after the executable revision skip redundant CI.
+Canonical Atlas proof gates, RF3/DC, skew/restore/archive/GC and full SDK/API flows
+remain unproven.
