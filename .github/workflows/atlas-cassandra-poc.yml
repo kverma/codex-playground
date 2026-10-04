@@ -8,7 +8,63 @@ on:
 permissions:
   contents: read
 jobs:
+  shallow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: atlas-cassandra-poc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+      - run: make grade-model
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-shallow-evidence
+          path: |
+            atlas-cassandra-poc/build/reports/
+            atlas-cassandra-poc/build/test-results/
+            atlas-cassandra-poc/build/evidence/
+  maintainer:
+    needs: shallow
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: atlas-cassandra-poc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        id: upstream-java
+        with:
+          distribution: temurin
+          java-version: '11'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+      - name: Install upstream build tools
+        run: sudo apt-get update && sudo apt-get install -y ant ant-optional
+      - run: make grade-maintainer
+        env:
+          CASSANDRA_MAINTAINER_JAVA_HOME: ${{ steps.upstream-java.outputs.path }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-maintainer-evidence
+          path: atlas-cassandra-poc/build/evidence/maintainer/
   grade:
+    needs: shallow
     runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
@@ -41,6 +97,7 @@ jobs:
       - run: make down
         if: always()
   three-node:
+    needs: shallow
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:

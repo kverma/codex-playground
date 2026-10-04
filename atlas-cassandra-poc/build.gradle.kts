@@ -48,3 +48,8 @@ listOf("Partition", "CoordinatorCrash", "Repair", "History", "Retention", "Fault
     }
 }
 tasks.register("gradeTransactions") { dependsOn(tasks.test, gradeCassandra) }
+tasks.register<Exec>("gradeMaintainer") {
+    description = "Pinned upstream Cassandra 4.0.5 phase tests in a separate JDK11/Ant process"
+    commandLine("bash", "scripts/maintainer.sh")
+    outputs.upToDateWhen { false }
+}

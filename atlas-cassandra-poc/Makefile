@@ -2,6 +2,7 @@ GRADLE ?= gradle
 .PHONY: help build test grade grade-model grade-cassandra up down clean version-check
 help:
 	@echo 'build test grade-model grade-cassandra grade-faults grade up down clean version-check'
+	@echo 'grade-maintainer (upstream 4.0.5 phase tests; separate JDK11 + Ant)'
 	@echo 'ha-up grade-full-ha ha-down (Linux Docker, 24 GiB+ memory)'
 	@echo 'three-up grade-fault-witness grade-partition grade-coordinator-crash grade-repair grade-history grade-retention three-down'
 	@echo 'grade-transactions (requires single-node fixture)'
@@ -57,3 +58,7 @@ grade-retention: version-check
 .PHONY: grade-fault-witness
 grade-fault-witness: version-check
 	$(GRADLE) --no-daemon gradeFaultWitness
+
+.PHONY: grade-maintainer
+grade-maintainer: version-check
+	$(GRADLE) --no-daemon gradeMaintainer

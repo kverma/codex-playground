@@ -99,7 +99,12 @@ and exhaustive Paxos interleaving exploration remain outstanding. RF1/DC scenari
 tests and the bounded application-history checker are described separately below.
 
 The application JVM and test proxy run on JDK25. Native protocol v4 is pinned for
-the frame-aware fault proxy. CassandraUnit is unnecessary for these real-server tests.
+the frame-aware fault proxy. See
+[testing harness assessment](docs/testing-harness-assessment.md) for the
+CassandraUnit compatibility decision and pinned upstream phase-test grader.
+GitHub runs `make grade-model` first, before either Docker job. The separate
+`make grade-maintainer` job invokes selected Cassandra4.0.5 maintainer tests in a
+JDK11/Ant subprocess; Atlas Gradle and application tests remain on JDK25.
 
 ## Three-node GitHub-hosted experiments
 
