@@ -291,7 +291,8 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
             })
             """
         )
-        let diagnosticText = diagnostics.map { String(describing: $0) } ?? "unavailable"\n        throw CLIError("Timed out waiting for Reveal.js initialization; diagnostics=\\(diagnosticText)")
+        let diagnosticText = diagnostics.map { String(describing: $0) } ?? "unavailable"
+        throw CLIError("Timed out waiting for Reveal.js initialization; diagnostics=\(diagnosticText)")
     }
 
     private func decodeJSONObject(_ value: Any?) throws -> Any {
