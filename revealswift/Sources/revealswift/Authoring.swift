@@ -251,7 +251,7 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
 }
 
 extension RevealSwiftCLI {
-    static func runDeck(_ args: [String]) async throws {
+    @MainActor static func runDeck(_ args: [String]) async throws {
         guard let subcommand = args.first else { throw CLIError(deckUsage) }
 
         switch subcommand {
@@ -307,7 +307,7 @@ extension RevealSwiftCLI {
         }
     }
 
-    static func runSlide(_ args: [String]) async throws {
+    @MainActor static func runSlide(_ args: [String]) async throws {
         guard let subcommand = args.first, args.count >= 2 else { throw CLIError(slideUsage) }
         let deckURL = URL(fileURLWithPath: args[1])
         let html = try String(contentsOf: deckURL, encoding: .utf8)
