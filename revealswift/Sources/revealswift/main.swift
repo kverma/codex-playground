@@ -25,6 +25,10 @@ struct RevealSwiftCLI {
             print("revealswift 0.1.0 (Reveal.js 6.0.2, Chart.js 4.5.1)")
         case "themes":
             try runThemes(Array(args.dropFirst()))
+        case "deck":
+            try await runDeck(Array(args.dropFirst()))
+        case "slide":
+            try await runSlide(Array(args.dropFirst()))
         case "inspect":
             try await renderCommand(Array(args.dropFirst()), mode: .inspect)
         case "screenshots":
@@ -56,9 +60,11 @@ struct RevealSwiftCLI {
         let frames = options.csvInts("--animation-frames")
 
         #if canImport(WebKit) && canImport(AppKit)
+        let deckURL = URL(fileURLWithPath: input)
+        let themePath = try resolveThemePath(explicit: options.value("--theme"), deckURL: deckURL)
         let runner = try await WebKitRunner(
-            deck: URL(fileURLWithPath: input),
-            themePath: options.value("--theme")
+            deck: deckURL,
+            themePath: themePath
         )
         switch mode {
         case .inspect:
@@ -82,6 +88,31 @@ struct RevealSwiftCLI {
         #endif
     }
 
+    static func resolveThemePath(explicit: String?, deckURL: URL) throws -> String? {
+        if let explicit { return explicit }
+
+        let html = try String(contentsOf: deckURL, encoding: .utf8)
+        guard let name = RevealDeckFactory.embeddedThemeName(in: html), !name.isEmpty else { return nil }
+
+        let fm = FileManager.default
+        let executable = URL(fileURLWithPath: CommandLine.arguments[0]).standardizedFileURL
+        let candidates = [
+            deckURL.deletingLastPathComponent().appendingPathComponent("themes").appendingPathComponent(name),
+            deckURL.deletingLastPathComponent().appendingPathComponent("Themes").appendingPathComponent(name),
+            URL(fileURLWithPath: fm.currentDirectoryPath).appendingPathComponent("Themes").appendingPathComponent(name),
+            executable.deletingLastPathComponent().appendingPathComponent("themes").appendingPathComponent(name),
+            executable.deletingLastPathComponent().appendingPathComponent("../themes").appendingPathComponent(name).standardizedFileURL
+        ]
+
+        for candidate in candidates {
+            if fm.fileExists(atPath: candidate.appendingPathComponent("theme.json").path) {
+                return candidate.path
+            }
+        }
+
+        throw CLIError("Deck requests theme '(name)' but no matching theme directory was found. Use --theme <dir> or place it under ./Themes/(name) or next to the binary under themes/(name).")
+    }
+
     static func emit(report: ReviewReport, options: Options) throws {
         print(String(decoding: try JSONIO.encode(report), as: UTF8.self))
         if options.has("--strict") || options.has("--fail-on-warnings") {
@@ -95,10 +126,12 @@ struct RevealSwiftCLI {
 
     static func printHelp() {
         print("""
-        RevealSwift — zero-Node Reveal.js renderer and QA tool
+        RevealSwift — Reveal.js authoring, rendering and QA for agents
 
         Usage:
           revealswift version
+          revealswift deck ...
+          revealswift slide ...
           revealswift themes validate <theme-dir>
           revealswift inspect <deck.html> [--theme <dir>] [--animation-frames 0,250,500] [--fail-on-errors|--strict]
           revealswift screenshots <deck.html> [--theme <dir>] [--output <dir>] [--animation-frames 0,250,500]
