@@ -14,6 +14,28 @@ It is one code/evidence review, not a claim of independent human or agent sign-o
 Several assertions were too weak to establish their advertised conditions.
 The changes below strengthen the harness before broadening product scope.
 
+## Progress snapshot — 2026-10-04
+
+| Area | Progress | Remaining boundary |
+|---|---|---|
+| Build and hosted validation | Cassandra4.0.5, JDK25, Gradle9.1.0 and Make wrappers; all four hosted jobs green. | No personal-machine dependency; this remains a bounded POC. |
+| Independent commercial histories | 400 model and 14 Cassandra histories; overlap/progress checks and six rejected storage/transition mutants. | Shared hash/codec assumptions and unobserved server phases remain. |
+| Draft identity and retention | Independent drafts receive distinct tickets without refreshing read sets; exact retries and expiry/floor closure covered. R09/R10 addressed for the candidate. | Full SDK persistence, key rotation, skew and restore behavior remain open. |
+| Independent retention histories | 200 model histories, including 100 with lost replies; six Cassandra histories; seven rejected/replayed storage mutants. | Trusted initial state and prepared inputs; 24-call/100,000-state bound. |
+| Fault and recovery evidence | Verified isolation, kill witnesses, membership recovery and full healed views matched to the checked final state. R15 strengthened. | Earlier ambiguous-read causes and recovery latency are not established. |
+| Maintainer harness | Exact 16 selected upstream tests passed; CassandraUnit compatibility assessment completed. | Upstream smoke does not validate Atlas batches or disk-sync durability. |
+
+The verified total is **71 distinct POC cases plus 16 upstream tests**. The 37
+shallow cases are included in the 64-case model/single-node/fault job; seven
+three-node cases bring the distinct POC total to 71. Generated histories are
+iterations inside these cases, not additional JUnit cases.
+
+Latest results were verified from completed CI logs and strict grader conditions.
+Latest artifact downloads stalled; all four archives are published on the linked
+run, but a separate inspection of every latest archive is outstanding. Reattempt
+that read-only evidence audit before the next protocol change; it does not require
+rerunning a green suite.
+
 ## Findings and disposition
 
 | ID | Severity | Adversarial finding | Disposition and evidence |
@@ -55,16 +77,50 @@ resource snapshot and retention events. A grader fails on missing witnesses;
 INCONCLUSIVE is never converted into a pass. Exact-request recovery attempts are
 recorded and bounded; recovery success must not be reported as an edit-latency SLO.
 
-Continue in this order after the strengthened hosted suite is green:
+## Ranked next work
 
-1. Complete production SDK persistence and signing-key/clock policy for the
-   signed-draft allocator. Expand the bounded retention specification to longer
-   and skewed histories and actual adapter Paxos phases.
-2. Validate archive-before-prune and recovery of allocator/floor facts across stale
-   snapshots; choose the production retry window and key/clock policy.
-3. Execute RF3/DC on an adequately sized remote runner; add phase-specific Paxos
-   and repair fault witnesses, then independent-host/WAN and storage-growth tests.
-4. Add provider API, compile, publication and downstream audit/event reconstruction
-   E2E flows as those components exist.
+Prioritize archive and restore safety before production SDK hardening: the SDK
+contract depends on what remains recoverable after receipts are pruned or a
+snapshot is restored. Keep the existing synthetic retry window until those
+protocol decisions are tested.
+
+| Rank | Work | Required evidence before advancing |
+|---|---|---|
+| 1 | Specify and prove archive-before-prune. | Every accepted receipt being removed has a verified durable archive record. Missing, partial, corrupt or ambiguous archive writes cannot authorize deletion. Exact retries of archive writes are idempotent; archived before/after states remain reconstructable after pruning. |
+| 2 | Prove stale-snapshot restore and allocator/floor recovery. | A snapshot predating pruning cannot reopen an expired draft/ticket or reuse an allocated operation identity. Authoring stays fenced until trusted recovery facts are reconciled; unavailable or contradictory facts fail closed. Extend the independent oracle across restore, rather than treating restored state as a fresh trusted initial state. |
+| 3 | Harden the SDK retry and signing contract. | Persist the complete Draft/Issued pair across crashes; recover lost allocation/acceptance replies without reminting the request. Define key rotation, lease validation, clock skew and the production retry window, then test their failure paths. |
+| 4 | Exercise actual Atlas batches at named Paxos/repair phases. | Instrument the pinned maintainer harness to prove selected phase messages were intercepted. Check state/receipt and floor/delete atomicity; establish repair overlap and control hint/read-repair confounders. |
+| 5 | Qualify RF3/DC, then independent hosts and storage growth. | Run the nine-node scaffold on a suitably sized remote runner with fault/resource witnesses. Follow with host/WAN failures, durability and repair/GC/tombstone growth tests. A single hosted runner cannot establish independent-host durability. |
+| 6 | Validate provider-to-downstream E2E flows. | API edits, compilation, publication and downstream reconstruction preserve revision identity, effective time and intent-change events, including retries, duplicate delivery and reordering. |
+
+### Immediate POC slice: archive and restore
+
+First define the archive contract and recovery authority in the specification.
+An archive ACK must have a stated durability meaning; a second in-memory map is
+only a model fixture. Specify which durable facts prevent reuse after restore,
+and how authoring is fenced when those facts cannot be established. Do not assume
+an atomic transaction across Cassandra and a future archive service.
+
+Add these cases to the independent model first, then the real Cassandra harness:
+
+| Injected condition | Required result / adversarial control |
+|---|---|
+| Archive unavailable, partial write or lost ACK | No pruning without verified durable coverage. Recover the exact archive write; retain unresolved receipts. A store that prunes anyway must be rejected. |
+| Crash after archive persistence, before floor/deletion CAS | Retry safely; archived data is unchanged and pruning remains idempotent. |
+| Crash during floor/deletion update | Observe a coherent old or new retained state. Split floor/delete variants must still fail the oracle. |
+| Restore a snapshot from before pruning, then replay an old lease | No renewed acceptance and no operation-ID reuse. A store that trusts the old floor without recovery/fencing must fail. |
+| Archive record missing or changed during recovery | Fail closed and retain explicit uncertainty; never invent the prior commercial state or declare recovery complete. |
+
+Example: January's offer targets NEW customers; February extends eligibility to
+NEW and CHURNED customers. After retry receipts are pruned, downstream audit must
+still reconstruct both intents and their effective periods. Restoring a January
+snapshot must not reopen an already retired operation. A configuration change
+creates a different semantic revision; passage of time alone does not.
+
+The first deliverable is a written archive/restore state machine, independent
+oracle extensions and negative controls through the existing Gradle/Make model
+gate. Only after that gate passes should the corresponding Cassandra fault cases
+be added. A concrete remote archive must eventually validate the claimed durability;
+model and Cassandra fixtures alone cannot certify that external service.
 
 PG-COMMIT, PG-CASS and other canonical Atlas proof gates remain UNPROVEN.
