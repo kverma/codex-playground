@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Google Inspired Review</title></head>
+<body>
+<div class="reveal"><div class="slides">
+<section class="title-slide">
+  <p class="eyebrow">Google-inspired</p>
+  <h1>Helpful, clear, connected.</h1>
+  <p class="subtitle">Material-like cards, bright accents, and information-forward composition.</p>
+</section>
+<section>
+  <h2>Key signals</h2>
+  <div class="google-stripe"></div>
+  <div class="three-column">
+    <div class="metric fragment" data-rs-component="metric"><div class="metric-value">4.8★</div><p>user satisfaction</p></div>
+    <div class="metric fragment" data-rs-component="metric"><div class="metric-value">72%</div><p>task completion</p></div>
+    <div class="metric fragment" data-rs-component="metric"><div class="metric-value">18m</div><p>time saved</p></div>
+  </div>
+</section>
+<section>
+  <h2>Engagement trend</h2>
+  <div class="chart" data-rs-component="chart"><canvas id="theme-chart" data-rs-inline-ok></canvas></div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => setTimeout(() => {
+      if (!window.Chart) return;
+      const s = getComputedStyle(document.documentElement);
+      const colors = [1,2,3].map(i => s.getPropertyValue('--rs-chart-' + i).trim());
+      new Chart(document.getElementById('theme-chart'), {
+        type:'bar',
+        data:{labels:['Search','Explore','Act'],datasets:[{data:[68,81,92],backgroundColor:colors}]},
+        options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}}}
+      });
+    }, 100));
+  </script>
+</section>
+</div></div>
+</body>
+</html>
