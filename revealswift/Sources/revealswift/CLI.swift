@@ -43,6 +43,8 @@ struct RevealSwiftCLI {
             try await renderCommand(Array(args.dropFirst()), mode: .review)
         case "conformance":
             try await runConformance(Array(args.dropFirst()))
+        case "visual-review":
+            try runVisualReview(Array(args.dropFirst()))
         case "help", "--help", "-h":
             printHelp()
         default:
@@ -146,6 +148,7 @@ struct RevealSwiftCLI {
           revealswift pdf <deck.html> [--theme <dir>] [--output <file.pdf>]
           revealswift review <deck.html> [--theme <dir>] [--output <dir>] [--animation-frames 0,250,500] [--pdf] [--fail-on-errors|--strict]
           revealswift conformance <deck.html> [--theme <dir>] [--output <report.json>]
+          revealswift visual-review validate <visual-review.json> [--manifest <review-manifest.json>] [--strict]
         """)
     }
 }
