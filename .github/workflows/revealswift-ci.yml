@@ -50,37 +50,7 @@ jobs:
           rm -rf conformance-artifacts
           mkdir -p conformance-artifacts
           .build/release/revealswift conformance Examples/reveal-conformance.html             --theme Themes/minimal-dark             --output conformance-artifacts/conformance.json
-          python3 - <<'PY'
-import json
-from pathlib import Path
-p = Path("conformance-artifacts/conformance.json")
-data = json.loads(p.read_text())
-assert data["failed"] == 0, data
-assert data["passed"] >= 25, data
-assert data["skipped"] == 1, data
-names = {a["name"]: a["status"] for a in data["assertions"]}
-required = [
-    "core.vertical-navigation",
-    "core.fragments.events",
-    "core.overview-enter",
-    "core.pause",
-    "core.background-color",
-    "core.background-gradient",
-    "core.background-image",
-    "core.auto-animate.event",
-    "plugin.markdown.converted",
-    "plugin.highlight.hljs",
-    "plugin.notes.content",
-    "plugin.search.navigation",
-    "plugin.zoom.activate",
-    "plugin.custom.api",
-    "library.chartjs.instance",
-    "core.image-data-uri",
-    "core.iframe-srcdoc",
-]
-missing = [name for name in required if names.get(name) != "pass"]
-assert not missing, missing
-PY
+          python3 -c 'import json; d=json.load(open("conformance-artifacts/conformance.json")); assert d["failed"]==0, d; assert d["passed"]>=25, d; assert d["skipped"]==1, d; names={a["name"]:a["status"] for a in d["assertions"]}; required=["core.vertical-navigation","core.fragments.events","core.overview-enter","core.pause","core.background-color","core.background-gradient","core.background-image","core.auto-animate.event","plugin.markdown.converted","plugin.highlight.hljs","plugin.notes.content","plugin.search.navigation","plugin.zoom.activate","plugin.custom.api","library.chartjs.instance","core.image-data-uri","core.iframe-srcdoc"]; missing=[n for n in required if names.get(n)!="pass"]; assert not missing, missing'
 
       - name: Visually review full Reveal.js conformance deck
         run: |
