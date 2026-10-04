@@ -92,12 +92,12 @@ public enum HTMLInjector {
         </script>
         """
         var out = html
-        if let range = out.range(of: "</head>", options: .caseInsensitive) {
+        if let range = out.range(of: "</head>", options: [.caseInsensitive, .backwards]) {
             out.insert(contentsOf: head + "\n", at: range.lowerBound)
         } else {
             out = "<head>\(head)</head>" + out
         }
-        if let range = out.range(of: "</body>", options: .caseInsensitive) {
+        if let range = out.range(of: "</body>", options: [.caseInsensitive, .backwards]) {
             out.insert(contentsOf: scripts + "\n", at: range.lowerBound)
         } else {
             out += scripts
