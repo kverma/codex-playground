@@ -1,0 +1,17 @@
+name: atlas-cassandra-poc
+services:
+  cassandra:
+    image: cassandra:4.0.5
+    ports: ["127.0.0.1:9042:9042"]
+    environment:
+      CASSANDRA_CLUSTER_NAME: atlas-poc
+      CASSANDRA_DC: dc1
+      CASSANDRA_RACK: rack1
+      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
+      MAX_HEAP_SIZE: 1G
+      HEAP_NEWSIZE: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh -e 'SELECT release_version FROM system.local' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
