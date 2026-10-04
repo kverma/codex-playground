@@ -18,8 +18,8 @@ jobs:
   linux-core:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: swift-actions/setup-swift@v2
+      - uses: actions/checkout@v7
+      - uses: swift-actions/setup-swift@v3
         with:
           swift-version: "6.2"
       - run: cd revealswift && swift test
@@ -27,7 +27,8 @@ jobs:
   macos-render:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - run: swift --version
       - run: cd revealswift && swift test
       - run: cd revealswift && swift build -c release
       - name: Validate bundled theme
@@ -36,7 +37,7 @@ jobs:
         run: cd revealswift && .build/release/revealswift review Examples/demo.html --theme Themes/minimal-dark --output review-artifacts --animation-frames 0,250,500 --pdf
       - name: Verify artifacts
         run: cd revealswift && test -s review-artifacts/report.json && test -s review-artifacts/deck.pdf && test -n "$(find review-artifacts/screenshots -name '*.png' -print -quit)"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: revealswift-review
