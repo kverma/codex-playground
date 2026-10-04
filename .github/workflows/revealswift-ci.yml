@@ -44,6 +44,54 @@ jobs:
       - name: Validate embedded Reveal plugins
         run: cd revealswift && .build/release/revealswift inspect Examples/plugins.html --theme Themes/minimal-dark --strict
 
+      - name: Generate agent diagnostic feedback
+        run: |
+          cd revealswift
+          rm -rf diagnostic-artifacts
+          .build/release/revealswift review Examples/diagnostics.html             --theme Themes/minimal-dark             --output diagnostic-artifacts
+
+      - name: Verify agent diagnostic feedback
+        run: |
+          cd revealswift
+          test -s diagnostic-artifacts/report.json
+          test -s diagnostic-artifacts/diagnostics.json
+          python3 - <<'PY'
+import json
+from pathlib import Path
+
+root = Path("diagnostic-artifacts")
+data = json.loads((root / "diagnostics.json").read_text())
+assert data["schemaVersion"] == 1, data
+findings = data["findings"]
+assert len(findings) >= 2, findings
+ids = [f["id"] for f in findings]
+assert len(ids) == len(set(ids)), ids
+
+tiny = next((f for f in findings if f["rule"] == "theme.fontTooSmall"), None)
+assert tiny is not None, findings
+assert tiny["slideID"] == "diagnostic-slide", tiny
+assert "#tiny-copy" in [t["selector"] for t in tiny["targets"]], tiny
+assert "This exact tiny text should appear in agent feedback." in tiny["agentFeedback"], tiny
+assert tiny["suggestedFix"], tiny
+assert tiny["screenshot"], tiny
+assert (root / tiny["screenshot"]).stat().st_size > 0, tiny
+
+for finding in findings:
+    assert finding["id"].startswith("diag-s"), finding
+    assert finding["agentFeedback"], finding
+    assert finding["suggestedFix"], finding
+    if finding.get("screenshot"):
+        assert (root / finding["screenshot"]).stat().st_size > 0, finding
+    for target in finding.get("targets", []):
+        bounds = target.get("bounds")
+        if bounds:
+            assert bounds["width"] > 0 and bounds["height"] > 0, target
+
+report = json.loads((root / "report.json").read_text())
+assert report["artifacts"]["diagnostics"] == "diagnostics.json", report
+assert report["artifacts"]["diagnosticScreenshots"] == "diagnostics/", report
+PY
+
       - name: Run Reveal.js behavioral conformance
         run: |
           cd revealswift
@@ -182,6 +230,7 @@ jobs:
             revealswift/review-artifacts
             revealswift/theme-review-artifacts
             revealswift/conformance-artifacts
+            revealswift/diagnostic-artifacts
       - uses: actions/upload-artifact@v7
         if: success()
         with:
