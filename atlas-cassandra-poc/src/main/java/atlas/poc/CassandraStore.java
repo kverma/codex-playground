@@ -18,8 +18,8 @@ public final class CassandraStore implements Store {
         String version = session.execute("SELECT release_version FROM system.local").one().getString("release_version");
         if (!"4.0.5".equals(version)) { session.close(); throw new IllegalStateException("Expected Cassandra 4.0.5, got " + version); }
         session.execute("CREATE KEYSPACE IF NOT EXISTS atlas_poc WITH replication = {'class':'NetworkTopologyStrategy','dc1':1}");
-        session.execute("CREATE TABLE IF NOT EXISTS atlas_poc.subject (subject uuid, row text, token uuid, request_hash text, cents int, churned boolean, PRIMARY KEY (subject,row))");
-        session.execute(write("INSERT INTO atlas_poc.subject (subject,row,token,cents,churned) VALUES (?,'HEAD',?,500,false) IF NOT EXISTS", subject, UUID.randomUUID()));
+        session.execute("CREATE TABLE IF NOT EXISTS atlas_poc.subject (subject uuid, row text, commit_token uuid, request_hash text, cents int, churned boolean, PRIMARY KEY (subject,row))");
+        session.execute(write("INSERT INTO atlas_poc.subject (subject,row,commit_token,cents,churned) VALUES (?,'HEAD',?,500,false) IF NOT EXISTS", subject, UUID.randomUUID()));
     }
     private SimpleStatement write(String cql, Object... args) {
         return SimpleStatement.builder(cql).addPositionalValues(args)
@@ -34,24 +34,24 @@ public final class CassandraStore implements Store {
             .setTimeout(Duration.ofSeconds(20)).build()).one();
     }
     private Intent intent(Row row) { return new Intent(row.getInt("cents"), row.getBoolean("churned")); }
-    public Head read() { Row r = row("HEAD"); return new Head(r.getUuid("token"), intent(r)); }
+    public Head read() { Row r = row("HEAD"); return new Head(r.getUuid("commit_token"), intent(r)); }
     private Receipt receipt(Request request) {
         Row r = row("OP:" + request.operation());
-        return r == null ? null : exact(new Receipt(request.operation(), r.getString("request_hash"), r.getUuid("token"), intent(r)), request);
+        return r == null ? null : exact(new Receipt(request.operation(), r.getString("request_hash"), r.getUuid("commit_token"), intent(r)), request);
     }
     public Receipt commit(Request r) {
         try {
             Receipt old = receipt(r);
             if (old != null) return old;
-            UUID token = UUID.randomUUID();
+            UUID commit_token = UUID.randomUUID();
             boolean applied = session.execute(write("""
                 BEGIN BATCH
-                  UPDATE atlas_poc.subject SET token=?, cents=?, churned=? WHERE subject=? AND row='HEAD' IF token=?;
-                  INSERT INTO atlas_poc.subject (subject,row,token,request_hash,cents,churned) VALUES (?,?,?,?,?,?) IF NOT EXISTS;
+                  UPDATE atlas_poc.subject SET commit_token=?, cents=?, churned=? WHERE subject=? AND row='HEAD' IF commit_token=?;
+                  INSERT INTO atlas_poc.subject (subject,row,commit_token,request_hash,cents,churned) VALUES (?,?,?,?,?,?) IF NOT EXISTS;
                 APPLY BATCH
-                """, token,r.intent().cents(),r.intent().churnedEligible(),subject,r.expected(),
-                subject,"OP:"+r.operation(),token,r.hash(),r.intent().cents(),r.intent().churnedEligible())).wasApplied();
-            if (applied) return new Receipt(r.operation(),r.hash(),token,r.intent());
+                """, commit_token,r.intent().cents(),r.intent().churnedEligible(),subject,r.expected(),
+                subject,"OP:"+r.operation(),commit_token,r.hash(),r.intent().cents(),r.intent().churnedEligible())).wasApplied();
+            if (applied) return new Receipt(r.operation(),r.hash(),commit_token,r.intent());
             old = receipt(r);
             if (old != null) return old;
             throw new Conflict();
