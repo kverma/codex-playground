@@ -43,6 +43,58 @@ jobs:
         run: cd revealswift && test -s review-artifacts/report.json && test -s review-artifacts/contact-sheet.png && test -s review-artifacts/deck.pdf && test -n "$(find review-artifacts/screenshots -name '*.png' -print -quit)"
       - name: Validate embedded Reveal plugins
         run: cd revealswift && .build/release/revealswift inspect Examples/plugins.html --theme Themes/minimal-dark --strict
+
+      - name: Run Reveal.js behavioral conformance
+        run: |
+          cd revealswift
+          rm -rf conformance-artifacts
+          mkdir -p conformance-artifacts
+          .build/release/revealswift conformance Examples/reveal-conformance.html             --theme Themes/minimal-dark             --output conformance-artifacts/conformance.json
+          python3 - <<'PY'
+import json
+from pathlib import Path
+p = Path("conformance-artifacts/conformance.json")
+data = json.loads(p.read_text())
+assert data["failed"] == 0, data
+assert data["passed"] >= 25, data
+assert data["skipped"] == 1, data
+names = {a["name"]: a["status"] for a in data["assertions"]}
+required = [
+    "core.vertical-navigation",
+    "core.fragments.events",
+    "core.overview-enter",
+    "core.pause",
+    "core.background-color",
+    "core.background-gradient",
+    "core.background-image",
+    "core.auto-animate.event",
+    "plugin.markdown.converted",
+    "plugin.highlight.hljs",
+    "plugin.notes.content",
+    "plugin.search.navigation",
+    "plugin.zoom.activate",
+    "plugin.custom.api",
+    "library.chartjs.instance",
+    "core.image-data-uri",
+    "core.iframe-srcdoc",
+]
+missing = [name for name in required if names.get(name) != "pass"]
+assert not missing, missing
+PY
+
+      - name: Visually review full Reveal.js conformance deck
+        run: |
+          cd revealswift
+          .build/release/revealswift review Examples/reveal-conformance.html             --theme Themes/minimal-dark             --output conformance-artifacts/review             --animation-frames 0,80,160             --pdf             --strict
+
+      - name: Verify conformance render artifacts
+        run: |
+          cd revealswift
+          test -s conformance-artifacts/conformance.json
+          test -s conformance-artifacts/review/report.json
+          test -s conformance-artifacts/review/contact-sheet.png
+          test -s conformance-artifacts/review/deck.pdf
+          test -n "$(find conformance-artifacts/review/screenshots -name '*.png' -print -quit)"
       - name: Author a deck through the CLI
         run: |
           cd revealswift
@@ -159,6 +211,7 @@ jobs:
           path: |
             revealswift/review-artifacts
             revealswift/theme-review-artifacts
+            revealswift/conformance-artifacts
       - uses: actions/upload-artifact@v7
         if: success()
         with:
