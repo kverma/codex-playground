@@ -45,7 +45,7 @@ final class CoreTests: XCTestCase {
         """
         let injected = HTMLInjector.inject(html: source, themeCSS: nil)
         let markerIndex = injected.range(of: HTMLInjector.marker)!.lowerBound
-        let outerHeadClose = injected.range(of: "</head>", options: [.caseInsensitive, .backwards])!.lowerBound
+        let outerHeadClose = injected.range(of: "</head>", options: .caseInsensitive)!.lowerBound
         XCTAssertLessThan(markerIndex, outerHeadClose)
 
         let runtimeScript = "<script src=\"revealswift://runtime/reveal.js\"></script>"
