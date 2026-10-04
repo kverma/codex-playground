@@ -69,7 +69,22 @@ jobs:
           .build/release/revealswift stack list authoring-smoke/agent-deck.html deep-dive
           .build/release/revealswift stack remove authoring-smoke/agent-deck.html deep-dive deep-dive-temp
 
+          .build/release/revealswift slide prepend authoring-smoke/agent-deck.html architecture --html '<p class="eyebrow">Agent edited</p>'
+          .build/release/revealswift slide append authoring-smoke/agent-deck.html architecture --html '<p class="caption" id="review-note">Incremental edits preserve the rest of the slide.</p>'
+          .build/release/revealswift element set-text authoring-smoke/agent-deck.html architecture 'h2' --text 'System Architecture'
+          .build/release/revealswift element set-html authoring-smoke/agent-deck.html architecture '#review-note' --html 'Reviewed through scoped DOM editing.'
+          .build/release/revealswift element add-class authoring-smoke/agent-deck.html architecture '.card' --class 'agent-edited'
+          .build/release/revealswift element get authoring-smoke/agent-deck.html architecture '#review-note'
+          .build/release/revealswift element remove-class authoring-smoke/agent-deck.html architecture '.card' --class 'agent-edited'
+
           .build/release/revealswift slide add authoring-smoke/agent-deck.html --id conclusion --after metrics --class section-slide --html '<h2>Ready for agents</h2><p>Author, review, and export with one binary.</p>'
+
+          .build/release/revealswift stack create authoring-smoke/agent-deck.html --id details --before conclusion
+          .build/release/revealswift stack add authoring-smoke/agent-deck.html details --id details-overview --html '<h2>Implementation Details</h2><div class="card" data-rs-component="card"><h3>Native HTML</h3><p>Reveal sections remain the source of truth.</p></div>'
+          .build/release/revealswift stack add authoring-smoke/agent-deck.html details --id details-runtime --html '<h2>Runtime</h2><div class="card" data-rs-component="card"><h3>WebKit</h3><p>Vertical slides render with the same offline runtime.</p></div>'
+          .build/release/revealswift element set-text authoring-smoke/agent-deck.html details-runtime 'h2' --text 'Runtime Details'
+          .build/release/revealswift stack list authoring-smoke/agent-deck.html details
+
           .build/release/revealswift slide duplicate authoring-smoke/agent-deck.html conclusion --id conclusion-copy
           .build/release/revealswift slide rename authoring-smoke/agent-deck.html conclusion-copy --id appendix
           .build/release/revealswift slide move authoring-smoke/agent-deck.html appendix --before conclusion
@@ -88,6 +103,9 @@ jobs:
           test -s authoring-smoke/agent-deck.html
           test -s authoring-smoke/review/report.json
           test -s authoring-smoke/review/contact-sheet.png
+          grep -q 'System Architecture' authoring-smoke/agent-deck.html
+          grep -q 'details-runtime' authoring-smoke/agent-deck.html
+          grep -q 'Runtime Details' authoring-smoke/agent-deck.html
 
       - name: Review reference theme decks
         run: |
