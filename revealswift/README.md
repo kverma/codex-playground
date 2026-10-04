@@ -143,6 +143,47 @@ revealswift review Examples/demo.html --theme Themes/minimal-dark --output .revi
 
 `review` writes `report.json`, a contact sheet, PNGs for slide/fragment/animation states, and optionally a PDF. Add `--fail-on-errors` to exit non-zero for structural failures, or `--strict` to fail on either errors or warnings after the artifacts are written.
 
+### Agent diagnostics
+
+When review finds layout or theme issues, RevealSwift also writes an agent-oriented correction bundle:
+
+```text
+review/
+├── report.json
+├── diagnostics.json
+├── diagnostics/
+│   ├── diag-s003-h01-v00-state-00-tbase-layout-overlap-01.png
+│   └── ...
+├── contact-sheet.png
+└── screenshots/
+```
+
+Each `diagnostics.json` finding has a stable diagnostic ID plus the exact render state and correction context:
+
+```json
+{
+  "id": "diag-s003-h01-v00-state-00-tbase-theme-fonttoosmall-01",
+  "rule": "theme.fontTooSmall",
+  "severity": "warning",
+  "slideID": "architecture",
+  "slideTitle": "System Architecture",
+  "state": 0,
+  "message": "Text is 18px; theme minimum is 26px",
+  "agentFeedback": "WARNING theme.fontTooSmall on #architecture ... Targets: #caption text=\"...\". Suggested correction: ...",
+  "suggestedFix": "Increase the target font size to the theme minimum, or reduce content so larger type fits.",
+  "targets": [
+    {
+      "selector": "#caption",
+      "text": "The exact visible text from the rendered element.",
+      "bounds": {"x": 92, "y": 824, "width": 640, "height": 34}
+    }
+  ],
+  "screenshot": "diagnostics/diag-s003-h01-v00-state-00-tbase-theme-fonttoosmall-01.png"
+}
+```
+
+The annotated PNG uses the same diagnostic ID and render state, with target boxes drawn over the actual screenshot. This gives an agent both machine-readable selectors/text and visual evidence before it edits the Reveal HTML and reruns `review`.
+
 
 ## Included reference themes
 
