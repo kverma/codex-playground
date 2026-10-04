@@ -4,7 +4,7 @@ public enum HTMLInjector {
     public static let marker = "<!-- revealswift:runtime -->"
     public static let runtimeBase = "revealswift://runtime"
 
-    public static func inject(html: String, themeCSS: String?) -> String {
+    public static func inject(html: String, themeCSS: String?, width: Int = 1920, height: Int = 1080) -> String {
         if html.contains(marker) { return html }
         let css = themeCSS.map { "<style id=\"revealswift-theme\">\($0)</style>" } ?? ""
         let head = """
@@ -43,6 +43,9 @@ public enum HTMLInjector {
             ].filter(Boolean);
 
             const deck = new Reveal(root, {
+              width: \(width),
+              height: \(height),
+              margin: 0,
               hash: false,
               controls: false,
               progress: false,
