@@ -2,8 +2,20 @@
   "name": "apple-inspired",
   "displayName": "Apple Inspired",
   "version": "1.0.0",
-  "css": ["theme.css"],
-  "allowedComponents": ["title-slide", "eyebrow", "subtitle", "two-column", "three-column", "card", "metric", "callout", "chart"],
+  "css": [
+    "theme.css"
+  ],
+  "allowedComponents": [
+    "title-slide",
+    "eyebrow",
+    "subtitle",
+    "two-column",
+    "three-column",
+    "card",
+    "metric",
+    "callout",
+    "chart"
+  ],
   "width": 1920,
   "height": 1080,
   "rules": {
@@ -15,5 +27,6 @@
     "densityWarningMax": 0.76,
     "densityMaximum": 0.86,
     "requireTitle": true
-  }
+  },
+  "appearance": "light"
 }
