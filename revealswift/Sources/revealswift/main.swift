@@ -183,10 +183,19 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
         throw CLIError("Timed out waiting for Reveal.js and fonts to initialize")
     }
 
-    private func allStates() async throws -> [DeckState] {
-        guard let raw = try await webView.evaluateJavaScript(InspectorScript.enumerateStates) as? [[String: Any]] else {
-            return []
+    private func decodeJSONObject(_ value: Any?) throws -> Any {
+        guard let json = value as? String, let data = json.data(using: .utf8) else {
+            throw CLIError("WebKit returned a non-JSON bridge value")
         }
+        return try JSONSerialization.jsonObject(with: data)
+    }
+
+    private func allStates() async throws -> [DeckState] {
+        let value = try await webView.evaluateJavaScript(InspectorScript.enumerateStates)
+        guard let raw = try decodeJSONObject(value) as? [[String: Any]] else {
+            throw CLIError("Could not decode slide state list")
+        }
+
         var result: [DeckState] = []
         for row in raw {
             guard
@@ -195,9 +204,14 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
                 let v = (row["v"] as? NSNumber)?.intValue,
                 let fragments = (row["fragments"] as? NSNumber)?.intValue
             else { continue }
+
             for state in 0...fragments {
                 result.append(DeckState(index: index, h: h, v: v, fragmentState: state))
             }
+        }
+
+        if result.isEmpty {
+            throw CLIError("Reveal.js reported zero slides")
         }
         return result
     }
@@ -225,10 +239,9 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
 
     private func inspect(_ state: DeckState, animationTime: Int?) async throws -> SlideMetrics {
         let rules = theme?.manifest.rules ?? ThemeRules()
-        guard let raw = try await webView.evaluateJavaScript(InspectorScript.javascript(rules: rules)) as? [String: Any] else {
-            return SlideMetrics(index: state.index, horizontal: state.h, vertical: state.v, state: state.fragmentState,
-                                animationTimeMs: animationTime, words: 0, characters: 0, elementCount: 0,
-                                occupancy: 0, smallestFontPx: 0, issues: [])
+        let value = try await webView.evaluateJavaScript(InspectorScript.javascript(rules: rules))
+        guard let raw = try decodeJSONObject(value) as? [String: Any] else {
+            throw CLIError("Could not decode inspection result")
         }
 
         let issues: [ReviewIssue] = (raw["issues"] as? [[String: Any]] ?? []).map { item in
