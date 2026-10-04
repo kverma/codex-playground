@@ -246,13 +246,38 @@ monotonic ticket allocator, expiry floor and last-issued deadline. At most 16
 allocated ticket rows (accepted or unresolved) remain logically live. Issuing a
 17th ticket rejects with CAPACITY until eligible compaction frees space.
 
-The edit helper derives an operation UUID from the subject namespace and next
-allocator sequence. Issue validates this namespace, returns the same signed ticket
-on exact retry, and rejects changed payloads as KEY_REUSE. Tickets bind subject,
-sequence, operation, request hash and expiry using HMAC-SHA256. Changing an expiry,
-request, sequence or subject invalidates the ticket. Reissuing a retired operation
-is REQUEST_TOO_OLD. Allocation response loss therefore has an exact retry path;
-clients must preserve the full request and ticket, not create a new ID to resolve it.
+Concurrent clients use a signed prepared draft, then server allocation:
+
+```java
+Snapshot observed = store.view().snapshot();
+Draft draft = store.prepare(observed, Map.of(Group.ROYALTY, "2000"));
+Issued issued = store.issueDraft(draft);
+Receipt receipt = store.commit(issued.ticket(), issued.request());
+```
+
+The draft binds subject, nonce, allocator anchor, expiry and the original request
+hash. Independent drafts from the same snapshot have distinct nonces. The server
+assigns a sequence and subject-scoped operation UUID through the metadata CAS,
+without refreshing original group read versions. Request hashing excludes the
+operation UUID, so allocation preserves its semantic/dependency binding. A retained
+nonce/lease index recovers the same ticket on exact issue retry; changed payload
+under the same nonce, anchor and expiry is KEY_REUSE. The nonce index is SHA-256 of
+that lease identity; HMAC additionally authenticates its request hash.
+
+Clients must preserve the full immutable Draft and Issued records. Re-preparing,
+even with the same nonce/payload, can mint a different lease and is a new operation,
+not recovery. An unissued lease closes at its signed deadline **or anchor retirement**.
+This conservative fence can close an unissued draft before its deadline. Once
+issued, exact replay uses the retained ticket row even if its original anchor has
+retired; its own sequence/floor decides closure after pruning. Clock rollback cannot
+reopen the original pruned lease. Authentication/key rotation remain separate gates.
+
+Tickets bind subject, assigned sequence/operation, request hash and expiry with
+HMAC-SHA256. Allocation can extend the deadline to preserve monotonic ticket expiry.
+The old `edit`/`issue(Request)` helpers remain only for sequential legacy fixtures;
+they still choose the next slot and must not be used for concurrent drafts. The
+versioned disposable table is `retained_subject_v2`, with a `draft_id` column;
+no production schema migration is implied.
 
 | Situation | Result |
 |---|---|
@@ -289,8 +314,43 @@ archive availability and long-running storage growth are not certified here.
 single-node contract also checks session restart. `make grade-retention` (after
 `make three-up`) checks floor advancement under a 2-vs-1 partition and replay after
 healing. CI stores its scenario events in `build/evidence/retention-three.json`.
-These scenario assertions do not extend the independent history checker's semantics
-or claim exhaustive retention linearizability.
+The retention grader also runs six fresh-subject cross-DC histories, including
+one verified partition and post-heal reads of all coordinators. They combine
+server allocation, concurrent group edits, exact retries, expiry/pruning, closed
+old leases and a new sequence after pruning.
+
+`RetentionChecker` separately specifies lease authentication, allocation, capacity,
+retained receipts, monotonic floors and atomic prefix deletion. It does not call
+`Retention.Base` transitions or `Transactions.check/apply`; commercial transitions
+use the existing independent `HistoryChecker`, retaining its accepted-operation
+ledger throughout a history, including after storage pruning. Metadata UUIDs are
+checked when visible; unobserved intermediate CAS tokens are not reconstructed.
+Request hashing/record codecs remain shared and retain the existing canonical-vector
+coverage limitation.
+
+Bounds: 24 calls and 100,000 search states. The injected clock is fixed during
+concurrent phases and advances only after joins and exact recovery. Overlapping
+calls with different clock values are INCONCLUSIVE. Ambiguous mutations may have no
+effect or a coherent full effect; unresolved acceptance without an observable
+receipt makes a failed search INCONCLUSIVE rather than an invented violation.
+All INCONCLUSIVE results fail workload grading. This is a controlled-clock profile,
+not a clock-skew or expiry-at-an-arbitrary-Paxos-phase proof.
+
+The model grader generates 200 histories, half with lost allocation/acceptance
+replies. Recorded issue calls and commit calls must overlap, independent leases
+must receive distinct tickets, recovery must terminate, at least one acceptance
+must exist, and the final authoritative view must succeed. A black-hole transport
+has a LINEARIZABLE no-effect history but must fail recovery/progress checks.
+Seven actual broken storage hooks must be NON_LINEARIZABLE and replay from saved
+JSON: delete without floor, floor without delete, floor rollback, allocator rewind,
+omitted receipt, lost independent group update and visible metadata UUID reuse.
+Counterexamples are complete bounded histories; no minimality claim is made.
+
+Evidence: `build/evidence/retention-model/`, `retention-cassandra/`,
+`retention-mutants/` and `retention-controls/`. Every saved history includes subject,
+seed, trusted initial view, requests/results, call intervals, controlled clock
+values and bounded verdict. The signing key is the explicitly synthetic test
+profile in `RetentionContract`; no production secret is saved.
 
 ## Adversarial validation review
 
@@ -320,7 +380,7 @@ are outside that authoritative policy log. Timeout routing is not inferred from 
 ACK that never arrived. Kill evidence in `verified-kills.jsonl` verifies a running
 target followed by stopped state, exit 137 and no OOM before restart.
 
-The retention candidate's draft helper can choose the same next allocator slot for
-two independent drafts, producing KEY_REUSE on the second issue. A contract test now
-exposes this limitation. It is a separate retention experiment, not yet a combined
-independent-TermGroup/retention SDK design; production integration remains open.
+The prepared-draft candidate separates nonce/lease identity from allocation and
+preserves independent TermGroup edits. Its shared model/Cassandra contracts and
+independent retention histories qualify bounded fixture behavior only. Production
+SDK persistence, archives, skew/restore/GC and RF3/DC qualification remain open.
