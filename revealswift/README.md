@@ -78,6 +78,45 @@ revealswift slide remove atlas.html appendix
 revealswift deck validate atlas.html
 ```
 
+Incremental edits avoid replacing a whole slide:
+
+```bash
+revealswift slide prepend atlas.html architecture --html '<p class="eyebrow">System design</p>'
+revealswift slide append atlas.html architecture --html '<p class="caption">Updated by the agent</p>'
+
+revealswift element get atlas.html architecture '.two-column' --outer
+revealswift element set-text atlas.html architecture 'h2' --text 'System Architecture'
+revealswift element set-html atlas.html architecture '.callout' --html '<strong>New callout</strong>'
+revealswift element add-class atlas.html architecture '.two-column' --class 'review-grid'
+revealswift element remove-class atlas.html architecture '.two-column' --class 'review-grid'
+revealswift element remove atlas.html architecture '.obsolete-note'
+```
+
+Element selectors are always scoped to the selected slide. The slide selector may be a top-level slide ID/index or a vertical child slide ID.
+
+Reveal vertical stacks are first-class:
+
+```bash
+revealswift stack create atlas.html --id architecture-deep-dive --after architecture
+
+revealswift stack add atlas.html architecture-deep-dive \
+  --id architecture-overview \
+  --html '<h2>Overview</h2><p>High-level architecture.</p>'
+
+revealswift stack add atlas.html architecture-deep-dive \
+  --id architecture-details \
+  --html '<h2>Details</h2><p>Implementation detail.</p>'
+
+revealswift stack list atlas.html architecture-deep-dive
+
+revealswift stack move atlas.html architecture-deep-dive architecture-details \
+  --before architecture-overview
+
+revealswift stack remove atlas.html architecture-deep-dive architecture-overview
+```
+
+Vertical children retain normal Reveal.js nested-`<section>` semantics. Content-oriented commands such as `slide get`, `slide set`, `slide append`, and `slide prepend` can address a vertical child by stable ID, while top-level structural move/remove commands remain stack-safe.
+
 Incremental editing avoids replacing a whole slide:
 
 ```bash
