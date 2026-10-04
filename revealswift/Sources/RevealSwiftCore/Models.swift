@@ -150,6 +150,135 @@ public struct DiagnosticsReport: Codable, Sendable, Equatable {
     }
 }
 
+
+public struct VisualReviewItem: Codable, Sendable, Equatable {
+    public var id: String
+    public var kind: String
+    public var image: String
+    public var slideIndex: Int?
+    public var horizontal: Int?
+    public var vertical: Int?
+    public var slideID: String?
+    public var slideTitle: String?
+    public var state: Int?
+    public var animationTimeMs: Int?
+    public var diagnosticIDs: [String]
+    public var reviewFocus: [String]
+
+    public init(id: String, kind: String, image: String, slideIndex: Int? = nil,
+                horizontal: Int? = nil, vertical: Int? = nil, slideID: String? = nil,
+                slideTitle: String? = nil, state: Int? = nil, animationTimeMs: Int? = nil,
+                diagnosticIDs: [String] = [], reviewFocus: [String] = []) {
+        self.id = id
+        self.kind = kind
+        self.image = image
+        self.slideIndex = slideIndex
+        self.horizontal = horizontal
+        self.vertical = vertical
+        self.slideID = slideID
+        self.slideTitle = slideTitle
+        self.state = state
+        self.animationTimeMs = animationTimeMs
+        self.diagnosticIDs = diagnosticIDs
+        self.reviewFocus = reviewFocus
+    }
+}
+
+public struct VisualReviewOutputContract: Codable, Sendable, Equatable {
+    public var schemaVersion: Int
+    public var outputFile: String
+    public var requiredTopLevelFields: [String]
+    public var allowedDecisions: [String]
+    public var allowedSeverities: [String]
+    public var allowedCategories: [String]
+
+    public init(schemaVersion: Int = 1,
+                outputFile: String = "visual-review.json",
+                requiredTopLevelFields: [String],
+                allowedDecisions: [String],
+                allowedSeverities: [String],
+                allowedCategories: [String]) {
+        self.schemaVersion = schemaVersion
+        self.outputFile = outputFile
+        self.requiredTopLevelFields = requiredTopLevelFields
+        self.allowedDecisions = allowedDecisions
+        self.allowedSeverities = allowedSeverities
+        self.allowedCategories = allowedCategories
+    }
+}
+
+public struct VisualReviewManifest: Codable, Sendable, Equatable {
+    public var schemaVersion: Int
+    public var deck: String
+    public var generatedAt: Date
+    public var reviewerRole: String
+    public var instructions: [String]
+    public var criteria: [String]
+    public var deterministicDiagnostics: String
+    public var items: [VisualReviewItem]
+    public var outputContract: VisualReviewOutputContract
+
+    public init(schemaVersion: Int = 1, deck: String, generatedAt: Date,
+                reviewerRole: String, instructions: [String], criteria: [String],
+                deterministicDiagnostics: String, items: [VisualReviewItem],
+                outputContract: VisualReviewOutputContract) {
+        self.schemaVersion = schemaVersion
+        self.deck = deck
+        self.generatedAt = generatedAt
+        self.reviewerRole = reviewerRole
+        self.instructions = instructions
+        self.criteria = criteria
+        self.deterministicDiagnostics = deterministicDiagnostics
+        self.items = items
+        self.outputContract = outputContract
+    }
+}
+
+public struct VisualReviewFinding: Codable, Sendable, Equatable {
+    public var id: String
+    public var severity: Severity
+    public var category: String
+    public var reviewItemID: String
+    public var slideID: String?
+    public var slideIndex: Int?
+    public var description: String
+    public var evidence: String
+    public var suggestedFix: String
+
+    public init(id: String, severity: Severity, category: String, reviewItemID: String,
+                slideID: String? = nil, slideIndex: Int? = nil, description: String,
+                evidence: String, suggestedFix: String) {
+        self.id = id
+        self.severity = severity
+        self.category = category
+        self.reviewItemID = reviewItemID
+        self.slideID = slideID
+        self.slideIndex = slideIndex
+        self.description = description
+        self.evidence = evidence
+        self.suggestedFix = suggestedFix
+    }
+}
+
+public struct VisualReviewResult: Codable, Sendable, Equatable {
+    public var schemaVersion: Int
+    public var deck: String
+    public var reviewerRole: String
+    public var decision: String
+    public var summary: String
+    public var findings: [VisualReviewFinding]
+
+    public init(schemaVersion: Int = 1, deck: String, reviewerRole: String,
+                decision: String, summary: String, findings: [VisualReviewFinding]) {
+        self.schemaVersion = schemaVersion
+        self.deck = deck
+        self.reviewerRole = reviewerRole
+        self.decision = decision
+        self.summary = summary
+        self.findings = findings
+    }
+}
+
 public struct SlideMetrics: Codable, Sendable, Equatable {
     public var index: Int
     public var horizontal: Int
