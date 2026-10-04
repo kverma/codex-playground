@@ -114,6 +114,8 @@ final class RevealDOMEditor: NSObject, WKNavigationDelegate {
         let result = try await evaluateJSON("""
         (() => {
           const doc = new DOMParser().parseFromString((js(html)), 'text/html');
+          const container = doc.querySelector('.reveal > .slides') || doc.querySelector('.reveal .slides');
+          if (!container) return { error:'Missing .reveal .slides container' };
           const slide = (slidePicker(selector));
           if (!slide) return { error:'Slide not found: (escapedForTemplate(selector))' };
           return { value: (outer ? "slide.outerHTML" : "slide.innerHTML") };
@@ -267,6 +269,7 @@ extension RevealSwiftCLI {
             let outline = options.value("--outline")?.split(separator: ",").map { String($0).trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } ?? []
             let slideCount = options.value("--slides").flatMap(Int.init)
             let html = RevealDeckFactory.create(title: title, theme: options.value("--theme"), outline: outline, slideCount: slideCount)
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try html.write(to: url, atomically: true, encoding: .utf8)
             print(url.path)
 
