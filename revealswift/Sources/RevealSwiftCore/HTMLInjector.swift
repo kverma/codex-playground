@@ -54,6 +54,10 @@ public enum HTMLInjector {
 
             const deck = new Reveal(root, {
               ...requestedConfig,
+              katex: {
+                ...(requestedConfig.katex || {}),
+                local: "\(runtimeBase)/katex"
+              },
               width: \(width),
               height: \(height),
               margin: 0,
