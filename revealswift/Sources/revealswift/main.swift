@@ -180,7 +180,7 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
 
     private func load() async throws {
         let raw = try String(contentsOf: deckURL, encoding: .utf8)
-        let injected = HTMLInjector.inject(html: raw, themeCSS: theme?.combinedCSS)
+        let injected = HTMLInjector.inject(html: raw, themeCSS: theme?.combinedCSS, width: width, height: height)
 
         try await withCheckedThrowingContinuation { continuation in
             navigationContinuation = continuation
@@ -331,6 +331,7 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
         let states = try await allStates()
         let samples: [Int?] = animationFrames.isEmpty ? [nil] : animationFrames.map(Optional.some)
         var metrics: [SlideMetrics] = []
+        var canonicalScreenshots: [Int: URL] = [:]
 
         for state in states {
             try await go(to: state)
@@ -341,13 +342,25 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
                     let suffix = sample.map { String(format: "-t%04d", $0) } ?? ""
                     let name = String(format: "slide-%03d-h%02d-v%02d-state-%02d%@.png",
                                       state.index + 1, state.h, state.v, state.fragmentState, suffix)
-                    try await snapshot(to: screenshotDir.appendingPathComponent(name))
+                    let screenshotURL = screenshotDir.appendingPathComponent(name)
+                    try await snapshot(to: screenshotURL)
+                    canonicalScreenshots[state.index] = screenshotURL
                 }
             }
         }
 
         var artifacts: [String: String] = [:]
-        if screenshots { artifacts["screenshots"] = "screenshots/" }
+        if screenshots {
+            artifacts["screenshots"] = "screenshots/"
+            if let output, !canonicalScreenshots.isEmpty {
+                let contactSheetURL = output.appendingPathComponent("contact-sheet.png")
+                try createContactSheet(
+                    imageURLs: canonicalScreenshots.keys.sorted().compactMap { canonicalScreenshots[$0] },
+                    output: contactSheetURL
+                )
+                artifacts["contactSheet"] = "contact-sheet.png"
+            }
+        }
         if pdf, let output {
             let pdfURL = output.appendingPathComponent("deck.pdf")
             try await exportPDF(to: pdfURL)
@@ -373,6 +386,54 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
             try JSONIO.encode(report).write(to: output.appendingPathComponent("report.json"))
         }
         return report
+    }
+
+    private func createContactSheet(imageURLs: [URL], output: URL) throws {
+        guard !imageURLs.isEmpty else { return }
+
+        let columns = min(4, imageURLs.count)
+        let rows = Int(ceil(Double(imageURLs.count) / Double(columns)))
+        let thumbnailWidth: CGFloat = 360
+        let thumbnailHeight = thumbnailWidth * CGFloat(height) / CGFloat(width)
+        let labelHeight: CGFloat = 28
+        let gap: CGFloat = 20
+        let inset: CGFloat = 24
+        let cellHeight = thumbnailHeight + labelHeight
+        let sheetSize = NSSize(
+            width: inset * 2 + CGFloat(columns) * thumbnailWidth + CGFloat(max(0, columns - 1)) * gap,
+            height: inset * 2 + CGFloat(rows) * cellHeight + CGFloat(max(0, rows - 1)) * gap
+        )
+
+        let sheet = NSImage(size: sheetSize)
+        sheet.lockFocus()
+        NSColor(calibratedWhite: 0.08, alpha: 1).setFill()
+        NSRect(origin: .zero, size: sheetSize).fill()
+
+        let labelAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 16, weight: .semibold),
+            .foregroundColor: NSColor.white
+        ]
+
+        for (offset, url) in imageURLs.enumerated() {
+            guard let image = NSImage(contentsOf: url) else { continue }
+            let column = offset % columns
+            let row = offset / columns
+            let x = inset + CGFloat(column) * (thumbnailWidth + gap)
+            let yFromTop = inset + CGFloat(row) * (cellHeight + gap)
+            let y = sheetSize.height - yFromTop - cellHeight
+            let imageRect = NSRect(x: x, y: y + labelHeight, width: thumbnailWidth, height: thumbnailHeight)
+            image.draw(in: imageRect, from: .zero, operation: .sourceOver, fraction: 1)
+            let label = "Slide \(offset + 1)" as NSString
+            label.draw(at: NSPoint(x: x, y: y + 5), withAttributes: labelAttributes)
+        }
+
+        sheet.unlockFocus()
+        guard let tiff = sheet.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiff),
+              let png = bitmap.representation(using: .png, properties: [:]) else {
+            throw CLIError("Could not encode contact sheet")
+        }
+        try png.write(to: output)
     }
 
     func exportPDF(to url: URL) async throws {
