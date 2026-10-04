@@ -10,6 +10,12 @@
   --rs-gap: 36px;
   --rs-radius: 28px;
 }
+html, body, .reveal-viewport {
+  background-color: var(--rs-bg) !important;
+  color: var(--rs-text);
+  color-scheme: light;
+}
+.reveal { background-color: var(--rs-bg); }
 html, body { background: var(--rs-bg); }
 .reveal {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
