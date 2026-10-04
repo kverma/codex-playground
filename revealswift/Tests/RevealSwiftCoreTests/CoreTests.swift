@@ -112,6 +112,39 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(RevealDeckFactory.embeddedThemeName(in: changed), "apple-inspired")
     }
 
+    func testDiagnosticsReportEncodesAgentFeedbackAndTargets() throws {
+        let target = ReviewIssueTarget(
+            selector: "#tiny-copy",
+            text: "This exact tiny text should appear in agent feedback.",
+            bounds: ReviewBounds(x: 72, y: 140, width: 400, height: 32)
+        )
+        let finding = DiagnosticFinding(
+            id: "diag-s001-h00-v00-state-00-tbase-theme-fonttoosmall-01",
+            severity: .warning,
+            rule: "theme.fontTooSmall",
+            message: "Text is 12px; theme minimum is 26px",
+            agentFeedback: "Increase the target font size.",
+            suggestedFix: "Increase the target font size to the theme minimum.",
+            slideIndex: 1,
+            horizontal: 0,
+            vertical: 0,
+            slideID: "diagnostic-slide",
+            slideTitle: "Diagnostic feedback fixture",
+            state: 0,
+            animationTimeMs: nil,
+            targets: [target],
+            screenshot: "diagnostics/diag.png"
+        )
+        let report = DiagnosticsReport(deck: "diagnostics.html", generatedAt: Date(timeIntervalSince1970: 0), findings: [finding])
+        let data = try JSONIO.encode(report)
+        let json = String(decoding: data, as: UTF8.self)
+        XCTAssertTrue(json.contains("\"schemaVersion\""))
+        XCTAssertTrue(json.contains("diagnostic-slide"))
+        XCTAssertTrue(json.contains("#tiny-copy"))
+        XCTAssertTrue(json.contains("This exact tiny text should appear in agent feedback."))
+        XCTAssertTrue(json.contains("diagnostics/diag.png"))
+    }
+
     func testInspectorContainsOverlapAndThemeRules() {
         let js = InspectorScript.javascript(rules: ThemeRules())
         XCTAssertTrue(js.contains("layout.overlap"))
@@ -121,5 +154,8 @@ final class CoreTests: XCTestCase {
         XCTAssertTrue(js.contains("theme.tooManyColumns"))
         XCTAssertTrue(js.contains("theme.unknownComponent"))
         XCTAssertTrue(js.contains("theme.appearanceMismatch"))
+        XCTAssertTrue(js.contains("targetOf"))
+        XCTAssertTrue(js.contains("slideID"))
+        XCTAssertTrue(js.contains("issue.targets"))
     }
 }
