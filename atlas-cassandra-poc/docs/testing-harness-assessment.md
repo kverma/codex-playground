@@ -93,21 +93,22 @@ The allocator collision and independent retention oracle remain the next
 application-protocol work. Selecting a different harness does not close those
 findings. Atlas proof gates remain UNPROVEN.
 
-## Verified execution and current limit
+## Verified cloud execution
 
-[Run 37237300779](https://github.com/kverma/codex-playground/actions/runs/37237300779)
-at `a187a64a0e993044dfd873d11822c3bdf16dd108` passed all four jobs. Downloaded XML
-reports show 29 shallow model tests, 52 tests in the model/single-node/fault job
-(including those same 29), six three-node tests and 16 upstream tests. That is
-58 distinct POC tests plus 16 upstream tests, with zero failures, errors or skips.
-The upstream artifact records JDK11, the exact pinned source commit and the
-report-filename-only patch. The subsequent exact-method guard passed locally
-against both upstream XML files and rejected seven malformed-report controls.
+[Run 37238077480, attempt 2](https://github.com/kverma/codex-playground/actions/runs/37238077480/attempts/2)
+at `e387d20022dc0ff676b78e25a9681887640501b5` passed all four jobs after the
+repository fix. Downloaded XML reports confirm 29 shallow model tests, 52 tests
+in the model/single-node/fault job (including those same 29), six three-node tests
+and 16 upstream tests. That is 58 distinct POC tests plus 16 upstream tests,
+with zero failures, errors or skips.
 
-The follow-up cloud run
-[37238077480](https://github.com/kverma/codex-playground/actions/runs/37238077480)
-at `e387d20022dc0ff676b78e25a9681887640501b5` failed before any runner steps;
-the downstream jobs were skipped and no job log was available. An earlier retry
-showed the same pre-execution failure. Removing concurrency configuration did not
-resolve it. The cause is unestablished; the latest revision is not claimed green.
-No application or Cassandra protocol code changed after the verified run.
+The upstream artifact confirms the exact 16 selected method names, JDK11,
+source commit `ec476e0e259efb62ee19804c3ff46dbbe4d1ded7`, exit status zero and
+report-filename-only patch. The hardened report guard now passed in hosted CI.
+The earlier local negative controls rejected seven malformed-report variants.
+Artifacts also contain 400 model histories and 14 real-Cassandra histories.
+
+The earlier pre-execution failure is resolved by this successful rerun. The branch
+has only documentation updates after the tested executable revision; those updates
+skip redundant CI. Atlas protocol proof gates and the outstanding work above remain
+unchanged.
