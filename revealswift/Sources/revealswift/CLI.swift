@@ -29,6 +29,10 @@ struct RevealSwiftCLI {
             try await runDeck(Array(args.dropFirst()))
         case "slide":
             try await runSlide(Array(args.dropFirst()))
+        case "element":
+            try await runElement(Array(args.dropFirst()))
+        case "stack":
+            try await runStack(Array(args.dropFirst()))
         case "inspect":
             try await renderCommand(Array(args.dropFirst()), mode: .inspect)
         case "screenshots":
@@ -132,6 +136,8 @@ struct RevealSwiftCLI {
           revealswift version
           revealswift deck ...
           revealswift slide ...
+          revealswift element ...
+          revealswift stack ...
           revealswift themes validate <theme-dir>
           revealswift inspect <deck.html> [--theme <dir>] [--animation-frames 0,250,500] [--fail-on-errors|--strict]
           revealswift screenshots <deck.html> [--theme <dir>] [--output <dir>] [--animation-frames 0,250,500]
