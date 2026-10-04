@@ -274,8 +274,135 @@ extension WebKitRunner {
           check('plugin.markdown.converted', Boolean(md?.querySelector('h2') && md?.querySelectorAll('li').length === 2),
             md?.innerText?.trim() || null);
           check('plugin.markdown.parsed-marker', md?.hasAttribute('data-markdown-parsed') === true);
-          const split = plugin?.slidify?.('A\\n---\\nB\\n--\\nC') || '';
-          check('plugin.markdown.slidify', split.includes('<section') && split.split('<section').length >= 4);
+          const split = plugin?.slidify?.(
+            'A\\n---\\nB\\n--\\nC',
+            { verticalSeparator: '^\\n--\\n
+        } catch (error) {
+          fail('plugin.markdown', String(error));
+        }
+
+        try {
+          const code = document.querySelector('#highlight-slide pre code');
+          check('plugin.highlight.hljs', Boolean(code?.classList.contains('hljs')));
+          check('plugin.highlight.tokens', Boolean(code?.querySelector('[class*="hljs-"]')));
+          check('plugin.highlight.line-numbers', Boolean(code?.querySelector('table.hljs-ln')));
+          const generatedSteps = document.querySelectorAll('#highlight-slide pre code.fragment').length;
+          check('plugin.highlight.step-fragments', generatedSteps >= 1, 'generated=' + generatedSteps);
+        } catch (error) {
+          fail('plugin.highlight', String(error));
+        }
+
+        try {
+          const notes = deck.getPlugin('notes');
+          const aside = document.querySelector('#notes-slide aside.notes');
+          check('plugin.notes.api', typeof notes?.open === 'function');
+          check('plugin.notes.content', aside?.textContent?.includes('Speaker note E2E') === true,
+            aside?.textContent?.trim() || null);
+        } catch (error) {
+          fail('plugin.notes', String(error));
+        }
+
+        try {
+          const search = deck.getPlugin('search');
+          search.open();
+          await delay(10);
+          const box = root.querySelector('.searchbox');
+          const input = box?.querySelector('.searchinput');
+          check('plugin.search.open', Boolean(box && input && box.style.display === 'inline'));
+
+          if (input) {
+            input.value = 'E2E-needle-unique';
+            const typeEvent = new KeyboardEvent('keyup', {key:'e', bubbles:true});
+            Object.defineProperty(typeEvent, 'keyCode', {get: () => 69});
+            input.dispatchEvent(typeEvent);
+            const enterEvent = new KeyboardEvent('keyup', {key:'Enter', bubbles:true});
+            Object.defineProperty(enterEvent, 'keyCode', {get: () => 13});
+            input.dispatchEvent(enterEvent);
+            await delay(30);
+          }
+          check('plugin.search.navigation', deck.getCurrentSlide()?.id === 'search-target',
+            deck.getCurrentSlide()?.id || null);
+          search.close();
+          check('plugin.search.close', box?.style.display === 'none');
+        } catch (error) {
+          fail('plugin.search', String(error));
+        }
+
+        try {
+          await goTo('zoom-target');
+          const zoom = deck.getPlugin('zoom');
+          const event = new MouseEvent('mousedown', {
+            bubbles:true,
+            clientX:Math.max(40, window.innerWidth / 2),
+            clientY:Math.max(40, window.innerHeight / 2),
+            altKey:true
+          });
+          root.dispatchEvent(event);
+          await delay(20);
+          const zoomed = document.documentElement.classList.contains('zoomed') ||
+            (document.body.style.transform || '').includes('scale');
+          check('plugin.zoom.activate', zoomed, document.body.style.transform || null);
+          zoom?.destroy?.();
+          await delay(10);
+          check('plugin.zoom.reset',
+            !document.documentElement.classList.contains('zoomed') &&
+            !(document.body.style.transform || '').includes('scale'));
+        } catch (error) {
+          fail('plugin.zoom', String(error));
+        }
+
+        try {
+          await goTo('chart-slide');
+          await delay(80);
+          const canvas = document.getElementById('conformance-chart');
+          const chart = window.Chart?.getChart?.(canvas);
+          check('library.chartjs.instance', Boolean(chart));
+          check('library.chartjs.data', chart?.data?.labels?.length === 3 && chart?.data?.datasets?.[0]?.data?.length === 3);
+        } catch (error) {
+          fail('library.chartjs', String(error));
+        }
+
+        try {
+          await goTo('media-slide');
+          const image = document.getElementById('inline-image');
+          const frame = document.getElementById('inline-frame');
+          check('core.image-data-uri', Boolean(image?.complete && image?.naturalWidth > 0),
+            image ? 'naturalWidth=' + image.naturalWidth : null);
+          let frameText = '';
+          try { frameText = frame?.contentDocument?.body?.textContent || ''; } catch (_) {}
+          check('core.iframe-srcdoc', frameText.includes('Inline iframe E2E'), frameText.trim() || null);
+        } catch (error) {
+          fail('core.embedded-media', String(error));
+        }
+
+        try {
+          const custom = deck.getPlugin('custom-e2e');
+          check('plugin.custom.api', typeof custom?.ping === 'function' && custom.ping() === 'pong');
+        } catch (error) {
+          fail('plugin.custom.api', String(error));
+        }
+
+        return JSON.stringify(results);
+        """
+
+        let value = try await webView.callAsyncJavaScript(
+            "return await (async () => { \(script) })();",
+            arguments: [:],
+            in: nil,
+            contentWorld: .page
+        )
+
+        guard let json = value as? String, let data = json.data(using: .utf8) else {
+            throw CLIError("Conformance bridge returned a non-JSON value")
+        }
+        return try JSONDecoder().decode([ConformanceAssertion].self, from: data)
+    }
+}
+#endif
+ }
+          ) || '';
+          const sectionCount = (split.match(/<section/g) || []).length;
+          check('plugin.markdown.slidify', sectionCount >= 4, 'sections=' + sectionCount);
         } catch (error) {
           fail('plugin.markdown', String(error));
         }
