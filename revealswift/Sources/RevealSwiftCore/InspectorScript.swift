@@ -28,7 +28,7 @@ public enum InspectorScript {
           };
           const targetOf = el => {
             const r = el.getBoundingClientRect();
-            const text = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+            const text = (el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim();
             return {
               selector: selector(el),
               text: text ? text.slice(0, 220) : null,
