@@ -32,6 +32,32 @@ final class CoreTests: XCTestCase {
         XCTAssertTrue(injected.contains("srcdoc=\"<!doctype html><html><body>nested</body></html>\""))
     }
 
+    func testInjectorTargetsOutermostClosingTags() {
+        let source = """
+        <!doctype html>
+        <html>
+        <head><title>Outer</title></head>
+        <body>
+          <iframe srcdoc="<!doctype html><html><head></head><body><p>Inner</p></body></html>"></iframe>
+          <div class="reveal"><div class="slides"><section>Slide</section></div></div>
+        </body>
+        </html>
+        """
+        let injected = HTMLInjector.inject(html: source, themeCSS: nil)
+        let markerIndex = injected.range(of: HTMLInjector.marker)!.lowerBound
+        let outerHeadClose = injected.range(of: "</head>", options: [.caseInsensitive, .backwards])!.lowerBound
+        XCTAssertLessThan(markerIndex, outerHeadClose)
+
+        let runtimeScript = "<script src=\"revealswift://runtime/reveal.js\"></script>"
+        let scriptIndex = injected.range(of: runtimeScript)!.lowerBound
+        let outerBodyClose = injected.range(of: "</body>", options: [.caseInsensitive, .backwards])!.lowerBound
+        XCTAssertLessThan(scriptIndex, outerBodyClose)
+
+        let srcdocEnd = injected.range(of: "Inline iframe E2E")?.upperBound
+        XCTAssertNil(srcdocEnd)
+        XCTAssertEqual(injected.components(separatedBy: runtimeScript).count - 1, 1)
+    }
+
     func testEmbeddedRuntimeDecodesPinnedAssets() throws {
         let reveal = try XCTUnwrap(EmbeddedRuntime.asset(path: "/reveal.js"))
         let chart = try XCTUnwrap(EmbeddedRuntime.asset(path: "/chart.js"))
