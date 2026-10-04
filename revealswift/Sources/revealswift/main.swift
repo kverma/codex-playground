@@ -219,7 +219,7 @@ final class WebKitRunner: NSObject, WKNavigationDelegate {
                 "JSON.stringify({dom:document.querySelectorAll('.reveal .slides section').length,runtime:window.__revealswiftRuntime || null})"
             )
             let diagnosticText = diagnostics.map { String(describing: $0) } ?? "unavailable"
-            throw CLIError("Reveal.js reported zero slides; diagnostics=\\(diagnosticText)")
+            throw CLIError("Reveal.js reported zero slides; diagnostics=\(diagnosticText)")
         }
         return result
     }
