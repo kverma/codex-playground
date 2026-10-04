@@ -39,3 +39,38 @@ jobs:
             atlas-cassandra-poc/build/cassandra.log
       - run: make down
         if: always()
+  three-node:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: atlas-cassandra-poc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+      - run: make three-up
+      - run: make grade-partition
+      - run: make grade-coordinator-crash
+      - run: make grade-repair
+      - name: Collect three-node evidence
+        if: always()
+        run: |
+          mkdir -p build/evidence
+          docker compose -f compose.three.yaml logs --no-color > build/evidence/three-cassandra.log
+          docker stats --no-stream > build/evidence/resources.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-three-node-evidence
+          path: |
+            atlas-cassandra-poc/build/reports/
+            atlas-cassandra-poc/build/test-results/
+            atlas-cassandra-poc/build/evidence/
+      - run: make three-down
+        if: always()

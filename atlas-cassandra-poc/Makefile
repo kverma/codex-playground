@@ -31,3 +31,14 @@ ha-down:
 	docker compose -f compose.ha.yaml down
 grade-full-ha: version-check
 	$(GRADLE) --no-daemon gradeFullHa
+.PHONY: three-up three-down grade-partition grade-coordinator-crash grade-repair
+three-up:
+	bash scripts/three.sh up
+three-down:
+	docker compose -f compose.three.yaml down
+grade-partition: version-check
+	$(GRADLE) --no-daemon gradePartition
+grade-coordinator-crash: version-check
+	$(GRADLE) --no-daemon gradeCoordinatorCrash
+grade-repair: version-check
+	$(GRADLE) --no-daemon gradeRepair

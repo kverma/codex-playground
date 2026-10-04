@@ -17,6 +17,12 @@ public final class CassandraStore implements Store {
         this(subject, "127.0.0.1", 9042, "dc1", false, Duration.ofSeconds(20));
     }
     public CassandraStore(UUID subject, String host, int port, String dc, boolean fullHa, Duration timeout) {
+        this(subject,host,port,dc,fullHa ? "full" : "single",timeout);
+    }
+    public CassandraStore(UUID subject, String host, int port, String dc, String topology, Duration timeout) {
+        if (!java.util.Set.of("single","three","full").contains(topology)) throw new IllegalArgumentException("topology");
+        boolean fullHa = topology.equals("full");
+        boolean three = topology.equals("three");
         this.subject = subject;
         this.timeout = timeout;
         var config = DriverConfigLoader.programmaticBuilder()
@@ -27,10 +33,11 @@ public final class CassandraStore implements Store {
         String version = session.execute("SELECT release_version FROM system.local").one().getString("release_version");
         if (!"4.0.5".equals(version)) { session.close(); throw new IllegalStateException("Expected Cassandra 4.0.5, got " + version); }
         session.execute("CREATE KEYSPACE IF NOT EXISTS atlas_poc WITH replication = " +
-            (fullHa ? "{'class':'NetworkTopologyStrategy','dc1':3,'dc2':3,'dc3':3}" : "{'class':'NetworkTopologyStrategy','dc1':1}"));
+            (fullHa ? "{'class':'NetworkTopologyStrategy','dc1':3,'dc2':3,'dc3':3}" : three ? "{'class':'NetworkTopologyStrategy','dc1':1,'dc2':1,'dc3':1}" : "{'class':'NetworkTopologyStrategy','dc1':1}"));
         var replication = session.execute("SELECT replication FROM system_schema.keyspaces WHERE keyspace_name='atlas_poc'")
             .one().getMap("replication",String.class,String.class);
         boolean valid = fullHa ? "3".equals(replication.get("dc1")) && "3".equals(replication.get("dc2")) && "3".equals(replication.get("dc3"))
+            : three ? "1".equals(replication.get("dc1")) && "1".equals(replication.get("dc2")) && "1".equals(replication.get("dc3")) && replication.size() == 4
             : "1".equals(replication.get("dc1")) && replication.size() == 2;
         if (!valid) { session.close(); throw new IllegalStateException("Wrong test replication: " + replication); }
         session.execute("CREATE TABLE IF NOT EXISTS atlas_poc.subject (subject uuid, row text, commit_token uuid, request_hash text, cents int, churned boolean, PRIMARY KEY (subject,row))");

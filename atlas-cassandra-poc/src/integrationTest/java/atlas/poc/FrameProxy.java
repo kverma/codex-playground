@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** Test-only native protocol v4 proxy. Drops exactly one selected QUERY frame/response. */
 final class FrameProxy implements AutoCloseable {
-    enum Fault { BEFORE_SEND, AFTER_RESPONSE }
+    enum Fault { BEFORE_SEND, AFTER_RESPONSE, AFTER_SEND }
     private final ServerSocket listener;
     private final ExecutorService threads = Executors.newVirtualThreadPerTaskExecutor();
     private final Set<Socket> sockets = ConcurrentHashMap.newKeySet();
@@ -18,12 +18,15 @@ final class FrameProxy implements AutoCloseable {
     final CountDownLatch injected = new CountDownLatch(1);
     private volatile boolean closed;
     FrameProxy() throws IOException {
+        this(9042);
+    }
+    FrameProxy(int upstreamPort) throws IOException {
         listener = new ServerSocket(0, 10, InetAddress.getLoopbackAddress());
         threads.submit(() -> {
             while (!closed) {
                 try {
                     Socket client = listener.accept();
-                    Socket server = new Socket("127.0.0.1", 9042);
+                    Socket server = new Socket("127.0.0.1", upstreamPort);
                     sockets.add(client); sockets.add(server);
                     Set<Integer> dropStreams = ConcurrentHashMap.newKeySet();
                     threads.submit(() -> pipe(client,server,true,dropStreams));
@@ -49,13 +52,16 @@ final class FrameProxy implements AutoCloseable {
                 int stream = ByteBuffer.wrap(header,2,2).getShort();
                 boolean batch = request && header[4] == 7 && length > 4 &&
                     new String(body,4,length-4,StandardCharsets.UTF_8).stripLeading().startsWith("BEGIN BATCH");
+                boolean signalSent = false;
                 if (batch) {
                     Fault fault = armed.getAndSet(null);
                     if (fault == Fault.BEFORE_SEND) { injected.countDown(); continue; }
-                    if (fault == Fault.AFTER_RESPONSE) drops.add(stream);
+                    if (fault == Fault.AFTER_RESPONSE || fault == Fault.AFTER_SEND) drops.add(stream);
+                    signalSent = fault == Fault.AFTER_SEND;
                 }
                 if (!request && drops.remove(stream)) { injected.countDown(); continue; }
                 output.write(header); output.write(body); output.flush();
+                if (signalSent) injected.countDown();
             }
         } catch (IOException e) {
             // Closing either end propagates coordinator death to the client.
