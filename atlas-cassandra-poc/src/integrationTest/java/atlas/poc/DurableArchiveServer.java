@@ -57,8 +57,9 @@ public final class DurableArchiveServer {
     public static void main(String[] args) throws Exception {
         Path state=Path.of(args[0]),input=Path.of(args[1]),report=Path.of(args[2]);
         Input in=JSON.readValue(input.toFile(),Input.class);Facts loaded;
+        boolean split=args.length>3&&args[3].equals("split");
         // A missing/corrupt checkpoint never bootstraps an existing subject or opens Cassandra.
-        try { loaded=load(state,in.subject()); }
+        try { loaded=split?SplitArchiveCheckpoint.load(state,in.subject()):load(state,in.subject()); }
         catch(Exception e) { save(report,Map.of("pid",ProcessHandle.current().pid(),"phase","CHECKPOINT_INVALID","error",e.toString()));System.exit(65);return; }
         Storage external=loaded.storage();Map<String,Issued> bindings=new HashMap<>(loaded.bindings());
         var contract=new ArchiveCassandraTest();var h=contract.new Scenario("durable-worker",in.subject(),external,Broken.NONE);
@@ -71,7 +72,10 @@ public final class DurableArchiveServer {
             }
             void cut(String phase) { if(phase.equals(in.cut())) { witness(phase,null);java.lang.Runtime.getRuntime().halt(86); } }
             void checkpoint(String stage) {
-                try { publish(state,facts(),()->cut(stage+"_BEFORE_MOVE"),()->cut(stage+"_AFTER_MOVE")); }
+                try {
+                    if(split)SplitArchiveCheckpoint.publish(state,facts(),stage,this::cut);
+                    else publish(state,facts(),()->cut(stage+"_BEFORE_MOVE"),()->cut(stage+"_AFTER_MOVE"));
+                }
                 catch(Exception e) { throw new IllegalStateException(e); }
             }
         }
