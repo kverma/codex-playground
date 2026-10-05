@@ -30,7 +30,10 @@ public final class DurableArchiveServer {
         return JSON.writeValueAsBytes(new Envelope(1,payload,HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(payload))));
     }
     static Facts load(Path path,UUID subject) throws Exception {
-        Envelope e=JSON.readValue(Files.readAllBytes(path),Envelope.class);
+        return decode(Files.readAllBytes(path),subject);
+    }
+    static Facts decode(byte[] bytes,UUID subject) throws Exception {
+        Envelope e=JSON.readValue(bytes,Envelope.class);
         if(e.version()!=1||e.payload()==null||!Objects.equals(e.sha256(),HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(e.payload()))))
             throw new IllegalArgumentException("CHECKPOINT_INVALID: version or checksum");
         Facts f=JSON.readValue(e.payload(),Facts.class);

@@ -30,8 +30,7 @@ final class SplitArchiveCheckpoint {
     static Facts load(Path path,UUID subject) throws Exception {
         Root r=root(path,subject);
         // Read exact root-referenced bytes: no scanning directories or falling back to older objects.
-        read(path,"authority",r.authority());
-        Facts authority=DurableArchiveServer.load(object(path,"authority",r.authority()),subject);
+        Facts authority=DurableArchiveServer.decode(read(path,"authority",r.authority()),subject);
         if(!authority.archive().isEmpty())throw new IllegalArgumentException("archive must not be hidden in authority");
         ObjectsFile archive=JSON.readValue(read(path,"archive",r.archive()),ObjectsFile.class);
         if(archive.version()!=1||!subject.equals(archive.subject())||archive.objects()==null)throw new IllegalArgumentException("invalid archive object");
