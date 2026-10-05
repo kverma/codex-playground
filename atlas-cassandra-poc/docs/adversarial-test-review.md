@@ -2,22 +2,22 @@
 
 ## Decision
 
-Executable commit `6a25c98acff1d24c230875f06eaf616d8467ad46` passed all four jobs in
-[run 37249882512](https://github.com/kverma/codex-playground/actions/runs/37249882512).
-Downloaded XML confirms **96 distinct POC cases plus 16 upstream tests**, with no
-failures, errors or skips: 47 shallow cases are included in the 81-case
+Executable commit `0a5b3ebb46083b6d3c1a3814f546b47240f9a546` passed all four jobs in
+[run 37259595894](https://github.com/kverma/codex-playground/actions/runs/37259595894).
+Downloaded XML confirms **99 distinct POC cases plus 16 upstream tests**, with no
+failures, errors or skips: 47 shallow cases are included in the 84-case
 model/single-node/fault job; 15 three-node cases complete the POC total.
 
-All four artifacts were downloaded and inspected. All 96 POC report cases now
+All four artifacts were downloaded and inspected. All 99 POC report cases now
 show readable Atlas scenario IDs/titles. The [scenario guide](test-scenarios.md)
-describes 68 unique goals, simulated boundaries and expected outcomes; shared
+describes 71 unique goals, simulated boundaries and expected outcomes; shared
 contracts run under multiple fixture classes. The description gate passed.
 A [separate guide](upstream-test-scenarios.md) explains all 16 upstream methods.
 
 The new Cassandra archive fixture passed six inherited scenarios on one node and
 six through dc1/dc2 coordinators on the three-node cluster, plus one real server
-SIGKILL/restart case. Saved archive histories contain seven VALID / ten INVALID
-traces in the single-node suite and six VALID / ten INVALID traces in the
+SIGKILL/restart case and three new wire-fault cases. Saved archive histories contain
+eleven VALID / eleven INVALID traces in the single-node suite and six VALID / ten INVALID traces in the
 three-node suite. Negative traces fail at their intended CERTIFY, PRUNE, RESTORE,
 ACCEPT, RECOVER or observed stale-writer boundary. Both suites reject the same
 captured stale mutation after sealing, logical restore and recovery; their broken
@@ -36,6 +36,52 @@ It is one code/evidence review, not a claim of independent human or agent sign-o
 Several assertions were too weak to establish their advertised conditions.
 The changes below strengthen the harness before broadening product scope.
 
+## Archive wire-loss review — 2026-10-05 UTC
+
+[Run 37259595894](https://github.com/kverma/codex-playground/actions/runs/37259595894) passed all four jobs at
+`0a5b3ebb46083b6d3c1a3814f546b47240f9a546`. Downloaded reports contain 84
+model/single-node/fault cases (including the 47 shallow cases), 15 three-node cases
+and 16 upstream cases: **99 distinct POC + 16 upstream**, zero failures/errors/skips.
+All five new wire traces were inspected. The single-node archive totals are now
+11 VALID / 11 intentionally INVALID traces; the three-node totals remain 6 / 10.
+
+Independent decoding of saved native request bodies confirmed the bound offer UUID
+and pre-write guard in every case, QUORUM and SERIAL semantics, and the three exact
+slot deletions in correct prune batches. All three captured replies—including the
+partial-pruning mutant—contain `[applied]=true`. The four opposite-cut controls
+were rejected at their intended command. The mutant was rejected at command index
+18 with `state mismatch: PRUNE`; each correct trace checked all 27 commands.
+Native v4 omits the serial-consistency field when using its SERIAL default; the
+inspection follows the [Apache protocol specification](https://github.com/apache/cassandra/blob/cassandra-4.0.5/doc/native_protocol_v4.spec), rather than treating absence as LOCAL_SERIAL.
+These byte-level inspections supplement the executable assertions and are not an
+additional automatic CI gate.
+
+AT-069–071 extend `make grade-faults` to the new archive adapter. Four positive
+traces cover seal/prune request loss and reply loss; a fifth trace deliberately
+advances the prune floor without deleting receipt rows. The proxy captures the
+marked CQL, complete native request body, stream, fault direction and dropped
+server reply. Every case requires exactly one matching frame and a real driver
+timeout. Reply-loss success additionally requires a ROWS response, changed guard
+and exact reloaded state; an ERROR response or an unapplied condition cannot pass.
+
+The oracle receives fresh SERIAL observations, not the reducer's predicted hot
+state after an exception. Full terms, receipts, floor, row contents, seals and
+fence are compared. Exact retries must converge and then become complete no-ops.
+The four correct runs finish logical restore/recovery and reject retired IDs after
+a backward clock move. All four deliberately inverted cut labels must fail at the
+faulted command. The partial-pruning mutant must actually persist its bad state
+and fail specifically at `state mismatch: PRUNE`.
+
+Initial [run 37259287999](https://github.com/kverma/codex-playground/actions/runs/37259287999)
+at `6bb30b8` failed integration compilation: `FrameProxy`'s destination Socket
+parameter shadowed the target-query field. The shallow and maintainer jobs passed; both Docker jobs stopped at the same
+compiler error. Those passes are not archive wire-loss evidence. Commit `0a5b3eb` renames the field; the failed run
+is retained rather than retried unchanged or counted as a protocol result.
+
+Scope remains serial, single-node hot-state persistence with simulated external
+services. These tests do not establish a concurrent distributed recovery fence,
+remote archive durability, SSTable restoration or a named Paxos-phase failure.
+
 ## Cassandra archive fixture progress — 2026-10-05 UTC
 
 The [fixture contract](archive-cassandra-fixture.md) separates real storage evidence
@@ -50,7 +96,8 @@ controls. Some deliberately corrupt the simulated authority; others persist bad
 Cassandra state. They are not all disk-corruption tests. The server-crash scenario
 keeps the external fixture alive while killing Cassandra after certification,
 verifies persisted offer/rows on restart, then completes repeated pruning.
-No network-response loss or internal Paxos phase was injected into this adapter.
+That baseline did not inject network-response loss or an internal Paxos phase;
+the subsequent wire-loss extension is described above.
 
 The model boundary-loss histories, upstream phase smoke and prior adapter socket
 faults retain their own scopes. They are not evidence for unexecuted faults in

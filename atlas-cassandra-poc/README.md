@@ -43,7 +43,9 @@ removes the disposable container; no host data volume is configured.
 The [Cassandra archive fixture](docs/archive-cassandra-fixture.md) adds real
 conditional HEAD/slot mutations, logical restore and delayed-writer guard tests.
 Run its cross-coordinator cases with `make three-up && make grade-archive`.
-Its archive and recovery authority remain simulated. Hosted [run 37249882512](https://github.com/kverma/codex-playground/actions/runs/37249882512) passed all four jobs at `6a25c98`: **96 distinct POC cases plus 16 upstream tests**.
+Its archive and recovery authority remain simulated. Hosted [run 37259595894](https://github.com/kverma/codex-playground/actions/runs/37259595894) passed all four jobs at `0a5b3eb`: **99 distinct POC cases plus 16 upstream tests**.
+The archive fault grader now covers actual seal/prune request and reply loss,
+exact recovery and a rejected partial-pruning control.
 
 The [archive/restore state machine](docs/archive-restore-state-machine.md) adds a
 separate serial model and independent oracle to `make grade-model`: complete

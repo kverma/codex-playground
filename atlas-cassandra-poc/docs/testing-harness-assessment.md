@@ -5,7 +5,18 @@ and [nine-node agent handoff](nine-node-ha-agent-handoff.md). The nine-node scaf
 currently exercises one legacy whole-offer case; newer retention/archive suites
 need explicit full-topology integration. No nine-node run is certified here.
 
-## Latest addition — readable scenarios and Cassandra archive fixture
+## Latest addition — archive wire faults
+
+[Run 37259595894](https://github.com/kverma/codex-playground/actions/runs/37259595894) passed at
+`0a5b3ebb46083b6d3c1a3814f546b47240f9a546`: **99 distinct POC + 16 upstream**.
+The new adapter now has real before-send and after-response loss for seal/prune,
+full authoritative recovery checks and a partial-pruning mutant that is rejected
+at its intended action. Captured request/response bytes were independently
+inspected. See the [adversarial review](adversarial-test-review.md) for evidence,
+the initial compile failure and the remaining serial/simulated-service limits.
+The description catalog now covers 71 unique Atlas scenarios.
+
+## Previous addition — readable scenarios and Cassandra archive fixture
 
 [Run 37249882512](https://github.com/kverma/codex-playground/actions/runs/37249882512) at
 `6a25c98acff1d24c230875f06eaf616d8467ad46` passed all four jobs. Downloaded XML confirms

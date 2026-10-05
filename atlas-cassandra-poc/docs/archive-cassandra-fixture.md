@@ -10,10 +10,13 @@ able to apply that edit afterward.
 The [scenario guide](test-scenarios.md) describes these tests in user-facing terms.
 The scenarios run through `make grade-cassandra` on one node and
 `make grade-archive` after `make three-up` across logical DC coordinators. A process
-crash between archive certification and pruning runs through `make grade-faults`.
-Hosted [run 37249882512](https://github.com/kverma/codex-playground/actions/runs/37249882512) passed at
-`6a25c98acff1d24c230875f06eaf616d8467ad46`. Both fixture suites and the process-crash case
-passed; saved traces and expected negative-control rejection points were inspected.
+crash between archive certification and pruning, plus targeted seal/prune wire
+loss, runs through `make grade-faults`.
+Hosted [run 37259595894](https://github.com/kverma/codex-playground/actions/runs/37259595894) passed at
+`0a5b3ebb46083b6d3c1a3814f546b47240f9a546`: 99 distinct POC cases plus 16
+upstream tests. All five new wire traces were inspected, including bound offer and
+guard bytes and `[applied]=true` in each captured reply. Saved archive traces total
+11 VALID / 11 intentionally INVALID on one node and 6 / 10 on three nodes.
 
 ## What is real and what is simulated
 
@@ -46,12 +49,34 @@ candidate is not silently substituted into the earlier retention contracts.
 The nine mutants span simulated external-service mistakes and real hot-state
 mistakes. They do not all mutate Cassandra: for example, trusting a volatile ACK
 corrupts the simulated authority's certification. The guide and evidence retain
-that distinction. Real driver exceptions fail the test; they are never converted
-into successful negative-control results.
+that distinction. Unexpected driver exceptions fail the test. The wire-loss cases require an exact
+`DriverTimeoutException` plus the matching proxy witness and authoritative state;
+an arbitrary exception cannot satisfy a negative control.
 
-This slice does not inject a socket loss inside the new archive adapter or a named
-Paxos phase. The earlier frame-fault suite covers a different adapter. The model's
-16 boundary-loss cases cannot be relabeled as network coverage for this fixture.
+## Seal/prune wire-loss extension
+
+AT-069–071 target the new adapter's actual conditional batch using an offer UUID
+and operation marker. For both sealing and pruning, the proxy drops either the
+request before forwarding or the server's response after forwarding. Each case
+requires exactly one matching request, the expected driver timeout and a saved
+native-protocol request body. Reply loss additionally requires a real ROWS result,
+a changed Cassandra guard and the exact expected full hot state after reconnect.
+A RESULT opcode alone is insufficient evidence of acceptance.
+
+Fresh SERIAL reads compare all commercial terms, receipts, slot rows, floor, seals
+and fence. The before-send case must preserve the entire original state and guard.
+An exact retry converges; another retry must preserve even the guard. Complete
+archive coverage then supports pruning and a logical restore/recovery cycle;
+accepted terms survive and retired IDs stay closed even after the controlled clock
+moves backward. External archive and authority still remain in-memory fixtures.
+
+The trace cut is assigned only after the wire witness is checked. Relabeling that
+same observation with the opposite cut must fail the independent checker at the
+faulted command. A separate broken-pruning control really advances the floor while
+leaving receipt rows behind, loses its server reply and must fail at that exact
+PRUNE state comparison. These cases are serial one-node observations, not a
+concurrent ambiguity solver or a named internal Paxos-phase fault. The earlier
+adapter's socket tests and the model's 16 synthetic cuts remain separate evidence.
 
 ## Evidence and next gates
 
