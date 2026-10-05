@@ -48,11 +48,13 @@ external services remain simulated in that fixture. The separate
 checkpoint publication and real server-JVM crash boundaries. The
 [split-storage extension](docs/split-storage-recovery.md) adds independent file
 read failures and a control exposing the danger of a rolled-back recovery root.
+The [Cassandra-root extension](docs/cassandra-root-authority.md) tests authoritative
+root selection outside logical offer restore and stale root-publication guards.
 
 The [Cassandra archive fixture](docs/archive-cassandra-fixture.md) adds real
 conditional HEAD/slot mutations, logical restore and delayed-writer guard tests.
 Run its cross-coordinator cases with `make three-up && make grade-archive`.
-Its base archive and recovery authority remain simulated. Hosted [run 37323949963](https://github.com/kverma/codex-playground/actions/runs/37323949963) passed all four jobs at `223b996`: **112 distinct POC cases plus 16 upstream tests**, including split-storage faults and the rejected root-rollback control.
+Its base archive and recovery authority remain simulated. Hosted [run 37327005478](https://github.com/kverma/codex-playground/actions/runs/37327005478) passed all four jobs at `f8aced5`: **115 distinct POC cases plus 16 upstream tests**, including authoritative-root recovery and cross-DC stale-root rejection.
 The archive fault grader now covers actual seal/prune request and reply loss,
 exact recovery and a rejected partial-pruning control.
 The [readiness boundary tests](docs/readiness-recovery.md) now force membership

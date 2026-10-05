@@ -2,15 +2,15 @@
 
 ## Decision
 
-Executable commit `223b9963a381886a56772c6e20e2c9d512c38de8` passed all four jobs in
-[run 37323949963](https://github.com/kverma/codex-playground/actions/runs/37323949963).
-Downloaded XML confirms **112 distinct POC cases plus 16 upstream tests**, with no
-failures, errors or skips: 51 shallow cases are included in the 95-case
-model/single-node/fault job; 17 three-node cases complete the POC total.
+Executable commit `f8aced5c4fbb652d8a79307931dc81ca48555420` passed all four jobs in
+[run 37327005478](https://github.com/kverma/codex-playground/actions/runs/37327005478).
+Downloaded XML confirms **115 distinct POC cases plus 16 upstream tests**, with no
+failures, errors or skips: 51 shallow cases are included in the 97-case
+model/single-node/fault job; 18 three-node cases complete the POC total.
 
-All four artifacts were downloaded and inspected. All 112 POC report cases now
+All four artifacts were downloaded and inspected. All 115 POC report cases now
 show readable Atlas scenario IDs/titles. The [scenario guide](test-scenarios.md)
-describes 84 unique goals, simulated boundaries and expected outcomes; shared
+describes 86 unique goals, simulated boundaries and expected outcomes; shared
 contracts run under multiple fixture classes. The description gate passed.
 A [separate guide](upstream-test-scenarios.md) explains all 16 upstream methods.
 
@@ -19,7 +19,7 @@ six through dc1/dc2 coordinators on the three-node cluster, plus one real server
 SIGKILL/restart case, three wire-fault cases and the signed client-process slice.
 Saved archive histories contain fourteen VALID / eleven INVALID traces in the
 base single-node suite, plus two VALID / one INVALID durable-server traces and
-two VALID / one INVALID split-storage traces,
+two VALID / one INVALID split-storage traces, plus one VALID Cassandra-root trace,
 and six VALID / ten INVALID traces in the three-node suite. Negative traces fail
 at their intended INSTALL, CERTIFY, PRUNE, RESTORE,
 ACCEPT, RECOVER or observed stale-writer boundary. Both suites reject the same
@@ -28,8 +28,8 @@ guard control actually applies the outdated mutation and is then rejected.
 
 This is a real Cassandra persistence fixture with a shared serial reducer and
 simulated external archive/authority in the base tests. Separate adapters integrate
-signed drafts and a local atomic checkpoint across server JVM exits. It does not
-change `RetentionCassandraStore`, restore SSTables or
+signed drafts, local immutable checkpoints and a Cassandra root table outside
+logical offer restore. They do not change `RetentionCassandraStore`, restore SSTables or
 prove a production global fence.
 Full provider API/compile/Kafka/downstream E2E and canonical proof gates remain
 unvalidated. All 18 healed retention views still match their checked final states.
@@ -40,6 +40,53 @@ using safety, availability, Cassandra, chaos, QA and provider-workflow lenses.
 It is one code/evidence review, not a claim of independent human or agent sign-off.
 Several assertions were too weak to establish their advertised conditions.
 The changes below strengthen the harness before broadening product scope.
+
+## Cassandra root outside logical offer restore — 2026-10-05 UTC
+
+Executable `f8aced5c4fbb652d8a79307931dc81ca48555420` passed all four jobs in
+[run 37327005478](https://github.com/kverma/codex-playground/actions/runs/37327005478).
+All four downloaded artifacts confirm **115 distinct POC +16 upstream** with zero
+failures/errors/skips: 97 model/single-node/fault cases (including 51 shallow), plus
+18 three-node. The catalog has 86 distinct scenarios. No failed attempt preceded
+this root-authority result.
+
+The new process case used 17 distinct JVMs, two exact post-CAS/pre-cache halt
+witnesses and a VALID 14-command archive history. Saved cache/root references,
+content hashes, authority facts, process exits and the exact final receipt state
+were independently inspected. One-node and dc1/dc2 CAS witnesses both show that
+the old guard fails after content changes away and back; current payload/guard
+are unchanged. Earlier 48-process durable and 53-process split-storage artifacts
+were re-audited, including the still-unsafe root-rollback negative control.
+
+All 18 successful healed retention views match their checked final states. Seed 2004,
+dc1 recorded a first-attempt SERIAL ReadTimeoutException (2 required responses,
+0 received), then recovered on attempt 2. This failed read remains in the evidence;
+it does not become an extra successful view or a latency qualification.
+
+AT-085 uses a separate Cassandra root table as authority; the local pointer is a
+cache. Two actual server halts occur after successful binding/certification root
+CAS and before cache replacement. Assertions require unchanged cache bytes and
+fresh SERIAL reads proving the new root exists. Exact signed identity and receipt
+recovery remain mandatory. After pruning and logical offer restore, replacing the
+cache with an older valid root or deleting it must not choose older recovery facts.
+
+AT-086 runs the root CAS contract on one node and across dc1/dc2. It captures an old
+guard, changes root content away and back, then submits the captured conditional
+update. The update must return not-applied, with the complete current guard/root
+unchanged. This witnesses stale root-publication rejection, not general concurrent
+archive/authoring correctness. The isolated CAS case uses placeholder object hashes;
+it does not claim archive validation for those placeholders.
+
+The earlier root-rollback negative control remains required and unsafe: rolling
+back authority itself can reopen old identities. This new boundary only ensures
+logical offer restoration and local caches cannot choose an older authoritative
+root. Both tables still share a cluster/runner. Whole-cluster restore, stale authority
+backups, independent host loss and a production recovery-authority service remain
+unqualified. The root and offer partitions are not one atomic transaction, and root
+guards do not fence hot-state writers. Orchestration remains serial.
+
+See the [root contract](cassandra-root-authority.md). This does not certify the
+canonical Atlas gates or nine-node HA.
 
 ## Separate storage reads and root rollback — 2026-10-05 UTC
 

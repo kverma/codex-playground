@@ -1,6 +1,15 @@
 # Authoritative root outside logical offer restoration
 
-Status: implemented; hosted validation pending. AT-085 runs via
+[Run 37327005478](https://github.com/kverma/codex-playground/actions/runs/37327005478)
+passed all four jobs at `f8aced5c4fbb652d8a79307931dc81ca48555420`:
+**115 distinct POC +16 upstream**, zero failures/errors/skips. All four artifacts
+were downloaded and inspected. AT-085 used 17 distinct server JVMs, two witnessed
+halts and a VALID 14-command history. AT-086 passed on one node and across dc1/dc2;
+both stale-CAS witnesses preserve the exact current root/guard. Offline inspection
+checked referenced file hashes, stale-cache bytes, authoritative facts, exact final
+receipt state, child exits and actual rejection of the captured stale updates.
+
+AT-085 runs via
 `make grade-cassandra`; AT-086 runs on one node and via dc1/dc2 clients in
 `make grade-archive`. JDK25, Gradle and Cassandra4.0.5 remain unchanged.
 
@@ -48,6 +57,9 @@ Orchestration remains serial. A root CAS that fails after a hot-state change is 
 a general concurrent-writer recovery protocol. The test does not claim root guards
 fence hot-state writers, nor does it qualify a chosen Paxos phase or lost CQL reply.
 The halt occurs after a witnessed successful root update.
+
+The extra SERIAL reads and conditional root writes are not latency/throughput
+qualified; no WAN SLO or production capacity claim follows from this grader.
 
 The root is in the same Cassandra cluster, on one hosted runner. Logical offer
 restoration leaves it intact by construction. Whole-cluster restore, stale authority

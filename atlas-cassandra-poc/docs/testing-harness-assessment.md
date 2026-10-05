@@ -289,3 +289,26 @@ The split-file slice used 53 server JVMs; five cuts/seven read rejections were
 witnessed. Two histories validate (15/12 commands); the root-rollback history fails
 at RECOVER and actually reuses the retired ID with a different receipt. Every
 saved root's file hashes and process outcomes were independently inspected.
+
+
+## Root authority outside logical offer restoration
+
+AT-085–086 add a separate Cassandra root row read at SERIAL and published with
+SERIAL/QUORUM conditional writes. The root remains outside the fixture's logical
+offer snapshot; a local cache cannot select an old root. Two server halt boundaries
+and an actual old-cache substitution/deletion test target this behavior. A shared
+one/three-node case captures a stale root update across a content ABA and requires
+not-applied with unchanged current guard/root. See the
+[root contract](cassandra-root-authority.md).
+
+These are separate partitions in the same cluster, with serial orchestration.
+They do not qualify whole-cluster rollback, independently hosted authority, or
+atomic/concurrent root-and-offer publication.
+
+Verified [run 37327005478](https://github.com/kverma/codex-playground/actions/runs/37327005478)
+at `f8aced5c4fbb652d8a79307931dc81ca48555420`: all four jobs passed; all four
+artifacts inspected; 115 distinct POC +16 upstream with zero failures/errors/skips.
+The root-authority slice has 17 server JVMs, two exact halt witnesses and one
+VALID 14-command trace, plus one-node and cross-DC stale-root CAS rejection.
+Offline inspection verified file hashes, authoritative facts, unchanged stale
+cache bytes, exact recovery and full current guard/root preservation.

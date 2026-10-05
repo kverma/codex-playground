@@ -60,6 +60,10 @@ Successful scenarios require VALID with deserialized replay. The root-rollback
 control requires INVALID at the specific recovery command and evidence that the
 retired identity really reopens. No generic exception counts as that control.
 
+The [Cassandra-root extension](cassandra-root-authority.md) moves authoritative
+root selection out of the local file and outside logical offer restoration. Its
+scope is separate from whole-cluster rollback resistance.
+
 ## Next boundary
 
 Choose and validate an independently hosted, rollback-resistant authority/root

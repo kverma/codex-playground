@@ -2,13 +2,14 @@
 
 ## Current evidence
 
-Executable `223b9963a381886a56772c6e20e2c9d512c38de8` passed
-[run 37323949963](https://github.com/kverma/codex-playground/actions/runs/37323949963):
-112 distinct POC cases and 16 upstream tests. Models, one-node Cassandra, verified
+Executable `f8aced5c4fbb652d8a79307931dc81ca48555420` passed
+[run 37327005478](https://github.com/kverma/codex-playground/actions/runs/37327005478):
+115 distinct POC cases and 16 upstream tests. Models, one-node Cassandra, verified
 process/network faults and a three-node RF1-per-DC fixture already run remotely.
 The new archive fixture has real Cassandra hot state but simulated external
 archive/authority in its base tests; the new server-process extension uses one local
-atomic root with separately read archive/authority files. All orchestration is serial. These are bounded POC results.
+root table outside logical offer restoration, with separately read archive/authority
+files. All orchestration is serial. These are bounded POC results.
 
 ## Ranked next experiments on standard hosted Linux runners
 
@@ -35,7 +36,10 @@ JVMs, five halt cuts, seven exact read failures and an actual retired-ID reuse
 control rejected at RECOVER. It still uses one
 filesystem and does not qualify separate storage services. Next establish a
 rollback-resistant authority/root contract, then test independently hosted services
-and unavailable remote reads.
+and unavailable remote reads. The [Cassandra-root extension](cassandra-root-authority.md)
+passed a 17-process recovery history with two root-publication halt cuts and stale
+publication CAS on one node and across dc1/dc2. Local cache rollback no longer
+chooses authority; whole-cluster rollback resistance remains open.
 Ranks 5–9 remain proposals.
 Give each addition an independent failure witness and a negative
 control; “the command succeeded” or “the suite eventually passed” is insufficient.
