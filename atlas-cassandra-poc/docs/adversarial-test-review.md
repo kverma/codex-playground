@@ -2,15 +2,15 @@
 
 ## Decision
 
-Executable commit `0a5b3ebb46083b6d3c1a3814f546b47240f9a546` passed all four jobs in
-[run 37259595894](https://github.com/kverma/codex-playground/actions/runs/37259595894).
-Downloaded XML confirms **99 distinct POC cases plus 16 upstream tests**, with no
-failures, errors or skips: 47 shallow cases are included in the 84-case
-model/single-node/fault job; 15 three-node cases complete the POC total.
+Executable commit `98d814a66cf93730d496b731266b216381695acc` passed all four jobs in
+[run 37262063060](https://github.com/kverma/codex-playground/actions/runs/37262063060).
+Downloaded XML confirms **105 distinct POC cases plus 16 upstream tests**, with no
+failures, errors or skips: 51 shallow cases are included in the 88-case
+model/single-node/fault job; 17 three-node cases complete the POC total.
 
-All four artifacts were downloaded and inspected. All 99 POC report cases now
+All four artifacts were downloaded and inspected. All 105 POC report cases now
 show readable Atlas scenario IDs/titles. The [scenario guide](test-scenarios.md)
-describes 71 unique goals, simulated boundaries and expected outcomes; shared
+describes 77 unique goals, simulated boundaries and expected outcomes; shared
 contracts run under multiple fixture classes. The description gate passed.
 A [separate guide](upstream-test-scenarios.md) explains all 16 upstream methods.
 
@@ -35,6 +35,58 @@ using safety, availability, Cassandra, chaos, QA and provider-workflow lenses.
 It is one code/evidence review, not a claim of independent human or agent sign-off.
 Several assertions were too weak to establish their advertised conditions.
 The changes below strengthen the harness before broadening product scope.
+
+## Readiness boundary review — 2026-10-05 UTC
+
+[Run 37262063060](https://github.com/kverma/codex-playground/actions/runs/37262063060) passed all four jobs at
+`98d814a66cf93730d496b731266b216381695acc`. All four artifacts were downloaded
+and inspected: **105 distinct POC cases + 16 upstream**, zero failures/errors/skips.
+Counts are 88 model/single-node/fault cases (including the 51 shallow cases) plus
+17 three-node cases. The readable scenario catalog now contains 77 unique goals.
+
+Both real scenarios recorded one dc1 coordinator whose wrapped cause was exactly
+UnavailableException at SERIAL, two replicas required and one alive. Recovery used
+two reads with a successful fresh readiness check between them and returned the
+entire expected view. Persistent isolation produced the exact bounded membership
+failure message and dc1 up_normal=1; it stopped after one read. Its later isolation
+and positive DROP-counter checks passed. Both scenarios healed and completed
+readiness cleanup. The positive case took 38.192 seconds and the negative 42.727
+seconds in this run; these are harness durations, not Atlas read-latency SLOs.
+
+The [readiness recovery contract](readiness-recovery.md) adds four shallow controls
+and two real three-node scenarios. The same bounded read controller now serves
+the existing retention history suite and these cases. Only uncertainty permits
+another attempt; each retry requires fresh readiness. Definite failures and
+failed readiness stop immediately, and three unresolved reads fail progress.
+
+The real cases begin with two accepted edits and one pruned receipt. They record
+successful all-node readiness, isolate dc1 with the existing verified network
+fault and wait for its actual view to show one Up/Normal and two Down/Normal
+replicas. The first read must report quorum loss requiring two replicas with one
+alive. A wrapped error must contain only those UnavailableException causes for
+one dc1 coordinator; arbitrary timeout/connection failures cannot qualify.
+
+The positive case heals only inside the recovery callback, checks fresh readiness,
+then requires full offer/receipt/generation/floor equality and exact retry behavior.
+The negative case preserves isolation; fresh readiness must emit the bounded
+membership failure and dc1 up_normal=1, with no second read. Cleanup and all
+failure evidence remain mandatory. The five-second negative polling budget is
+not a wall-clock SLO; each diagnostic command has a separate bound.
+
+Initial [run 37261150315](https://github.com/kverma/codex-playground/actions/runs/37261150315)
+at `bbd0c84` passed shallow, maintainer and single-node jobs but failed the two new
+three-node cases. The harness incorrectly required a top-level UnavailableException;
+the driver returned AllNodesFailedException. Saved nodetool snapshots independently
+confirm the intended 3 UN → 1 UN / 2 DN transition in both cases and successful
+cleanup. The initial assertion did not preserve the wrapper's nested causes, so
+that failed run does not establish the required quorum-read outcome. Commit
+`98d814a` records and validates every nested cause and also asserts the exact
+persistent-readiness failure message. It does not accept generic wrapped failures.
+
+Integration fixtures now compile in the shallow gate, before hosted Docker jobs
+are provisioned. No Cassandra version, consistency, read-attempt bound or full-state
+assertion was weakened. This remains RF1 per logical DC on one hosted machine;
+production recovery policy, arbitrary flapping and nine-node HA remain unproven.
 
 ## Archive wire-loss review — 2026-10-05 UTC
 

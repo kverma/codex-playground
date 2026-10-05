@@ -2,9 +2,9 @@
 
 ## Current evidence
 
-Executable `0a5b3ebb46083b6d3c1a3814f546b47240f9a546` passed
-[run 37259595894](https://github.com/kverma/codex-playground/actions/runs/37259595894):
-99 distinct POC cases and 16 upstream tests. Models, one-node Cassandra, verified
+Executable `98d814a66cf93730d496b731266b216381695acc` passed
+[run 37262063060](https://github.com/kverma/codex-playground/actions/runs/37262063060):
+105 distinct POC cases and 16 upstream tests. Models, one-node Cassandra, verified
 process/network faults and a three-node RF1-per-DC fixture already run remotely.
 The new archive fixture has real Cassandra hot state but simulated external
 archive/authority and serial orchestration. These are bounded POC results.
@@ -14,14 +14,18 @@ archive/authority and serial orchestration. These are bounded POC results.
 Rank 1 is now implemented and passed: AT-069–071 cover four actual wire-loss
 boundaries and a real partial-pruning mutant. Saved byte-level witnesses and
 full-state recovery were inspected; see the [review](adversarial-test-review.md).
-Ranks 2–9 remain proposals. Start with rank 2 before expanding the protocol.
+Rank 2 is also implemented and passed: AT-072–077 add four shallow recovery
+controls and two witnessed three-node membership boundaries. Recovery returned
+exact state after two reads; persistent isolation stopped after one read and a
+failed fresh readiness check. See the [contract](readiness-recovery.md).
+Ranks 3–9 remain proposals. Start with signed-draft persistence and integration.
 Give each addition an independent failure witness and a negative
 control; “the command succeeded” or “the suite eventually passed” is insufficient.
 
 | Rank | Atlas question | Experiment | Required evidence | Suggested layer |
 |---|---|---|---|---|
 | 1 — passed | Does archive-backed cleanup recover its exact outcome after a lost reply? | Apply the real frame proxy to the **new archive adapter**, dropping a batch before send and dropping a verified server reply after acceptance; exercise seal and prune boundaries. | Intercept the intended batch; retain the exact request/target; compare full offer, floor and actual slot keys before/after recovery. A partial floor/delete implementation must fail. The new tests cover this adapter; earlier socket tests remain separate. | One node, `grade-faults` extension |
-| 2 | Does recovery handle membership changing during readiness checks? | Deterministically arrange an Up/Normal snapshot followed by a peer-down transition before a SERIAL read; test eventual recovery and persistent unavailability separately. | Witness both transitions and a failed read; prove fresh readiness checks occur between bounded retries. Exact final-state equality remains mandatory. A permanently unavailable supplier must fail progress. | Shallow controller tests, then three nodes |
+| 2 — passed | Does recovery handle membership changing during readiness checks? | Deterministically arrange an Up/Normal snapshot followed by a peer-down transition before a SERIAL read; test eventual recovery and persistent unavailability separately. | Witness both transitions and a failed read; prove fresh readiness checks occur between bounded retries. Exact final-state equality remains mandatory. A permanently unavailable supplier must fail progress. | Shallow controller tests, then three nodes |
 | 3 | Does a real saved draft remain the same edit across process restarts and archive recovery? | Integrate the signed Draft/Issued path with the archive candidate; persist the complete pair and restart the client process after allocation/acceptance reply loss. Include changed payloads, retired anchors and backward controlled clocks. | Same identity, original dependencies and exact receipt; no silent reminting or stale draft reopening. Distinguish process persistence from whole-host durability. | Model plus one/three nodes |
 | 4 | Is a partially written audit record ever mistaken for a durable one? | Define a storage contract; run a local disk-backed or object-store service fixture with partial writes, process restart, unavailable reads and corrupt/missing records. Keep authority separate. | Document what its ACK means, verify complete bytes and binding, preserve facts across **service process** restart, block pruning on uncertainty. A local emulator cannot qualify a remote provider's persistence guarantee. | Separate one-node + service job |
 | 5 | Can concurrent cleanup and restore violate an offer's edit history? | Extend the serial archive candidate/oracle to recorded overlapping accept, seal, copy, certify, prune and restore operations, including unarchived tails and reservation gaps. | Actual overlap intervals and an independent bounded concurrent oracle; negative controls for premature deletion, fence bypass and discarded tails. Do not reuse the serial checker as if it proved concurrent behavior. | Shallow first, then three nodes |
@@ -35,8 +39,8 @@ budgeted scheduled/manual matrix. Record each seed, fault witness, bounds, timin
 result and resource profile. Keep every failed attempt visible; avoid “retry until
 green.” Bound jobs, use fail-fast only where it will not discard useful independent
 evidence, upload artifacts on failure, and clean up only the job's own containers.
-Rank 1 extends the existing fault job; no extra runner job or nine-node execution
-was added. Ranks 2–9 have no execution evidence yet.
+Ranks 1–2 extend the existing fault, shallow and retention graders; no extra
+runner job or nine-node execution was added. Ranks 3–9 remain unexecuted.
 
 ## Where standard runners stop being the right tool
 

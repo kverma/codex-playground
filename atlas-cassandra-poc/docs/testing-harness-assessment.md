@@ -5,7 +5,19 @@ and [nine-node agent handoff](nine-node-ha-agent-handoff.md). The nine-node scaf
 currently exercises one legacy whole-offer case; newer retention/archive suites
 need explicit full-topology integration. No nine-node run is certified here.
 
-## Latest addition — archive wire faults
+## Latest addition — readiness boundary recovery
+
+[Run 37262063060](https://github.com/kverma/codex-playground/actions/runs/37262063060) passed at
+`98d814a66cf93730d496b731266b216381695acc`: **105 distinct POC + 16 upstream**.
+Four shallow controls and two real three-node scenarios validate fresh readiness
+between bounded reads, exact state recovery, and refusal to invent a view during
+persistent isolation. Both scenarios witnessed a SERIAL quorum failure requiring
+two replicas with one alive. See the [contract](readiness-recovery.md) and
+[adversarial review](adversarial-test-review.md), including the initial wrapper
+assertion failure. The catalog now describes 77 unique Atlas scenarios.
+Integration fixtures compile in the shallow gate before Docker provisioning.
+
+## Previous addition — archive wire faults
 
 [Run 37259595894](https://github.com/kverma/codex-playground/actions/runs/37259595894) passed at
 `0a5b3ebb46083b6d3c1a3814f546b47240f9a546`: **99 distinct POC + 16 upstream**.
