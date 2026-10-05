@@ -253,3 +253,19 @@ passed after the repository fix. Its earlier runner-start blocker remains resolv
 Documentation-only changes after the executable revision skip redundant CI.
 Canonical Atlas proof gates, RF3/DC, skew/restore/archive/GC and full SDK/API flows
 remain unproven.
+
+
+## Local checkpoint and server-process extension
+
+AT-080–081 passed in the one-node job of [run 37301628457](https://github.com/kverma/codex-playground/actions/runs/37301628457)
+at `df18b03e6339291d309f1e67a9ba97837b62de67`. Unlike the earlier parent-memory
+fixture, 48 real server JVMs reload persisted facts before Cassandra access. Eight
+forced exits cover atomic binding/archive publication and completed database
+mutations. Both saved serial histories validate; the missing-reservation control
+fails at INSTALL. Partial/corrupt facts cannot authorize deletion or recovery.
+Downloaded bytes, signatures, receipts and process evidence were independently
+inspected. See the [contract](durable-server-process-recovery.md).
+
+This is still one local filesystem and one writer, with binding and authority in
+the same atomic checkpoint. It does not qualify independently failing remote
+services, rollback defense, whole-host loss or concurrent cross-store recovery.

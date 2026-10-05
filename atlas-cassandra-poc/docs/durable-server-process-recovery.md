@@ -1,6 +1,13 @@
 # Server-process checkpoint contract
 
-Status: implemented for hosted validation; no execution result recorded yet.
+The one-node job in [run 37301628457](https://github.com/kverma/codex-playground/actions/runs/37301628457)
+passed at `df18b03e6339291d309f1e67a9ba97837b62de67`. Downloaded evidence confirms
+48 distinct server JVMs: 27 in publication/recovery and 21 in invalid-fact checks.
+All eight requested halt cuts were witnessed. The two serial histories are VALID
+(21 and 16 commands); the omitted-reservation control is INVALID at INSTALL.
+An offline audit independently checked checkpoint SHA-256 bytes, request hashes,
+ticket HMACs, exact receipts, before-publication byte equality and all process
+exits. This inspection supplements the automated grader, not another test count.
 Run through `make grade-cassandra` (Gradle, JDK25, Cassandra4.0.5).
 AT-080 and AT-081 describe the boundaries in end-user terms.
 

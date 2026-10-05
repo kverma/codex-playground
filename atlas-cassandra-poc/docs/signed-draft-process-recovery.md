@@ -10,6 +10,10 @@ are LINEARIZABLE, all three changed-content controls are NON_LINEARIZABLE, and
 all three full archive histories are VALID. Saved journals, wire results and
 process identities were inspected; hashes and HMACs were independently recomputed.
 
+The separate [durable-server extension](durable-server-process-recovery.md) adds
+local disk checkpoints and real server exits. The limits below describe AT-078–079,
+whose parent-JVM fixture remains unchanged.
+
 ## Contract in this slice
 
 A restarted client loads its original signed draft and issued request/ticket from
@@ -83,7 +87,7 @@ journals, process results/logs, exact server messages/replies, the checked signe
 history and its rejected mutant. Full archive histories and replay results are under
 `build/evidence/archive-cassandra-single/signed-process-*`.
 
-Still open: server-side draft-binding persistence, crash atomicity across allocation
-steps, concurrent allocator/archive operations, partial journal-write crashes,
+Beyond the local checkpoint extension, still open: independently durable authority
+and archive services, concurrent allocator/archive operations, partial client journal-write crashes,
 key rotation, independent hosts, production transport and actual whole-database
 restore. Canonical Atlas proof gates remain unproven.

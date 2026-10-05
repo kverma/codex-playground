@@ -26,10 +26,12 @@ business effective-date fields and downstream notifications are not implemented.
 | `make grade-full-ha` | Separate nine-node scaffold | No qualified execution evidence yet |
 
 The archive Cassandra fixture uses real HEAD and slot rows, a conditional batch,
-and stale-guard rejection. Its archive/authority remain in-memory fixtures, shared
-by serial orchestration. Restore replaces logical hot rows, not SSTables or a whole
-database backup. Signed-draft integration, arbitrary old deployments and an
-externally enforced cross-DC recovery barrier remain open.
+and stale-guard rejection. The signed-client extension adds persisted client
+identities; the durable-server extension adds a local filesystem checkpoint and
+real server-process exits. Other archive tests retain in-memory external facts.
+All orchestration remains serial. Restore replaces logical hot rows, not SSTables
+or a whole database backup. Independent remote authority/archive services, arbitrary
+old deployments and a cross-DC recovery barrier remain open.
 
 The same scenario ID may appear under model and Cassandra classes because they
 share a contract. Generated histories and broken variants are iterations inside

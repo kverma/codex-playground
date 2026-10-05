@@ -43,12 +43,14 @@ removes the disposable container; no host data volume is configured.
 The [signed-draft client-process fixture](docs/signed-draft-process-recovery.md)
 joins saved Draft/Issued identities to the serial archive candidate. Separate
 client JVMs exercise reply loss and logical recovery; server-side bindings and
-external services remain simulated.
+external services remain simulated in that fixture. The separate
+[durable-server extension](docs/durable-server-process-recovery.md) adds local
+checkpoint publication and real server-JVM crash boundaries.
 
 The [Cassandra archive fixture](docs/archive-cassandra-fixture.md) adds real
 conditional HEAD/slot mutations, logical restore and delayed-writer guard tests.
 Run its cross-coordinator cases with `make three-up && make grade-archive`.
-Its archive and recovery authority remain simulated. Hosted [run 37298208324](https://github.com/kverma/codex-playground/actions/runs/37298208324) passed all four jobs at `521bc18`: **107 distinct POC cases plus 16 upstream tests**.
+Its base archive and recovery authority remain simulated. Hosted [run 37301628457](https://github.com/kverma/codex-playground/actions/runs/37301628457) passed all four jobs at `df18b03`: **109 distinct POC cases plus 16 upstream tests**, including the local durable-server extension.
 The archive fault grader now covers actual seal/prune request and reply loss,
 exact recovery and a rejected partial-pruning control.
 The [readiness boundary tests](docs/readiness-recovery.md) now force membership

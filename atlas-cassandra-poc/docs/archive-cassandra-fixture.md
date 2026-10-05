@@ -91,7 +91,11 @@ The [signed-draft process fixture](signed-draft-process-recovery.md) now links
 signed identities to this candidate with real child JVM restarts. Its draft bindings
 are still in memory and orchestration is serial.
 
-Next persist draft bindings, choose an archive/authority service contract, and
+The [durable-server extension](durable-server-process-recovery.md) persists draft
+bindings and external facts in one local atomic checkpoint. It tests real server
+JVM exits, while retaining serial orchestration and a shared failure domain.
+
+Next separate authority and archive failure domains, choose a remote-service contract, and
 design a fence that survives the actual database disaster-recovery boundary.
 Then test concurrent archive/restore operations, service outages and persistence,
 whole-snapshot restoration, and controlled mid-Paxos faults. The authority still
