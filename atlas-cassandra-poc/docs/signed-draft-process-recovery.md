@@ -1,5 +1,15 @@
 # Signed drafts across client-process restart and archive recovery
 
+## Verified hosted result
+
+[Run 37298208324](https://github.com/kverma/codex-playground/actions/runs/37298208324) passed at
+`521bc1843ae54073ceef8769e97a3f17f5ee2784`: **107 distinct POC cases + 16 upstream**.
+The new scenarios used 39 distinct client JVMs: 14 for allocation-reply loss, 14 for
+acceptance-reply loss and 11 for stale/tampered files. All three signed prefixes
+are LINEARIZABLE, all three changed-content controls are NON_LINEARIZABLE, and
+all three full archive histories are VALID. Saved journals, wire results and
+process identities were inspected; hashes and HMACs were independently recomputed.
+
 ## Contract in this slice
 
 A restarted client loads its original signed draft and issued request/ticket from
@@ -23,6 +33,7 @@ binding and installs the slot. Acceptance uses the archive candidate's condition
 Cassandra mutation. The full original request accompanies the issued ticket.
 
 The draft-binding map, recovery authority and archive remain in the parent JVM.
+Binding records are retained indefinitely; bounded metadata compaction is unproven.
 They survive child-client exits but are **not durable across server/host loss**.
 Reserve/bind/install are serial fixture steps, not a cross-store atomic protocol.
 The tests do not inject a crash between those steps. RetentionCassandraStore is
@@ -34,7 +45,9 @@ pair. Writes force a temporary file and atomically rename it on the same filesys
 There is no directory-fsync, power-loss or torn-write qualification. The child exits
 after recording its outcome; this is not a SIGKILL-during-file-write experiment.
 Malformed files and unsupported versions fail locally before any server request.
-Only synthetic fixture data is used; the signing key never travels to the client.
+Only synthetic fixture data is used. No signing key is sent in journals or over
+the transport. The synthetic key is present in shared test code; this harness does
+not test secret isolation.
 
 ## Required observations
 

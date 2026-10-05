@@ -28,7 +28,7 @@ guard bytes and `[applied]=true` in each captured reply. Saved archive traces to
 | Archive and recovery authority | Shared in-memory `Storage` fixture surviving a client or Cassandra process restart | No remote service, file fsync, authority failover or whole-runner loss claim |
 | Logical backup and restore | Save and replace the bounded hot-state contents through a conditional batch | Not `nodetool snapshot`, SSTable replacement or restoration of a whole cluster |
 | Writer fence | Fenced state checked by compliant fixture clients; every hot mutation rotates a Cassandra guard that is not loaded from the logical backup | Proves rejection of captured stale writes; does not revoke arbitrary old deployments or provide an external cross-DC recovery barrier |
-| Orchestration | Serial commands under one JVM lock; explicitly delayed writes delivered through real CQL | No general concurrent cross-store protocol, signed-draft allocator integration or production SDK |
+| Orchestration | Serial commands under one JVM lock; explicitly delayed writes delivered through real CQL | No general concurrent cross-store protocol or production SDK; the separate signed-draft adapter has its own fixture scope |
 
 The existing `RetentionCassandraStore` remains unchanged. This separately gated
 candidate is not silently substituted into the earlier retention contracts.
@@ -87,7 +87,11 @@ witnesses; process kills use the existing independent kill witness. The checker
 must return VALID for correct runs and INVALID for broken implementations.
 INCONCLUSIVE does not satisfy either gate.
 
-Next integrate signed drafts, choose an archive/authority service contract, and
+The [signed-draft process fixture](signed-draft-process-recovery.md) now links
+signed identities to this candidate with real child JVM restarts. Its draft bindings
+are still in memory and orchestration is serial.
+
+Next persist draft bindings, choose an archive/authority service contract, and
 design a fence that survives the actual database disaster-recovery boundary.
 Then test concurrent archive/restore operations, service outages and persistence,
 whole-snapshot restoration, and controlled mid-Paxos faults. The authority still

@@ -48,7 +48,7 @@ external services remain simulated.
 The [Cassandra archive fixture](docs/archive-cassandra-fixture.md) adds real
 conditional HEAD/slot mutations, logical restore and delayed-writer guard tests.
 Run its cross-coordinator cases with `make three-up && make grade-archive`.
-Its archive and recovery authority remain simulated. Hosted [run 37262063060](https://github.com/kverma/codex-playground/actions/runs/37262063060) passed all four jobs at `98d814a`: **105 distinct POC cases plus 16 upstream tests**.
+Its archive and recovery authority remain simulated. Hosted [run 37298208324](https://github.com/kverma/codex-playground/actions/runs/37298208324) passed all four jobs at `521bc18`: **107 distinct POC cases plus 16 upstream tests**.
 The archive fault grader now covers actual seal/prune request and reply loss,
 exact recovery and a rejected partial-pruning control.
 The [readiness boundary tests](docs/readiness-recovery.md) now force membership

@@ -39,8 +39,10 @@ manifest facts; its production representation, availability, compaction and disa
 recovery remain open. This does not solve bounded metadata storage by renaming it.
 
 The model consumes reservation grants for a fixed sequence and request. It does
-not implement the signed-draft allocator or SDK; those must be integrated and
-validated separately. The authority rejects changed grants or operation-ID reuse.
+not implement the signed-draft allocator or SDK. A [separate serial process
+fixture](signed-draft-process-recovery.md) now joins signed identities to the real
+Cassandra adapter; durable server bindings remain unproven. The authority rejects
+changed grants or operation-ID reuse.
 One reservation write precedes hot installation, so a crash can leave a known
 allocation gap. That gap cannot be ignored during recovery.
 

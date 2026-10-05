@@ -5,7 +5,21 @@ and [nine-node agent handoff](nine-node-ha-agent-handoff.md). The nine-node scaf
 currently exercises one legacy whole-offer case; newer retention/archive suites
 need explicit full-topology integration. No nine-node run is certified here.
 
-## Latest addition — readiness boundary recovery
+## Latest addition — signed drafts across client JVM exits
+
+[Run 37298208324](https://github.com/kverma/codex-playground/actions/runs/37298208324) passed at
+`521bc1843ae54073ceef8769e97a3f17f5ee2784`: **107 distinct POC + 16 upstream**.
+A serial adapter joins existing signed Draft/Issued identities to real Cassandra
+archive mutations. Thirty-nine separate client JVMs exercise allocation/acceptance
+reply loss, exact receipt recovery, logical restore, retired IDs, stale dependencies
+and tampered journals. Independent signed-prefix and archive checkers pass; three
+changed-Issued-content controls are rejected. The catalog now describes 79 goals.
+See the [contract](signed-draft-process-recovery.md) and
+[review](adversarial-test-review.md) for evidence. Parent-JVM bindings and external
+services remain in memory; server restart, cross-store atomicity and power loss
+are not covered. No production transport or new multi-DC signed integration is implied.
+
+## Previous addition — readiness boundary recovery
 
 [Run 37262063060](https://github.com/kverma/codex-playground/actions/runs/37262063060) passed at
 `98d814a66cf93730d496b731266b216381695acc`: **105 distinct POC + 16 upstream**.

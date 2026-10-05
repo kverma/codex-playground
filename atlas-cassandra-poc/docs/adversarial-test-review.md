@@ -2,30 +2,32 @@
 
 ## Decision
 
-Executable commit `98d814a66cf93730d496b731266b216381695acc` passed all four jobs in
-[run 37262063060](https://github.com/kverma/codex-playground/actions/runs/37262063060).
-Downloaded XML confirms **105 distinct POC cases plus 16 upstream tests**, with no
-failures, errors or skips: 51 shallow cases are included in the 88-case
+Executable commit `521bc1843ae54073ceef8769e97a3f17f5ee2784` passed all four jobs in
+[run 37298208324](https://github.com/kverma/codex-playground/actions/runs/37298208324).
+Downloaded XML confirms **107 distinct POC cases plus 16 upstream tests**, with no
+failures, errors or skips: 51 shallow cases are included in the 90-case
 model/single-node/fault job; 17 three-node cases complete the POC total.
 
-All four artifacts were downloaded and inspected. All 105 POC report cases now
+All four artifacts were downloaded and inspected. All 107 POC report cases now
 show readable Atlas scenario IDs/titles. The [scenario guide](test-scenarios.md)
-describes 77 unique goals, simulated boundaries and expected outcomes; shared
+describes 79 unique goals, simulated boundaries and expected outcomes; shared
 contracts run under multiple fixture classes. The description gate passed.
 A [separate guide](upstream-test-scenarios.md) explains all 16 upstream methods.
 
 The new Cassandra archive fixture passed six inherited scenarios on one node and
 six through dc1/dc2 coordinators on the three-node cluster, plus one real server
-SIGKILL/restart case and three new wire-fault cases. Saved archive histories contain
-eleven VALID / eleven INVALID traces in the single-node suite and six VALID / ten INVALID traces in the
+SIGKILL/restart case, three wire-fault cases and the signed client-process slice.
+Saved archive histories contain fourteen VALID / eleven INVALID traces in the
+single-node suite and six VALID / ten INVALID traces in the
 three-node suite. Negative traces fail at their intended CERTIFY, PRUNE, RESTORE,
 ACCEPT, RECOVER or observed stale-writer boundary. Both suites reject the same
 captured stale mutation after sealing, logical restore and recovery; their broken
 guard control actually applies the outdated mutation and is then rejected.
 
 This is a real Cassandra persistence fixture with a shared serial reducer and
-simulated external archive/authority. It does not change `RetentionCassandraStore`,
-integrate signed drafts, restore SSTables or prove a production global fence.
+simulated external archive/authority. A separate serial adapter now integrates
+signed drafts. It does not change `RetentionCassandraStore`, restore SSTables or
+prove a production global fence.
 Full provider API/compile/Kafka/downstream E2E and canonical proof gates remain
 unvalidated. All 18 healed retention views still match their checked final states.
 
@@ -35,6 +37,61 @@ using safety, availability, Cassandra, chaos, QA and provider-workflow lenses.
 It is one code/evidence review, not a claim of independent human or agent sign-off.
 Several assertions were too weak to establish their advertised conditions.
 The changes below strengthen the harness before broadening product scope.
+
+## Signed-draft process and archive integration — 2026-10-05 UTC
+
+[Run 37298208324](https://github.com/kverma/codex-playground/actions/runs/37298208324) passed all four jobs at
+`521bc1843ae54073ceef8769e97a3f17f5ee2784`. All four artifacts were downloaded
+and inspected: **107 distinct POC + 16 upstream**, zero failures/errors/skips.
+Counts are 90 model/single-node/fault cases (including 51 shallow cases), plus
+17 three-node cases. The catalog has 79 unique Atlas scenarios. The existing
+readiness boundaries, 14 commercial histories and 18 exact healed retention
+views also remain passing. Archive totals are now 14 VALID / 11 intentionally
+INVALID traces on one node, and 6 / 10 on three nodes.
+
+The [fixture contract](signed-draft-process-recovery.md) joins the existing signed
+Draft/Issued format to the serial Cassandra archive candidate. The signing helper
+encodings and RetentionCassandraStore behavior are unchanged; protected final
+helpers allow the test adapter to reuse authentication without copying it. New
+client JVMs load versioned files and send one request each over a loopback fixture
+transport with no automatic retry. This is not the production Atlas API.
+
+The single-node artifact at executable `521bc1843ae54073ceef8769e97a3f17f5ee2784`
+contains three checked scenarios and **39 distinct child JVMs**: 14 for allocation
+reply loss, 14 for acceptance reply loss and 11 for stale/tampered files. Each lost
+reply is tied to the exact successful server message/result and one transport-unknown
+child exit. The journal remains unchanged on that loss; the next process recovers
+the original Issued pair or receipt. A later edit does not change the old receipt.
+
+Both loss histories then seal/archive/certify/prune two slots, restore an older
+logical snapshot, reject authoring while fenced, recover, and reject old draft and
+ticket after moving the controlled clock backward. A fresh edit receives sequence
+3. Full archive traces are VALID with 24 checked commands each; final floor is 2,
+allocation is 3 and the new royalty value is 3000. The stale/tampered history has
+seven checked archive commands and preserves royalty 2500 despite the stale edit.
+
+The signed prefixes are independently LINEARIZABLE under RetentionChecker;
+three changed-Issued-content controls are NON_LINEARIZABLE. Full archive traces
+are independently checked by ArchiveRecoveryChecker. These are separate bounded
+oracles, not a combined concurrent protocol proof. Offline artifact inspection
+independently recomputed request hashes and HMAC signatures, checked original
+read sets and ticket identity, compared exact receipts and verified process exit
+counts. This byte/content inspection supplements the CI assertions; it is not an
+additional automatic grader.
+
+Tampered draft/Issued content and a changed subject are rejected. Malformed JSON
+and an unsupported journal version fail locally with zero additional server
+requests. The stale draft retains its old dependencies and conflicts instead of
+being refreshed. All journals and exact wire/process outcomes are saved alongside
+positive histories and counterexamples.
+
+Adversarial limits: allocation binding and external authority/archive stay in the
+parent JVM, and reserve/bind/install are serial steps. A server crash between those
+steps is not tested. File force plus atomic rename does not qualify directory
+fsync, power loss or a crash during journal replacement. Client exits are real but
+occur after reporting the outcome, not during a file write. No server persistence,
+concurrent cross-store atomicity, key rotation, new multi-DC signed integration or
+whole-database restore is certified by this result.
 
 ## Readiness boundary review — 2026-10-05 UTC
 
@@ -311,7 +368,7 @@ protocol decisions are tested.
 
 | Rank | Work | Required evidence before advancing |
 |---|---|---|
-| 1 | Integrate a concrete archive/authority and signed drafts; model and Cassandra persistence fixtures now pass. | Every accepted receipt being removed has a verified durable archive record. Missing, partial, corrupt or ambiguous archive writes cannot authorize deletion. Exact retries of archive writes are idempotent; archived before/after states remain reconstructable after pruning. |
+| 1 | Persist concrete archive/authority and draft bindings; the serial signed-draft bridge now passes. | Every accepted receipt being removed has a verified durable archive record. Missing, partial, corrupt or ambiguous archive writes cannot authorize deletion. Exact retries of archive writes are idempotent; archived before/after states remain reconstructable after pruning. |
 | 2 | Prove whole-database restore and externally enforced writer fencing; logical restore and stale-CQL guards now pass. | A snapshot predating pruning cannot reopen an expired draft/ticket or reuse an allocated operation identity. Authoring stays fenced until trusted recovery facts are reconciled; unavailable or contradictory facts fail closed. Extend the independent oracle across restore, rather than treating restored state as a fresh trusted initial state. |
 | 3 | Harden the SDK retry and signing contract. | Persist the complete Draft/Issued pair across crashes; recover lost allocation/acceptance replies without reminting the request. Define key rotation, lease validation, clock skew and the production retry window, then test their failure paths. |
 | 4 | Exercise actual Atlas batches at named Paxos/repair phases. | Instrument the pinned maintainer harness to prove selected phase messages were intercepted. Check state/receipt and floor/delete atomicity; establish repair overlap and control hint/read-repair confounders. |
@@ -321,9 +378,10 @@ protocol decisions are tested.
 ### Immediate POC slice: archive and restore
 
 The model and separate Cassandra persistence slices are implemented and their
-hosted gates passed. Next integrate signed drafts and concrete external services,
-retaining all negative controls and the independent oracle.
-Before that integration, make the archive contract and recovery authority concrete.
+hosted gates passed. Signed drafts now join the serial fixture through real client
+process restarts. Next persist the server-side bindings and external services,
+retaining all negative controls and both independent oracles.
+Before durable integration, make the archive contract and recovery authority concrete.
 An archive ACK must have a stated durability meaning; a second in-memory map is
 only a model fixture. Specify which durable facts prevent reuse after restore,
 and how authoring is fenced when those facts cannot be established. Do not assume
