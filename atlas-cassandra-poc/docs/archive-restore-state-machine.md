@@ -130,8 +130,9 @@ are replayable; no minimal-counterexample claim is made.
 
 ## Gate after this model
 
-After the model gate passes, implement a separately gated Cassandra adapter test for
-the seal/publish/certify/prune ordering and restoration fence. Choose a concrete
+The separately gated Cassandra fixture now passes seal/publish/certify/prune,
+logical-restore guard and server-restart tests; see its linked contract for evidence
+and scope. Integration with signed drafts and actual external services remains next. Choose a concrete
 archive/recovery-authority contract before claiming remote durability. Demonstrate
 that authority and archive survive the actual recovery boundary, and that every
 writer—including delayed requests and old deployments—is fenced. Retain the

@@ -1,5 +1,27 @@
 # Testing layers and CassandraUnit assessment
 
+## Latest addition — readable scenarios and Cassandra archive fixture
+
+[Run 37249882512](https://github.com/kverma/codex-playground/actions/runs/37249882512) at
+`6a25c98acff1d24c230875f06eaf616d8467ad46` passed all four jobs. Downloaded XML confirms
+47 shallow, 81 model/single-node/fault, 15 three-node and 16 upstream cases:
+**96 distinct POC cases plus 16 upstream tests** after deduplicating shallow reruns.
+
+The [plain-language guide](test-scenarios.md) supplies Atlas goals, simulated
+boundaries and required outcomes for all 68 unique local scenarios. JUnit reports
+show their readable titles; `make check-test-descriptions` passed and guards against
+missing/stale descriptions. Inherited contracts reuse scenario IDs across fixture
+classes. [Upstream explanations](upstream-test-scenarios.md) cover all 16 selected
+vendor methods without renaming or modifying those pinned tests.
+
+The [new fixture](archive-cassandra-fixture.md) adds six single-node and six
+cross-coordinator archive scenarios plus a process-crash case. Its two suites
+preserve seven/six VALID histories and ten INVALID negative-control histories each.
+Captured stale CQL fails after sealing, restore and recovery; the deliberate
+guard bypass applies and is rejected by the independent checker. Real Cassandra
+state is read back after guarded batches. External archive/authority, orchestration
+and logical restoration retain explicit fixture assumptions.
+
 ## Decision
 
 Use `make grade-model` as the shallow, Docker-free JDK25 gate. Run it first in
@@ -111,7 +133,7 @@ service, bounded recovery-authority representation or enforceable global fence.
 Those are the next integration gates; the existing retention adapter still prunes
 without an archive requirement. Business effective-time/event fields remain absent.
 
-## Latest verified cloud execution
+## Previous archive-model cloud execution
 
 Executable commit `bc5c9e00284c234e5653dd81314307b0b90f4994` passed all four jobs in
 [run 37248385829](https://github.com/kverma/codex-playground/actions/runs/37248385829).

@@ -11,7 +11,9 @@ The [scenario guide](test-scenarios.md) describes these tests in user-facing ter
 The scenarios run through `make grade-cassandra` on one node and
 `make grade-archive` after `make three-up` across logical DC coordinators. A process
 crash between archive certification and pruning runs through `make grade-faults`.
-Hosted validation is pending for this addition.
+Hosted [run 37249882512](https://github.com/kverma/codex-playground/actions/runs/37249882512) passed at
+`6a25c98acff1d24c230875f06eaf616d8467ad46`. Both fixture suites and the process-crash case
+passed; saved traces and expected negative-control rejection points were inspected.
 
 ## What is real and what is simulated
 

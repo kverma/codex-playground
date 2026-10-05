@@ -2,33 +2,60 @@
 
 ## Decision
 
-Executable commit `bc5c9e00284c234e5653dd81314307b0b90f4994` passed all four jobs in
-[run 37248385829](https://github.com/kverma/codex-playground/actions/runs/37248385829).
-Downloaded XML confirms **83 distinct POC cases plus 16 upstream tests**, with no
-failures, errors or skips: 47 shallow cases are included in the 74-case
-model/single-node/fault job; nine three-node cases complete the POC total.
+Executable commit `6a25c98acff1d24c230875f06eaf616d8467ad46` passed all four jobs in
+[run 37249882512](https://github.com/kverma/codex-playground/actions/runs/37249882512).
+Downloaded XML confirms **96 distinct POC cases plus 16 upstream tests**, with no
+failures, errors or skips: 47 shallow cases are included in the 81-case
+model/single-node/fault job; 15 three-node cases complete the POC total.
 
-All four artifacts were downloaded and inspected. Archive evidence contains 100
-VALID generated traces, 16 VALID boundary traces, nine VALID contract traces and
-nine INVALID mutant counterexamples. The three-node archive contains 14
-LINEARIZABLE commercial histories and six LINEARIZABLE retention histories.
-All 18 healed coordinator views exactly match the checked final states.
+All four artifacts were downloaded and inspected. All 96 POC report cases now
+show readable Atlas scenario IDs/titles. The [scenario guide](test-scenarios.md)
+describes 68 unique goals, simulated boundaries and expected outcomes; shared
+contracts run under multiple fixture classes. The description gate passed.
+A [separate guide](upstream-test-scenarios.md) explains all 16 upstream methods.
 
-The compaction scenario and its two controls passed. All real compaction/healed
-reads resolved on the first attempt in this run: the added healed-read readiness
-retry branch was **not exercised**. Deterministically injecting membership changes
-during readiness sampling remains an adversarial test gap. One green regression
-does not erase the two failed runs below or establish a recovery-latency SLO.
+The new Cassandra archive fixture passed six inherited scenarios on one node and
+six through dc1/dc2 coordinators on the three-node cluster, plus one real server
+SIGKILL/restart case. Saved archive histories contain seven VALID / ten INVALID
+traces in the single-node suite and six VALID / ten INVALID traces in the
+three-node suite. Negative traces fail at their intended CERTIFY, PRUNE, RESTORE,
+ACCEPT, RECOVER or observed stale-writer boundary. Both suites reject the same
+captured stale mutation after sealing, logical restore and recovery; their broken
+guard control actually applies the outdated mutation and is then rejected.
 
-This qualifies bounded fixtures and the separate archive/restore serial model.
-The Cassandra archive adapter, remote archive durability, distributed recovery
-fence and full provider API/compile/Kafka/downstream E2E flows remain unvalidated.
+This is a real Cassandra persistence fixture with a shared serial reducer and
+simulated external archive/authority. It does not change `RetentionCassandraStore`,
+integrate signed drafts, restore SSTables or prove a production global fence.
+Full provider API/compile/Kafka/downstream E2E and canonical proof gates remain
+unvalidated. All 18 healed retention views still match their checked final states.
+
 
 This review inspected test code, fault scripts, adapters and stored CI evidence
 using safety, availability, Cassandra, chaos, QA and provider-workflow lenses.
 It is one code/evidence review, not a claim of independent human or agent sign-off.
 Several assertions were too weak to establish their advertised conditions.
 The changes below strengthen the harness before broadening product scope.
+
+## Cassandra archive fixture progress — 2026-10-05 UTC
+
+The [fixture contract](archive-cassandra-fixture.md) separates real storage evidence
+from simulated services. HEAD metadata and allocated slot rows share a conditional
+Cassandra batch. Sealing, retirement and logical restoration rotate its guard;
+physical slot deletion and guard rejection are observed by SERIAL reads. The
+independent archive checker consumes those reloaded states rather than predicted
+in-memory output.
+
+Nine broken archive variants and a stale-writer guard bypass provide negative
+controls. Some deliberately corrupt the simulated authority; others persist bad
+Cassandra state. They are not all disk-corruption tests. The server-crash scenario
+keeps the external fixture alive while killing Cassandra after certification,
+verifies persisted offer/rows on restart, then completes repeated pruning.
+No network-response loss or internal Paxos phase was injected into this adapter.
+
+The model boundary-loss histories, upstream phase smoke and prior adapter socket
+faults retain their own scopes. They are not evidence for unexecuted faults in
+this new adapter. Concurrent external-service operations, whole-database restore,
+production fencing and bounded recovery-authority storage remain open.
 
 ## Previous baseline snapshot — 2026-10-04
 
@@ -138,12 +165,13 @@ race without claiming a distributed failure-detector or latency guarantee.
 | R08 | High | Scheduling a nodetool process and writes on different threads did not prove a server repair phase overlapped a write. | Claim narrowed. Final full repair completion and LOCAL_ONE final-token convergence remain checked; server-phase overlap is OPEN. Add server-side phase witnessing/pause points or a measured sustained workload before qualifying repair under traffic. |
 | R09 | High | Retention admission/recovery tests share `Retention.Base`; there is no independent retention history oracle or model of split floor/delete effects. | Implemented for the bounded controlled-clock profile: `RetentionChecker` independently specifies signed-lease authentication, allocation, retained receipts, acceptance and atomic contiguous pruning, without `Retention.Base` transitions. Two hundred model histories and six Cassandra histories pass; seven actual broken-storage hooks are rejected and saved traces replayed. Black-hole transport fails progress despite a safe history. Initial views and signed prepared inputs are trusted; arbitrary skew, unobserved ambiguous acceptance and histories beyond the checker bounds remain unqualified. |
 | R10 | High | Two independent retention drafts read the same next allocator slot and can collide as KEY_REUSE before commercial group validation. | Implemented candidate `prepare`/`issueDraft`: signed nonce/anchor/deadline identifies a draft; server CAS assigns a unique sequence/operation while preserving the original read set and request hash. Shared model/Cassandra contracts require independent edits to accept concurrently, exact allocation replay, payload-binding checks and closure after pruning/backward clock. Legacy `edit`/`issue(Request)` remains sequential-only. Full SDK persistence, signing-key lifecycle and production integration remain OPEN. |
-| R11 | High | Same-clock tests and session restarts do not validate skew, restored allocator floors, audit archives, GC grace or resurrected rows. | Partially addressed by the separate archive/restore serial model: stale backups, complete coverage, closed IDs, corrupt/missing objects and nine rejected mutants. Real Cassandra archive integration, distributed fencing, authority recovery/bounds, clock skew and repair/GC remain OPEN. Audit retention is separate from retry retention. |
+| R11 | High | Same-clock tests and session restarts do not validate skew, restored allocator floors, audit archives, GC grace or resurrected rows. | Partially addressed by the separate archive/restore serial model: stale backups, complete coverage, closed IDs, corrupt/missing objects and nine rejected mutants. The new Cassandra persistence fixture adds actual guarded writes, row deletion, logical restore and server restart. Production archive integration, distributed fencing, whole-database restore, authority recovery/bounds, clock skew and repair/GC remain OPEN. Audit retention is separate from retry retention. |
 | R12 | High | RF1 per logical DC on one host is being asked to stand in for RF3/DC and independent-host failures. | OPEN. Nine-node scaffold has no execution evidence. Neither hosted runner tests nor Docker SIGKILL qualify WAN SLOs, disks/power failures or an inter-DC link fault on independent hosts. |
 | R13 | Medium | The oracle shares request hashing and the snapshot codec with the implementation. A shared serialization error could evade agreement checks. | Partially addressed with fixed external canonical hash/byte vectors and corrupt-summary rejection. Full independent serialization/property coverage remains OPEN for a larger schema. |
 | R14 | Medium | An embedded harness with a misleading version or an empty upstream suite could appear to validate the pinned protocol. | CassandraUnit assessment records the 3.11.5/5.0.8 embedded-version mismatch and JDK constraints. Shallow model CI precedes Docker. Separate pinned 4.0.5 maintainer smoke requires the exact 16 selected non-skipped methods; synthetic XML controls reject missing, duplicate, unselected, skipped, failed and errored results. Upstream smoke does not cover Atlas batches or disk-sync durability. See [harness assessment](testing-harness-assessment.md). |
 | R15 | Medium | A single read immediately after TCP healing conflated network reachability, Cassandra peer membership and authoritative state recovery. Agreement among later reads alone could also miss a collective change from the checked final state. | Both retention scenarios now require all three peers Up/Normal from every node, with bounded membership polling and saved reports. The generated scenario requires a full read within three attempts per coordinator and exact equality with the checked final history state. Preserve driver causes and every read attempt in `retention-healed/`. The later archive regression exposed membership changing during sequential readiness snapshots. Fresh bounded readiness checks now separate failed read attempts. Both failed and passing runs remain recorded; no continuous-membership or recovery-latency SLO is established. |
 | R16 | Medium | The older retention scenario treated one ambiguous majority compaction as definitive failure, although exact recovery is part of the candidate contract. | Added bounded three-attempt recovery at a fixed clock and target, saved attempt/cause/full-view evidence, a lost-reply recovery control and a persistent-ambiguity failure control. Floor, actual deletion, younger receipt and old-ID closure assertions remain mandatory. Server-side timeout cause and latency remain unqualified. |
+| R17 | High | A Cassandra-backed model could be mistaken for proof of the external archive and a global restore fence. | Scope explicitly limited: actual CQL persistence, same-partition guarded mutations, observed stale-write rejection and process restart; shared in-memory authority/archive, serial JVM orchestration and logical hot-row restoration. Independent oracle checks reloaded state; real concurrent service failures, old deployments and whole-database restoration remain OPEN. |
 
 ## What must happen for a passing run
 
@@ -155,6 +183,7 @@ race without claiming a distributed failure-detector or latency guarantee.
 | Partition | Healthy links first; both directions blocked; host client reachable | Majority progress with bounded exact recovery, minority ambiguity, coherent post-heal state | No-op/one-direction scripts rejected; probe counters are not Paxos-phase evidence |
 | Coordinator crash | Batch send witnessed and verified SIGKILL | Surviving DC resolves same operation, later edit does not change original replay | Send witness is not acceptance-phase witness |
 | Repair/rejoin | Replica unavailable for accepted writes, then rejoined and repaired | Final LOCAL_ONE on the repaired RF1/DC replica sees final token | Server-phase concurrent-repair gate remains open |
+| Cassandra archive fixture | Complete simulated archive coverage and a real guarded HEAD/slot batch | Actual slot deletion; logical restore closure; stale conditional writes rejected before/after recovery; server restart preserves records | Nine archive mutants plus real stale-guard bypass rejected in both suites; external services and global fence remain simulated |
 | Archive/restore model | Sealed accepted/unaccepted prefix, verified archive coverage, external authority and modeled fence | Exact restored commercial head; no reopened IDs; complete-coverage progress and replayed counterexamples | Nine mutants rejected; 100 generated serial traces. No real archive, distributed fence or Cassandra integration |
 | Retention | Issued signed tickets, controlled deadlines, floor/deletes CAS guard | No expired reexecution; exact younger receipt; explicit UNKNOWN after pruning; actual old row absence | Independent bounded oracle, progress/overlap gates and seven rejected storage mutants; healed full views must match the checked final state. No skew, archive or full SDK claim |
 
@@ -176,8 +205,8 @@ protocol decisions are tested.
 
 | Rank | Work | Required evidence before advancing |
 |---|---|---|
-| 1 | Integrate archive-before-prune with Cassandra; the serial model gate has passed. | Every accepted receipt being removed has a verified durable archive record. Missing, partial, corrupt or ambiguous archive writes cannot authorize deletion. Exact retries of archive writes are idempotent; archived before/after states remain reconstructable after pruning. |
-| 2 | Prove actual stale-snapshot restore and allocator/floor recovery; retain the model controls. | A snapshot predating pruning cannot reopen an expired draft/ticket or reuse an allocated operation identity. Authoring stays fenced until trusted recovery facts are reconciled; unavailable or contradictory facts fail closed. Extend the independent oracle across restore, rather than treating restored state as a fresh trusted initial state. |
+| 1 | Integrate a concrete archive/authority and signed drafts; model and Cassandra persistence fixtures now pass. | Every accepted receipt being removed has a verified durable archive record. Missing, partial, corrupt or ambiguous archive writes cannot authorize deletion. Exact retries of archive writes are idempotent; archived before/after states remain reconstructable after pruning. |
+| 2 | Prove whole-database restore and externally enforced writer fencing; logical restore and stale-CQL guards now pass. | A snapshot predating pruning cannot reopen an expired draft/ticket or reuse an allocated operation identity. Authoring stays fenced until trusted recovery facts are reconciled; unavailable or contradictory facts fail closed. Extend the independent oracle across restore, rather than treating restored state as a fresh trusted initial state. |
 | 3 | Harden the SDK retry and signing contract. | Persist the complete Draft/Issued pair across crashes; recover lost allocation/acceptance replies without reminting the request. Define key rotation, lease validation, clock skew and the production retry window, then test their failure paths. |
 | 4 | Exercise actual Atlas batches at named Paxos/repair phases. | Instrument the pinned maintainer harness to prove selected phase messages were intercepted. Check state/receipt and floor/delete atomicity; establish repair overlap and control hint/read-repair confounders. |
 | 5 | Qualify RF3/DC, then independent hosts and storage growth. | Run the nine-node scaffold on a suitably sized remote runner with fault/resource witnesses. Follow with host/WAN failures, durability and repair/GC/tombstone growth tests. A single hosted runner cannot establish independent-host durability. |
@@ -185,16 +214,16 @@ protocol decisions are tested.
 
 ### Immediate POC slice: archive and restore
 
-The first model slice is implemented and its shallow gate passed; see the progress
-section above. Next integrate the candidate with the actual Cassandra adapter and
-signed-draft allocator, retaining all negative controls and the independent oracle.
+The model and separate Cassandra persistence slices are implemented and their
+hosted gates passed. Next integrate signed drafts and concrete external services,
+retaining all negative controls and the independent oracle.
 Before that integration, make the archive contract and recovery authority concrete.
 An archive ACK must have a stated durability meaning; a second in-memory map is
 only a model fixture. Specify which durable facts prevent reuse after restore,
 and how authoring is fenced when those facts cannot be established. Do not assume
 an atomic transaction across Cassandra and a future archive service.
 
-Add these cases to the independent model first, then the real Cassandra harness:
+Retain these acceptance criteria as the fixture advances to real external services:
 
 | Injected condition | Required result / adversarial control |
 |---|---|
@@ -210,9 +239,9 @@ still reconstruct both intents and their effective periods. Restoring a January
 snapshot must not reopen an already retired operation. A configuration change
 creates a different semantic revision; passage of time alone does not.
 
-The written state machine, independent serial oracle and negative controls now
-pass the existing Gradle/Make model gate. The corresponding Cassandra fault cases
-are the next implementation slice. A concrete remote archive must eventually validate the claimed durability;
+The written state machine, independent serial oracle and negative controls pass
+the model gate. Cassandra logical restore, guarded pruning and server-restart
+cases also pass; concrete archive/authority and full restore boundaries are next. A concrete remote archive must eventually validate the claimed durability;
 model and Cassandra fixtures alone cannot certify that external service.
 
 PG-COMMIT, PG-CASS and other canonical Atlas proof gates remain UNPROVEN.

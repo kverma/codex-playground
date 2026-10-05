@@ -6,6 +6,8 @@ RevealSwift is a separate project and is not a dependency.
 Start with the [plain-language test scenarios](docs/test-scenarios.md): each test
 explains its Atlas goal, simulated boundary and required outcome. Scenario IDs and
 readable descriptions also appear in test reports and source comments.
+The separate [maintainer-test guide](docs/upstream-test-scenarios.md) explains all
+16 pinned upstream checks while preserving their original report names.
 
 ## Run
 
@@ -36,13 +38,13 @@ removes the disposable container; no host data volume is configured.
 The [Cassandra archive fixture](docs/archive-cassandra-fixture.md) adds real
 conditional HEAD/slot mutations, logical restore and delayed-writer guard tests.
 Run its cross-coordinator cases with `make three-up && make grade-archive`.
-Its archive and recovery authority remain simulated; hosted validation is pending.
+Its archive and recovery authority remain simulated. Hosted [run 37249882512](https://github.com/kverma/codex-playground/actions/runs/37249882512) passed all four jobs at `6a25c98`: **96 distinct POC cases plus 16 upstream tests**.
 
 The [archive/restore state machine](docs/archive-restore-state-machine.md) adds a
 separate serial model and independent oracle to `make grade-model`: complete
 archive coverage before pruning, fenced snapshot recovery, lost replies and nine
 broken implementations. It does not yet change the Cassandra retention adapter or
-implement a distributed recovery fence. Hosted [run 37248385829](https://github.com/kverma/codex-playground/actions/runs/37248385829) passed all four jobs at `bc5c9e0`: 83 distinct POC cases plus 16 upstream tests.
+implement a distributed recovery fence. The earlier model-baseline [run 37248385829](https://github.com/kverma/codex-playground/actions/runs/37248385829) passed all four jobs at `bc5c9e0`: 83 distinct POC cases plus 16 upstream tests.
 See the [adversarial review](docs/adversarial-test-review.md) for failed-run evidence,
 recovery fixes and remaining coverage gaps.
 
