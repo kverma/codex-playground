@@ -95,7 +95,53 @@ key/clock policy, longer/skewed histories and adapter phase witnessing remain op
 Selecting a different harness does not close those gates. Atlas proof gates remain
 UNPROVEN.
 
-## Verified cloud execution
+## Archive/restore model addition — 2026-10-05
+
+The [archive/restore specification](archive-restore-state-machine.md) adds ten
+shallow test methods: 100 generated serial traces, 16 before/after fault-boundary
+traces, nine contract traces and nine actual broken variants with saved replay.
+The independent checker keeps its acceptance history across restoration and checks
+full archive contents independently of implementation digests. Step or nested
+commercial-checker bound exhaustion remains INCONCLUSIVE.
+
+This gate passed on JDK25/Gradle9.1.0 at executable commit
+`ad48e24bcedfcfd073898ad02879a7704a2d8985`. Downloaded XML and JSON confirm the
+counts and expected verdicts. It adds no Cassandra archive adapter, remote archive
+service, bounded recovery-authority representation or enforceable global fence.
+Those are the next integration gates; the existing retention adapter still prunes
+without an archive requirement. Business effective-time/event fields remain absent.
+
+## Latest verified cloud execution
+
+Executable commit `bc5c9e00284c234e5653dd81314307b0b90f4994` passed all four jobs in
+[run 37248385829](https://github.com/kverma/codex-playground/actions/runs/37248385829).
+Downloaded XML confirms **83 distinct POC cases plus 16 upstream tests**, with no
+failures, errors or skips: 47 shallow cases are included in the 74-case
+model/single-node/fault job; nine three-node cases complete the POC total.
+
+All four artifacts were downloaded and inspected. Archive evidence contains 100
+VALID generated traces, 16 VALID boundary traces, nine VALID contract traces and
+nine INVALID mutant counterexamples. The three-node archive contains 14
+LINEARIZABLE commercial histories and six LINEARIZABLE retention histories.
+All 18 healed coordinator views exactly match the checked final states.
+
+The compaction scenario and its two controls passed. All real compaction/healed
+reads resolved on the first attempt in this run: the added healed-read readiness
+retry branch was **not exercised**. Deterministically injecting membership changes
+during readiness sampling remains an adversarial test gap. One green regression
+does not erase the two failed runs below or establish a recovery-latency SLO.
+
+This qualifies bounded fixtures and the separate archive/restore serial model.
+The Cassandra archive adapter, remote archive durability, distributed recovery
+fence and full provider API/compile/Kafka/downstream E2E flows remain unvalidated.
+
+Build pins remain Cassandra4.0.5, JDK25, Gradle9.1.0 and Make wrappers. Upstream
+maintainer smoke still uses its separate JDK11/Ant process. See the
+[adversarial review](adversarial-test-review.md) for both failed-run timelines and
+the bounded compaction/readiness changes. These are fixture recovery gates, not
+production availability guarantees.
+
+## Previous verified cloud execution
 
 [Run 37243518121](https://github.com/kverma/codex-playground/actions/runs/37243518121)
 at executable commit `7ba6fd7d27d54218a8747176872d624d1f1bb17b` passed all four jobs.
@@ -132,10 +178,11 @@ server peer membership and authoritative read recovery, and retains driver cause
 The passing run qualifies these stronger conditions; it does not identify the
 specific cause of the earlier ambiguous reads or prove a recovery-latency SLO.
 
-Artifact downloads for the latest runs stalled in this session. The latest result
-and witnesses above were verified from completed job logs and the strict grader
-conditions; the artifact archives are available on the linked GitHub run. Do not
-claim a separate inspection of every latest archive.
+Artifact downloads initially stalled. The 2026-10-05 continuation downloaded all
+four archives for this run and verified XML counts and saved history/mutant
+verdicts. The six healed retention traces contain 18 successful coordinator views,
+each exactly equal to its checked final history state. All six saved membership
+reports show three UN peers. This closes the earlier artifact-download gap.
 
 The previous [baseline rerun](https://github.com/kverma/codex-playground/actions/runs/37238077480/attempts/2)
 passed after the repository fix. Its earlier runner-start blocker remains resolved.

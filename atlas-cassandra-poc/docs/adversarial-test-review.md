@@ -2,11 +2,27 @@
 
 ## Decision
 
-Executable commit `7ba6fd7d27d54218a8747176872d624d1f1bb17b` passed all four jobs in
-[run 37243518121](https://github.com/kverma/codex-playground/actions/runs/37243518121).
-The grader logs confirm 71 distinct POC cases plus 16 upstream tests passed,
-with no failed or skipped cases. This qualifies bounded Cassandra adapter fixtures;
-Atlas provider API, compile, Kafka and caching-domain E2E flows remain unvalidated.
+Executable commit `bc5c9e00284c234e5653dd81314307b0b90f4994` passed all four jobs in
+[run 37248385829](https://github.com/kverma/codex-playground/actions/runs/37248385829).
+Downloaded XML confirms **83 distinct POC cases plus 16 upstream tests**, with no
+failures, errors or skips: 47 shallow cases are included in the 74-case
+model/single-node/fault job; nine three-node cases complete the POC total.
+
+All four artifacts were downloaded and inspected. Archive evidence contains 100
+VALID generated traces, 16 VALID boundary traces, nine VALID contract traces and
+nine INVALID mutant counterexamples. The three-node archive contains 14
+LINEARIZABLE commercial histories and six LINEARIZABLE retention histories.
+All 18 healed coordinator views exactly match the checked final states.
+
+The compaction scenario and its two controls passed. All real compaction/healed
+reads resolved on the first attempt in this run: the added healed-read readiness
+retry branch was **not exercised**. Deterministically injecting membership changes
+during readiness sampling remains an adversarial test gap. One green regression
+does not erase the two failed runs below or establish a recovery-latency SLO.
+
+This qualifies bounded fixtures and the separate archive/restore serial model.
+The Cassandra archive adapter, remote archive durability, distributed recovery
+fence and full provider API/compile/Kafka/downstream E2E flows remain unvalidated.
 
 This review inspected test code, fault scripts, adapters and stored CI evidence
 using safety, availability, Cassandra, chaos, QA and provider-workflow lenses.
@@ -14,7 +30,7 @@ It is one code/evidence review, not a claim of independent human or agent sign-o
 Several assertions were too weak to establish their advertised conditions.
 The changes below strengthen the harness before broadening product scope.
 
-## Progress snapshot — 2026-10-04
+## Previous baseline snapshot — 2026-10-04
 
 | Area | Progress | Remaining boundary |
 |---|---|---|
@@ -25,16 +41,88 @@ The changes below strengthen the harness before broadening product scope.
 | Fault and recovery evidence | Verified isolation, kill witnesses, membership recovery and full healed views matched to the checked final state. R15 strengthened. | Earlier ambiguous-read causes and recovery latency are not established. |
 | Maintainer harness | Exact 16 selected upstream tests passed; CassandraUnit compatibility assessment completed. | Upstream smoke does not validate Atlas batches or disk-sync durability. |
 
-The verified total is **71 distinct POC cases plus 16 upstream tests**. The 37
+The previous baseline total was **71 distinct POC cases plus 16 upstream tests**. The 37
 shallow cases are included in the 64-case model/single-node/fault job; seven
 three-node cases bring the distinct POC total to 71. Generated histories are
 iterations inside these cases, not additional JUnit cases.
 
 Latest results were verified from completed CI logs and strict grader conditions.
-Latest artifact downloads stalled; all four archives are published on the linked
-run, but a separate inspection of every latest archive is outstanding. Reattempt
-that read-only evidence audit before the next protocol change; it does not require
-rerunning a green suite.
+Artifact downloads initially stalled. The 2026-10-05 continuation downloaded all
+four archives and checked their XML and saved history/mutant counts; those match
+the totals above. The three-node membership and healed-view evidence was also
+checked directly, as detailed below.
+
+## Archive/restore model progress — 2026-10-05 UTC
+
+Executable candidate `ad48e24bcedfcfd073898ad02879a7704a2d8985` adds the
+[archive/restore specification](archive-restore-state-machine.md), a separate
+state machine and independent serial checker. Its hosted model gate passed 47
+JUnit cases. Downloaded XML has zero failures, errors or skips; saved JSON confirms
+100 VALID generated traces, 16 VALID before/after boundary traces, nine VALID
+contract traces and nine INVALID mutant counterexamples. Tests deserialize and
+recheck each saved trace. Generated assertion failures also preserve their seed
+and partial trace.
+
+The candidate separates reservation, hot installation, acceptance, sealing,
+manifest publication, copying, certification and pruning. Recovery requires
+coverage through the external allocation high-water mark, including explicitly
+closed unaccepted slots. Old snapshots cannot reset the checker's acceptance
+history. Receipt reconstruction follows acceptance order, not allocation IDs.
+
+Adversarial controls reject premature pruning, volatile-ACK/partial-object
+certification, split floor/deletion, activating a restored snapshot, rewinding the
+authority, resurrecting closed rows, ignoring corruption and omitting a newer
+uncertified tail. Complete generated traces must also recover and make progress;
+remaining fenced cannot pass their success gate.
+
+**Boundary:** this is a serial in-memory crash model. `RetentionCassandraStore`
+still has no audit-archive prerequisite. External archive durability, enforcement
+of a global writer fence, authority disaster recovery and concurrent cross-store
+interleavings are unproven. The model authority retains every grant/manifest;
+bounded production metadata storage is unresolved. An unarchived tail or
+uninstalled reservation deliberately blocks recovery, potentially indefinitely.
+January/February examples preserve intent contents; business effective dates and
+downstream event delivery are not implemented.
+
+The earlier run's three-node archive was downloaded in this continuation:
+seven clean JUnit cases, six LINEARIZABLE retention traces, all 18 successful
+healed views exactly matching their checked final states, and six membership
+reports each showing three UN peers. The other three archives were also downloaded: XML confirms 37 shallow,
+64 distinct model/single-node/fault and 16 upstream cases; saved JSON confirms
+400 commercial model histories, 200 retention histories and six/seven rejected
+commercial/retention mutants. This resolves the earlier artifact-download gap.
+
+## Regression failure and bounded compaction recovery
+
+[Run 37246831178](https://github.com/kverma/codex-playground/actions/runs/37246831178)
+passed the 47-case shallow, 74-case model/single-node/fault and 16-test upstream
+jobs. The three-node job passed six cases, including all six generated retention
+histories, but the older majority-pruning scenario failed on its first SERIAL CAS
+write timeout. The overall run failed. Saved XML and the driver cause establish
+where it failed; they do not establish the server-side cause.
+
+The follow-up changes only that scenario's recovery gate: at most three compaction
+attempts with the same subject, fixed clock and unchanged expired prefix. Every
+attempt preserves its outcome, cause or resolved full view. Exact floor, actual
+old-row deletion, younger receipt replay and closed old ticket assertions remain.
+A model lost-reply control requires recovery without changing the target; an
+always-indeterminate control must fail after three attempts. This is bounded
+eventual progress, not a first-attempt success or latency guarantee.
+
+The next [run 37247633441](https://github.com/kverma/codex-playground/actions/runs/37247633441)
+passed the compaction scenario and both controls, but failed the generated
+retention case at seed 2004: dc1 exhausted three immediate SERIAL reads with
+`UnavailableException` (two replicas required, one alive). Seed 2005 did not run.
+That run is also failed, not a completed six-seed qualification.
+
+The saved readiness/log timeline exposes a sampling race: dc1's 3-UN report was
+collected at 00:37:42.899 UTC; dc1 logged both peers DOWN at 00:37:44.685–.688;
+the readiness script finished checking dc3 at 00:37:44.999; dc1 logged peers UP
+at 00:37:45.696–.735. Sequential membership snapshots cannot establish continuous
+readiness. The follow-up requires a fresh bounded membership check between failed
+healed-read attempts. It retains the three-read limit, saved causes and exact
+equality to the checked final history state. This addresses an observed harness
+race without claiming a distributed failure-detector or latency guarantee.
 
 ## Findings and disposition
 
@@ -50,11 +138,12 @@ rerunning a green suite.
 | R08 | High | Scheduling a nodetool process and writes on different threads did not prove a server repair phase overlapped a write. | Claim narrowed. Final full repair completion and LOCAL_ONE final-token convergence remain checked; server-phase overlap is OPEN. Add server-side phase witnessing/pause points or a measured sustained workload before qualifying repair under traffic. |
 | R09 | High | Retention admission/recovery tests share `Retention.Base`; there is no independent retention history oracle or model of split floor/delete effects. | Implemented for the bounded controlled-clock profile: `RetentionChecker` independently specifies signed-lease authentication, allocation, retained receipts, acceptance and atomic contiguous pruning, without `Retention.Base` transitions. Two hundred model histories and six Cassandra histories pass; seven actual broken-storage hooks are rejected and saved traces replayed. Black-hole transport fails progress despite a safe history. Initial views and signed prepared inputs are trusted; arbitrary skew, unobserved ambiguous acceptance and histories beyond the checker bounds remain unqualified. |
 | R10 | High | Two independent retention drafts read the same next allocator slot and can collide as KEY_REUSE before commercial group validation. | Implemented candidate `prepare`/`issueDraft`: signed nonce/anchor/deadline identifies a draft; server CAS assigns a unique sequence/operation while preserving the original read set and request hash. Shared model/Cassandra contracts require independent edits to accept concurrently, exact allocation replay, payload-binding checks and closure after pruning/backward clock. Legacy `edit`/`issue(Request)` remains sequential-only. Full SDK persistence, signing-key lifecycle and production integration remain OPEN. |
-| R11 | High | Same-clock tests and session restarts do not validate skew, restored allocator floors, audit archives, GC grace or resurrected rows. | OPEN. Add skew/jump and stale-snapshot recovery experiments, archive durability and repair/GC qualification. Audit retention is separate from retry retention. |
+| R11 | High | Same-clock tests and session restarts do not validate skew, restored allocator floors, audit archives, GC grace or resurrected rows. | Partially addressed by the separate archive/restore serial model: stale backups, complete coverage, closed IDs, corrupt/missing objects and nine rejected mutants. Real Cassandra archive integration, distributed fencing, authority recovery/bounds, clock skew and repair/GC remain OPEN. Audit retention is separate from retry retention. |
 | R12 | High | RF1 per logical DC on one host is being asked to stand in for RF3/DC and independent-host failures. | OPEN. Nine-node scaffold has no execution evidence. Neither hosted runner tests nor Docker SIGKILL qualify WAN SLOs, disks/power failures or an inter-DC link fault on independent hosts. |
 | R13 | Medium | The oracle shares request hashing and the snapshot codec with the implementation. A shared serialization error could evade agreement checks. | Partially addressed with fixed external canonical hash/byte vectors and corrupt-summary rejection. Full independent serialization/property coverage remains OPEN for a larger schema. |
 | R14 | Medium | An embedded harness with a misleading version or an empty upstream suite could appear to validate the pinned protocol. | CassandraUnit assessment records the 3.11.5/5.0.8 embedded-version mismatch and JDK constraints. Shallow model CI precedes Docker. Separate pinned 4.0.5 maintainer smoke requires the exact 16 selected non-skipped methods; synthetic XML controls reject missing, duplicate, unselected, skipped, failed and errored results. Upstream smoke does not cover Atlas batches or disk-sync durability. See [harness assessment](testing-harness-assessment.md). |
-| R15 | Medium | A single read immediately after TCP healing conflated network reachability, Cassandra peer membership and authoritative state recovery. Agreement among later reads alone could also miss a collective change from the checked final state. | Both retention scenarios now require all three peers Up/Normal from every node, with bounded membership polling and saved reports. The generated scenario requires a full read within three attempts per coordinator and exact equality with the checked final history state. Preserve driver causes and every read attempt in `retention-healed/`. Earlier runs failed the read-recovery gate; the latest passes. This does not establish the cause of those earlier failures or a recovery-latency SLO. |
+| R15 | Medium | A single read immediately after TCP healing conflated network reachability, Cassandra peer membership and authoritative state recovery. Agreement among later reads alone could also miss a collective change from the checked final state. | Both retention scenarios now require all three peers Up/Normal from every node, with bounded membership polling and saved reports. The generated scenario requires a full read within three attempts per coordinator and exact equality with the checked final history state. Preserve driver causes and every read attempt in `retention-healed/`. The later archive regression exposed membership changing during sequential readiness snapshots. Fresh bounded readiness checks now separate failed read attempts. Both failed and passing runs remain recorded; no continuous-membership or recovery-latency SLO is established. |
+| R16 | Medium | The older retention scenario treated one ambiguous majority compaction as definitive failure, although exact recovery is part of the candidate contract. | Added bounded three-attempt recovery at a fixed clock and target, saved attempt/cause/full-view evidence, a lost-reply recovery control and a persistent-ambiguity failure control. Floor, actual deletion, younger receipt and old-ID closure assertions remain mandatory. Server-side timeout cause and latency remain unqualified. |
 
 ## What must happen for a passing run
 
@@ -66,6 +155,7 @@ rerunning a green suite.
 | Partition | Healthy links first; both directions blocked; host client reachable | Majority progress with bounded exact recovery, minority ambiguity, coherent post-heal state | No-op/one-direction scripts rejected; probe counters are not Paxos-phase evidence |
 | Coordinator crash | Batch send witnessed and verified SIGKILL | Surviving DC resolves same operation, later edit does not change original replay | Send witness is not acceptance-phase witness |
 | Repair/rejoin | Replica unavailable for accepted writes, then rejoined and repaired | Final LOCAL_ONE on the repaired RF1/DC replica sees final token | Server-phase concurrent-repair gate remains open |
+| Archive/restore model | Sealed accepted/unaccepted prefix, verified archive coverage, external authority and modeled fence | Exact restored commercial head; no reopened IDs; complete-coverage progress and replayed counterexamples | Nine mutants rejected; 100 generated serial traces. No real archive, distributed fence or Cassandra integration |
 | Retention | Issued signed tickets, controlled deadlines, floor/deletes CAS guard | No expired reexecution; exact younger receipt; explicit UNKNOWN after pruning; actual old row absence | Independent bounded oracle, progress/overlap gates and seven rejected storage mutants; healed full views must match the checked final state. No skew, archive or full SDK claim |
 
 ## Evidence and continuation gates
@@ -86,8 +176,8 @@ protocol decisions are tested.
 
 | Rank | Work | Required evidence before advancing |
 |---|---|---|
-| 1 | Specify and prove archive-before-prune. | Every accepted receipt being removed has a verified durable archive record. Missing, partial, corrupt or ambiguous archive writes cannot authorize deletion. Exact retries of archive writes are idempotent; archived before/after states remain reconstructable after pruning. |
-| 2 | Prove stale-snapshot restore and allocator/floor recovery. | A snapshot predating pruning cannot reopen an expired draft/ticket or reuse an allocated operation identity. Authoring stays fenced until trusted recovery facts are reconciled; unavailable or contradictory facts fail closed. Extend the independent oracle across restore, rather than treating restored state as a fresh trusted initial state. |
+| 1 | Integrate archive-before-prune with Cassandra; the serial model gate has passed. | Every accepted receipt being removed has a verified durable archive record. Missing, partial, corrupt or ambiguous archive writes cannot authorize deletion. Exact retries of archive writes are idempotent; archived before/after states remain reconstructable after pruning. |
+| 2 | Prove actual stale-snapshot restore and allocator/floor recovery; retain the model controls. | A snapshot predating pruning cannot reopen an expired draft/ticket or reuse an allocated operation identity. Authoring stays fenced until trusted recovery facts are reconciled; unavailable or contradictory facts fail closed. Extend the independent oracle across restore, rather than treating restored state as a fresh trusted initial state. |
 | 3 | Harden the SDK retry and signing contract. | Persist the complete Draft/Issued pair across crashes; recover lost allocation/acceptance replies without reminting the request. Define key rotation, lease validation, clock skew and the production retry window, then test their failure paths. |
 | 4 | Exercise actual Atlas batches at named Paxos/repair phases. | Instrument the pinned maintainer harness to prove selected phase messages were intercepted. Check state/receipt and floor/delete atomicity; establish repair overlap and control hint/read-repair confounders. |
 | 5 | Qualify RF3/DC, then independent hosts and storage growth. | Run the nine-node scaffold on a suitably sized remote runner with fault/resource witnesses. Follow with host/WAN failures, durability and repair/GC/tombstone growth tests. A single hosted runner cannot establish independent-host durability. |
@@ -95,7 +185,10 @@ protocol decisions are tested.
 
 ### Immediate POC slice: archive and restore
 
-First define the archive contract and recovery authority in the specification.
+The first model slice is implemented and its shallow gate passed; see the progress
+section above. Next integrate the candidate with the actual Cassandra adapter and
+signed-draft allocator, retaining all negative controls and the independent oracle.
+Before that integration, make the archive contract and recovery authority concrete.
 An archive ACK must have a stated durability meaning; a second in-memory map is
 only a model fixture. Specify which durable facts prevent reuse after restore,
 and how authoring is fenced when those facts cannot be established. Do not assume
@@ -117,10 +210,9 @@ still reconstruct both intents and their effective periods. Restoring a January
 snapshot must not reopen an already retired operation. A configuration change
 creates a different semantic revision; passage of time alone does not.
 
-The first deliverable is a written archive/restore state machine, independent
-oracle extensions and negative controls through the existing Gradle/Make model
-gate. Only after that gate passes should the corresponding Cassandra fault cases
-be added. A concrete remote archive must eventually validate the claimed durability;
+The written state machine, independent serial oracle and negative controls now
+pass the existing Gradle/Make model gate. The corresponding Cassandra fault cases
+are the next implementation slice. A concrete remote archive must eventually validate the claimed durability;
 model and Cassandra fixtures alone cannot certify that external service.
 
 PG-COMMIT, PG-CASS and other canonical Atlas proof gates remain UNPROVEN.

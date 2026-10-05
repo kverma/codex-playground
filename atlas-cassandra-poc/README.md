@@ -33,7 +33,9 @@ The [archive/restore state machine](docs/archive-restore-state-machine.md) adds 
 separate serial model and independent oracle to `make grade-model`: complete
 archive coverage before pruning, fenced snapshot recovery, lost replies and nine
 broken implementations. It does not yet change the Cassandra retention adapter or
-implement a distributed recovery fence. Hosted validation is pending for this addition.
+implement a distributed recovery fence. Hosted [run 37248385829](https://github.com/kverma/codex-playground/actions/runs/37248385829) passed all four jobs at `bc5c9e0`: 83 distinct POC cases plus 16 upstream tests.
+See the [adversarial review](docs/adversarial-test-review.md) for failed-run evidence,
+recovery fixes and remaining coverage gaps.
 
 ## Candidate and examples
 

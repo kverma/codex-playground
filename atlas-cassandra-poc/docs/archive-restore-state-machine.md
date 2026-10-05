@@ -13,6 +13,11 @@ run qualifies the transitions and injected faults below, not a storage service's
 durability or a distributed protocol. Cassandra remains pinned to 4.0.5 for the
 existing regression jobs.
 
+Validated by [run 37248385829](https://github.com/kverma/codex-playground/actions/runs/37248385829) at executable commit
+`bc5c9e00284c234e5653dd81314307b0b90f4994`. The downloaded model evidence confirms all
+stated trace/mutant counts below. This does not qualify the remote services assumed
+by the model.
+
 ## Durable domains and explicit assumptions
 
 | Domain | Modeled facts | Restore rule |
@@ -127,3 +132,22 @@ archive/recovery-authority contract before claiming remote durability. Demonstra
 that authority and archive survive the actual recovery boundary, and that every
 writer—including delayed requests and old deployments—is fenced. Retain the
 independent checker and all negative controls. PG-COMMIT and PG-CASS remain unproven.
+
+### Cassandra integration acceptance criteria
+
+1. Add sealed-prefix state to the same subject mutation guard as acceptance;
+   a delayed acceptance computed before sealing must lose that guard.
+2. Verify complete immutable archive contents before advancing the certified
+   prefix; an RPC acknowledgement, partial object or missing slot cannot suffice.
+3. Couple floor advance and row deletion in the guarded same-partition mutation;
+   require the exact surviving row set and commercial head after ambiguous replies.
+4. Restore an older hot snapshot while authority/archive survive. Keep all writers
+   fenced until reconciliation completes, including delayed requests and clients
+   from old deployments. Demonstrate the barrier with an actual fault witness.
+5. Preserve grants for allocation gaps and unarchived tails; demonstrate safe
+   resolution from trusted surviving facts or remain explicitly unavailable.
+   Do not silently discard them to make restore pass.
+
+Use a clearly labeled archive fixture initially. A passing Cassandra-plus-fixture
+run will still leave the chosen remote archive's durability and the recovery
+authority's own disaster recovery and storage bounds unqualified.
