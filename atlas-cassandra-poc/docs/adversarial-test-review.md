@@ -198,6 +198,13 @@ recorded and bounded; recovery success must not be reported as an edit-latency S
 
 ## Ranked next work
 
+The [Actions roadmap](github-actions-validation-roadmap.md) ranks experiments that
+can stay on small hosted runners. The [nine-node handoff](nine-node-ha-agent-handoff.md)
+documents resources, Docker Desktop routing, execution/evidence commands and the
+remaining HA witness gaps for another agent. The scaffold has one legacy protocol
+case; it does not already run the newer retention/archive contracts at RF3/DC.
+Documentation preparation did not execute or qualify the nine-node cluster.
+
 Prioritize archive and restore safety before production SDK hardening: the SDK
 contract depends on what remains recoverable after receipts are pruned or a
 snapshot is restored. Keep the existing synthetic retry window until those

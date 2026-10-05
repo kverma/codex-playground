@@ -9,6 +9,11 @@ readable descriptions also appear in test reports and source comments.
 The separate [maintainer-test guide](docs/upstream-test-scenarios.md) explains all
 16 pinned upstream checks while preserving their original report names.
 
+Next steps: [further GitHub Actions validation](docs/github-actions-validation-roadmap.md)
+and the [nine-node laptop agent handoff](docs/nine-node-ha-agent-handoff.md).
+The latter is an execution guide for the existing HA scaffold, not evidence that
+the nine-node topology has passed.
+
 ## Run
 
 Install JDK 25, Gradle **9.1.0**, Docker and Docker Compose v2. Gradle owns all Java

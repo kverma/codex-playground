@@ -1,5 +1,10 @@
 # Testing layers and CassandraUnit assessment
 
+For continuation, use the [ranked Actions validation roadmap](github-actions-validation-roadmap.md)
+and [nine-node agent handoff](nine-node-ha-agent-handoff.md). The nine-node scaffold
+currently exercises one legacy whole-offer case; newer retention/archive suites
+need explicit full-topology integration. No nine-node run is certified here.
+
 ## Latest addition — readable scenarios and Cassandra archive fixture
 
 [Run 37249882512](https://github.com/kverma/codex-playground/actions/runs/37249882512) at
