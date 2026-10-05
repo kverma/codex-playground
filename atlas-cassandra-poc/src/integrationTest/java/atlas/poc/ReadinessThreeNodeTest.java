@@ -3,6 +3,7 @@ package atlas.poc;
 import org.junit.jupiter.api.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.datastax.oss.driver.api.core.servererrors.UnavailableException;
+import com.datastax.oss.driver.api.core.AllNodesFailedException;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -56,9 +57,24 @@ class ReadinessThreeNodeTest {
                         // Refuse generic timeout/connection/setup failures as a quorum-loss witness.
                         if(attempts.isEmpty()) {
                             assertEquals(Code.INDETERMINATE,e.code);
-                            var unavailable=assertInstanceOf(UnavailableException.class,e.getCause());
-                            assertEquals(2,unavailable.getRequired());assertEquals(1,unavailable.getAlive());
-                            events.add(Map.of("event","witnessed-quorum-loss","required",unavailable.getRequired(),"alive",unavailable.getAlive()));
+                            Throwable cause=e.getCause();
+                            events.add(Map.of("event","read-failure","cause",String.valueOf(cause)));
+                            var causes=new ArrayList<Throwable>();
+                            if(cause instanceof AllNodesFailedException all) {
+                                var errors=all.getAllErrors();assertEquals(1,errors.size(),"only the dc1 coordinator is eligible");
+                                for(var entry:errors.entrySet()) {
+                                    events.add(Map.of("event","coordinator-errors","dc",String.valueOf(entry.getKey().getDatacenter()),
+                                        "errors",entry.getValue().stream().map(Throwable::toString).toList()));
+                                    assertEquals("dc1",entry.getKey().getDatacenter());assertFalse(entry.getValue().isEmpty());
+                                    causes.addAll(entry.getValue());
+                                }
+                            } else causes.add(cause);
+                            assertFalse(causes.isEmpty());
+                            for(Throwable actual:causes) {
+                                var unavailable=assertInstanceOf(UnavailableException.class,actual);
+                                assertEquals(2,unavailable.getRequired());assertEquals(1,unavailable.getAlive());
+                            }
+                            events.add(Map.of("event","witnessed-quorum-loss","required",2,"alive",1,"causes",causes.size()));
                         }
                         throw e;
                     }
@@ -101,7 +117,14 @@ class ReadinessThreeNodeTest {
         if(!p.waitFor(120,TimeUnit.SECONDS)) { p.destroyForcibly();fail("membership fault command timeout: "+action); }
         events.add(Map.of("event","command","action",action,"exit",p.exitValue(),"shortBudget",shortBudget,
             "elapsedMillis",TimeUnit.NANOSECONDS.toMillis(System.nanoTime()-started),"output",output.toString()));
-        if(action.equals("ready") && p.exitValue()!=0)throw new ReadinessFailure(p.exitValue());
+        if(action.equals("ready") && p.exitValue()!=0) {
+            if(shortBudget) {
+                String log=Files.readString(output);
+                assertTrue(log.contains("Cassandra membership did not recover within the bounded readiness window"),log);
+                assertTrue(log.contains("node=dc1 up_normal=1"),log);
+            }
+            throw new ReadinessFailure(p.exitValue());
+        }
         assertEquals(0,p.exitValue(),action+": "+Files.readString(output));
     }
 }
