@@ -109,6 +109,9 @@ the user-facing explanations.
 | AT-066 | Ensure Cassandra-backed archive tests detect the same unsafe decisions | Run nine broken transition variants through the real conditional-write adapter and read back its state | The independent checker rejects every actual observation sequence; external-service facts are still simulated. |
 | AT-067 | Prove the checker notices a writer that ignores its stale guard | Deliberately replace an old request's guard with the current guard and write its outdated state to Cassandra | The unsafe write actually applies and the independent checker rejects the resulting history. |
 | AT-068 | Resume archive-backed cleanup after a real Cassandra process crash | Keep verified archive facts in the external fixture, kill Cassandra before pruning and reconnect after restart | Accepted terms and slot rows survive; repeated pruning removes the rows safely. Remote archive and power-loss durability remain unproven. |
+| AT-069 | Resolve uncertain sealing without losing accepted offer terms | Drop the exact seal batch before forwarding or drop its real server reply; reconnect through a fresh session | Full offer and receipt state matches the witnessed cut; retries converge, archive recovery preserves terms and retired edits stay closed. |
+| AT-070 | Resolve uncertain cleanup without separating the floor from receipt deletion | Drop the exact prune batch before forwarding or drop its real server reply after complete archive coverage | The floor and all receipt rows change together; exact retries are no-ops and logical restore recovers the accepted offer. |
+| AT-071 | Ensure a lost reply cannot hide unsafe partial cleanup | Run a broken batch that advances the cleanup floor but retains receipt rows, then drop its server reply | The write really applies and the independent checker rejects that exact observed prune boundary. |
 
 ## Reading failures and evidence
 

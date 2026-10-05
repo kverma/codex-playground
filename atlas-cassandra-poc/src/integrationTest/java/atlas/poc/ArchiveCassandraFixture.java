@@ -18,12 +18,17 @@ final class ArchiveCassandraFixture implements AutoCloseable {
     private final CqlSession session;
     private final ObjectMapper json=new ObjectMapper();
     private final String dc;
+    private final Duration timeout;
     ArchiveCassandraFixture(UUID subject,Storage external,String host,int port,String dc,String topology) {
         this(subject,external,host,port,dc,topology,Broken.NONE);
     }
     ArchiveCassandraFixture(UUID subject,Storage external,String host,int port,String dc,String topology,Broken broken) {
+        this(subject,external,host,port,dc,topology,broken,Duration.ofSeconds(20));
+    }
+    ArchiveCassandraFixture(UUID subject,Storage external,String host,int port,String dc,String topology,Broken broken,Duration timeout) {
+        this.timeout=timeout;
         this.subject=subject;this.external=external;this.dc=dc;transition=new Model(external,broken);
-        transport=new CassandraStore(subject,host,port,dc,topology,Duration.ofSeconds(20));session=transport.sessionForPoc();
+        transport=new CassandraStore(subject,host,port,dc,topology,timeout);session=transport.sessionForPoc();
         session.execute("CREATE TABLE IF NOT EXISTS atlas_poc.archive_fixture_v1 (subject uuid,row text,guard uuid,payload text,PRIMARY KEY(subject,row))");
         Hot initial=new Hot(0,0,external.genesis,Map.of(),Set.of(),false);
         PocPolicy.execute(session,write("INSERT INTO atlas_poc.archive_fixture_v1(subject,row,guard,payload) VALUES (?,'HEAD',?,?) IF NOT EXISTS",subject,UUID.randomUUID(),encode(initial)),true,dc);
@@ -36,11 +41,11 @@ final class ArchiveCassandraFixture implements AutoCloseable {
     }
     private SimpleStatement write(String cql,Object... values) {
         return SimpleStatement.builder(cql).addPositionalValues(values).setConsistencyLevel(DefaultConsistencyLevel.QUORUM)
-            .setSerialConsistencyLevel(DefaultConsistencyLevel.SERIAL).setIdempotence(false).setTimeout(Duration.ofSeconds(20)).build();
+            .setSerialConsistencyLevel(DefaultConsistencyLevel.SERIAL).setIdempotence(false).setTimeout(timeout).build();
     }
     Persisted read() {
         var rows=PocPolicy.execute(session,SimpleStatement.builder("SELECT * FROM atlas_poc.archive_fixture_v1 WHERE subject=?")
-            .addPositionalValues(subject).setConsistencyLevel(DefaultConsistencyLevel.SERIAL).setTimeout(Duration.ofSeconds(20)).build(),false,dc).all();
+            .addPositionalValues(subject).setConsistencyLevel(DefaultConsistencyLevel.SERIAL).setTimeout(timeout).build(),false,dc).all();
         Row head=rows.stream().filter(r->r.getString("row").equals("HEAD")).findFirst().orElseThrow();
         Hot metadata=decode(head.getString("payload"),Hot.class);var entries=new HashMap<Long,Item>();
         if(!metadata.rows().isEmpty())throw new IllegalStateException("HEAD must not hide receipt rows");
@@ -48,9 +53,11 @@ final class ArchiveCassandraFixture implements AutoCloseable {
         return new Persisted(head.getUuid("guard"),new Hot(metadata.allocated(),metadata.floor(),metadata.head(),entries,metadata.sealed(),metadata.fenced()));
     }
     // HEAD (including seal/fence/floor) and all changed slot rows share one conditional batch.
-    private boolean swap(Persisted before,Hot after) {
+    static String marker(UUID subject,Kind kind) { return "/* atlas:"+subject+":"+kind+" */"; }
+    private boolean swap(Persisted before,Hot after) { return swap(before,after,""); }
+    private boolean swap(Persisted before,Hot after,String marker) {
         Hot metadata=new Hot(after.allocated(),after.floor(),after.head(),Map.of(),after.sealed(),after.fenced());
-        StringBuilder cql=new StringBuilder("BEGIN BATCH UPDATE atlas_poc.archive_fixture_v1 SET guard=?,payload=? WHERE subject=? AND row='HEAD' IF guard=?;");
+        StringBuilder cql=new StringBuilder("BEGIN BATCH "+marker+" UPDATE atlas_poc.archive_fixture_v1 SET guard=?,payload=? WHERE subject=? AND row='HEAD' IF guard=?;");
         var args=new ArrayList<Object>(List.of(UUID.randomUUID(),encode(metadata),subject,before.guard()));
         for(var entry:after.rows().entrySet())if(!entry.getValue().equals(before.hot().rows().get(entry.getKey()))) {
             cql.append("INSERT INTO atlas_poc.archive_fixture_v1(subject,row,payload) VALUES (?,?,?);");
@@ -65,7 +72,7 @@ final class ArchiveCassandraFixture implements AutoCloseable {
         // Serial orchestration is intentional; this lock is not a distributed authority implementation.
         synchronized(external) {
             Persisted before=read();external.hot=before.hot();Frame proposed=transition.execute(command);
-            if(!before.hot().equals(external.hot)&&!swap(before,external.hot)) {
+            if(!before.hot().equals(external.hot)&&!swap(before,external.hot,marker(subject,command.kind()))) {
                 external.hot=read().hot();throw new IllegalStateException("unexpected concurrent fixture mutation; do not claim a serial trace");
             }
             external.hot=read().hot();return new Frame(command,proposed.outcome(),transition.observe());
