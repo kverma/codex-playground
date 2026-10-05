@@ -27,6 +27,14 @@ fail if Cassandra is absent or its reported version is not 4.0.5; they never ski
 Use a disposable database: test subjects and receipts accumulate. `make down`
 removes the disposable container; no host data volume is configured.
 
+## Archive and restore candidate
+
+The [archive/restore state machine](docs/archive-restore-state-machine.md) adds a
+separate serial model and independent oracle to `make grade-model`: complete
+archive coverage before pruning, fenced snapshot recovery, lost replies and nine
+broken implementations. It does not yet change the Cassandra retention adapter or
+implement a distributed recovery fence. Hosted validation is pending for this addition.
+
 ## Candidate and examples
 
 The bounded fixture contains USD cents and eligibility for new/churned customers.
