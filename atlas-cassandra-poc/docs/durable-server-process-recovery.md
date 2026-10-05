@@ -75,6 +75,11 @@ The test restores trusted bytes between corruption cases; the candidate has no
 fallback to an older file. Existing signed-process tests separately validate signed
 retry histories and changed-content controls.
 
+The [split-storage extension](split-storage-recovery.md) adds separate authority/
+archive files and independently injected read failures. It also demonstrates why
+root freshness needs a separate guarantee. The original combined-checkpoint cases
+above retain their existing scope.
+
 ## Remaining boundaries
 
 These tests qualify process exit and restart on a hosted Linux filesystem. They do

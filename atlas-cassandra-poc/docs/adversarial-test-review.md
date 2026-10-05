@@ -2,15 +2,15 @@
 
 ## Decision
 
-Executable commit `df18b03e6339291d309f1e67a9ba97837b62de67` passed all four jobs in
-[run 37301628457](https://github.com/kverma/codex-playground/actions/runs/37301628457).
-Downloaded XML confirms **109 distinct POC cases plus 16 upstream tests**, with no
-failures, errors or skips: 51 shallow cases are included in the 92-case
+Executable commit `223b9963a381886a56772c6e20e2c9d512c38de8` passed all four jobs in
+[run 37323949963](https://github.com/kverma/codex-playground/actions/runs/37323949963).
+Downloaded XML confirms **112 distinct POC cases plus 16 upstream tests**, with no
+failures, errors or skips: 51 shallow cases are included in the 95-case
 model/single-node/fault job; 17 three-node cases complete the POC total.
 
-All four artifacts were downloaded and inspected. All 109 POC report cases now
+All four artifacts were downloaded and inspected. All 112 POC report cases now
 show readable Atlas scenario IDs/titles. The [scenario guide](test-scenarios.md)
-describes 81 unique goals, simulated boundaries and expected outcomes; shared
+describes 84 unique goals, simulated boundaries and expected outcomes; shared
 contracts run under multiple fixture classes. The description gate passed.
 A [separate guide](upstream-test-scenarios.md) explains all 16 upstream methods.
 
@@ -18,7 +18,8 @@ The new Cassandra archive fixture passed six inherited scenarios on one node and
 six through dc1/dc2 coordinators on the three-node cluster, plus one real server
 SIGKILL/restart case, three wire-fault cases and the signed client-process slice.
 Saved archive histories contain fourteen VALID / eleven INVALID traces in the
-base single-node suite, plus two VALID / one INVALID durable-server traces,
+base single-node suite, plus two VALID / one INVALID durable-server traces and
+two VALID / one INVALID split-storage traces,
 and six VALID / ten INVALID traces in the three-node suite. Negative traces fail
 at their intended INSTALL, CERTIFY, PRUNE, RESTORE,
 ACCEPT, RECOVER or observed stale-writer boundary. Both suites reject the same
@@ -39,6 +40,63 @@ using safety, availability, Cassandra, chaos, QA and provider-workflow lenses.
 It is one code/evidence review, not a claim of independent human or agent sign-off.
 Several assertions were too weak to establish their advertised conditions.
 The changes below strengthen the harness before broadening product scope.
+
+## Separate storage reads and root rollback — 2026-10-05 UTC
+
+Executable `223b9963a381886a56772c6e20e2c9d512c38de8` passed all four jobs in
+[run 37323949963](https://github.com/kverma/codex-playground/actions/runs/37323949963).
+All four downloaded artifacts confirm **112 distinct POC +16 upstream** with
+zero failures/errors/skips: 95 model/single-node/fault cases (including 51 shallow)
+plus 17 three-node. The catalog has 84 distinct scenarios.
+
+The new slice has **53 distinct server JVMs**: 19 publication, 19 independent-read,
+15 root-rollback. Artifacts contain five exact halt witnesses and seven explicit
+read failures, two VALID histories (15/12 commands), and one INVALID rollback
+history rejected at RECOVER (zero-based index 11). Offline inspection checked every saved
+root's actual content hashes, unchanged roots before publication/on read errors,
+all process exits, the six domain/fault combinations, and real operation-ID reuse
+with a different receipt. The earlier 48-process durable suite was also re-audited.
+
+One existing three-node healed trace (seed 2004, dc1) recorded an INDETERMINATE read:
+AllNodesFailedException wrapped UnavailableException, SERIAL requiring 2 replicas
+with 1 alive. Its second attempt recovered; all 18 successful coordinator views
+exactly match checked final state. The failed attempt remains in the artifact and
+is not counted as a successful view.
+
+AT-082–084 separate authority and archive into immutable, content-addressed files.
+A root names the exact versions. Each new server JVM verifies and decodes those
+same bytes before opening Cassandra. Authority never contains a hidden archive
+copy. The test independently makes each referenced file missing, unreadable by
+replacing its path with a directory, or stale by substituting a valid older file.
+Each rejection must identify the intended read/digest failure and preserve the
+entire observed Cassandra hot state and root bytes. Removing archive bytes during
+logical recovery must leave the offer fenced until exact bytes return.
+
+Five halts separate staged authority/archive files from root publication. A
+pre-publication halt requires both an actual orphan file and unchanged root bytes;
+restart must ignore that orphan. Published bindings recover the same identity,
+and published archive facts recover the exact receipt after pruning and logical
+restore. The [storage contract](split-storage-recovery.md) states the ACK boundary.
+
+**Root rollback remains a demonstrated unsafe condition**, not a solved feature.
+The negative control restores an older valid root after pruning and logical
+restore, then actually recovers to an empty authority, reuses the retired operation
+identity and records a different receipt. The independent serial checker must
+reject the trace at RECOVER. Checksums/content addressing verify bytes against a
+root; they cannot establish the root's freshness. An independently trustworthy,
+rollback-resistant root/authority is still required.
+
+Code review found a verification/use gap in the first revision: authority bytes
+were hashed and then reread for decoding. Commit `223b996` removes that second read;
+the decoder consumes the exact verified byte array. Earlier run 37323845473 at
+`8454675` also passed all four jobs, but was superseded by this code-review
+correction, not retried unchanged to obtain green results. Only the final executable's artifacts qualify this slice.
+
+Scope remains one writer, one server fixture and one filesystem with independently
+faulted files. There are no independent storage-service processes, network fault
+witnesses, distributed root CAS, provider durability or whole-host loss guarantees.
+Neither passing positive tests nor the correctly rejected negative control closes
+those gaps or certifies canonical Atlas proof gates.
 
 ## Durable server-process publication — 2026-10-05 UTC
 
@@ -416,7 +474,7 @@ protocol decisions are tested.
 
 | Rank | Work | Required evidence before advancing |
 |---|---|---|
-| 1 | Separate authority/archive failure domains and qualify remote storage; the local single-writer checkpoint slice now passes. | Every accepted receipt being removed has a verified durable archive record. Missing, partial, corrupt or ambiguous archive writes cannot authorize deletion. Exact retries of archive writes are idempotent; archived before/after states remain reconstructable after pruning. |
+| 1 | Establish rollback-resistant authority/root and qualify independent services; local split-file tests now expose actual identity reuse after root rollback. | Every accepted receipt being removed has a verified durable archive record. Missing, partial, corrupt or ambiguous archive writes cannot authorize deletion. Exact retries of archive writes are idempotent; archived before/after states remain reconstructable after pruning. |
 | 2 | Prove whole-database restore and externally enforced writer fencing; logical restore and stale-CQL guards now pass. | A snapshot predating pruning cannot reopen an expired draft/ticket or reuse an allocated operation identity. Authoring stays fenced until trusted recovery facts are reconciled; unavailable or contradictory facts fail closed. Extend the independent oracle across restore, rather than treating restored state as a fresh trusted initial state. |
 | 3 | Harden the SDK retry and signing contract. | Persist the complete Draft/Issued pair across crashes; recover lost allocation/acceptance replies without reminting the request. Define key rotation, lease validation, clock skew and the production retry window, then test their failure paths. |
 | 4 | Exercise actual Atlas batches at named Paxos/repair phases. | Instrument the pinned maintainer harness to prove selected phase messages were intercepted. Check state/receipt and floor/delete atomicity; establish repair overlap and control hint/read-repair confounders. |

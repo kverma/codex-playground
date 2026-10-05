@@ -1,6 +1,17 @@
 # Separately read archive and authority facts
 
-Status: implemented; hosted validation pending. AT-082–084 run through the existing
+[Run 37323949963](https://github.com/kverma/codex-playground/actions/runs/37323949963)
+passed all four jobs at `223b9963a381886a56772c6e20e2c9d512c38de8`:
+**112 distinct POC cases +16 upstream**, zero failures/errors/skips. All four
+artifacts were downloaded and inspected. The new slice used 53 distinct server
+JVMs: 19 publication, 19 independent-read and 15 root-rollback processes. Five
+halts and seven exact read rejections were witnessed. Positive histories are VALID
+(15 and 12 commands); the rollback control is INVALID at RECOVER (zero-based index 11).
+Offline inspection verified every saved root reference against the actual file
+SHA-256, unchanged roots at staged cuts/read failures, fault identities, process
+exits and actual reuse of the retired operation with a different receipt.
+
+AT-082–084 run through the existing
 `make grade-cassandra` / Gradle integration task with JDK25 and Cassandra4.0.5.
 
 ## Contract
@@ -54,6 +65,7 @@ retired identity really reopens. No generic exception counts as that control.
 Choose and validate an independently hosted, rollback-resistant authority/root
 contract with its own quorum/fencing and disaster recovery semantics. Then qualify
 remote archive read/write ambiguity, independent service restarts, concurrent root
-updates and whole-host loss. Content addressing proves which bytes were returned;
+updates and whole-host loss. Object/binding retention and orphan garbage collection also
+remain unbounded in this fixture. Content addressing proves which bytes were returned;
 it cannot establish that a returned root is the most recent authorized one.
 Nine-node RF3/DC and canonical Atlas proof gates remain unproven.

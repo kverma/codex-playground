@@ -269,3 +269,23 @@ inspected. See the [contract](durable-server-process-recovery.md).
 This is still one local filesystem and one writer, with binding and authority in
 the same atomic checkpoint. It does not qualify independently failing remote
 services, rollback defense, whole-host loss or concurrent cross-store recovery.
+
+
+## Separate file-read boundaries and root freshness
+
+The [split-storage contract](split-storage-recovery.md) defines independently read
+archive and authority files, exact content-addressed references, and root-last
+publication. AT-082–084 extend the server-JVM harness with actual missing/unreadable
+files, stale file substitutions, orphan publication cuts and a root-rollback control.
+The latter must really reopen a retired identity and be rejected by the independent
+checker. This tests the limit of a trusted-root assumption; it does not implement
+rollback protection. Separate hardware, remote services and multi-writer root CAS
+remain outside this single-filesystem experiment.
+
+Verified [run 37323949963](https://github.com/kverma/codex-playground/actions/runs/37323949963)
+at `223b9963a381886a56772c6e20e2c9d512c38de8`: all four jobs passed, all four
+artifacts inspected, 112 distinct POC +16 upstream with zero failures/errors/skips.
+The split-file slice used 53 server JVMs; five cuts/seven read rejections were
+witnessed. Two histories validate (15/12 commands); the root-rollback history fails
+at RECOVER and actually reuses the retired ID with a different receipt. Every
+saved root's file hashes and process outcomes were independently inspected.

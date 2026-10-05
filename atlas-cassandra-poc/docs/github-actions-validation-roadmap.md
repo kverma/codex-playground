@@ -2,13 +2,13 @@
 
 ## Current evidence
 
-Executable `df18b03e6339291d309f1e67a9ba97837b62de67` passed
-[run 37301628457](https://github.com/kverma/codex-playground/actions/runs/37301628457):
-109 distinct POC cases and 16 upstream tests. Models, one-node Cassandra, verified
+Executable `223b9963a381886a56772c6e20e2c9d512c38de8` passed
+[run 37323949963](https://github.com/kverma/codex-playground/actions/runs/37323949963):
+112 distinct POC cases and 16 upstream tests. Models, one-node Cassandra, verified
 process/network faults and a three-node RF1-per-DC fixture already run remotely.
 The new archive fixture has real Cassandra hot state but simulated external
 archive/authority in its base tests; the new server-process extension uses one local
-atomic checkpoint. All orchestration is serial. These are bounded POC results.
+atomic root with separately read archive/authority files. All orchestration is serial. These are bounded POC results.
 
 ## Ranked next experiments on standard hosted Linux runners
 
@@ -29,8 +29,13 @@ reservation together and use 48 real server JVMs to test eight publication/datab
 crash cuts, damaged checkpoints and incomplete/corrupt archives. See the
 [contract](durable-server-process-recovery.md). Its 21/16-command histories validate;
 the omitted-reservation control fails at INSTALL. This is one atomic filesystem
-publication unit, not independent authority/archive services. Next test separate
-failure domains, unavailable remote reads and rollback-resistant authority facts.
+publication unit, not independent authority/archive services. The
+[split-file extension](split-storage-recovery.md) passed AT-082–084 using 53 server
+JVMs, five halt cuts, seven exact read failures and an actual retired-ID reuse
+control rejected at RECOVER. It still uses one
+filesystem and does not qualify separate storage services. Next establish a
+rollback-resistant authority/root contract, then test independently hosted services
+and unavailable remote reads.
 Ranks 5–9 remain proposals.
 Give each addition an independent failure witness and a negative
 control; “the command succeeded” or “the suite eventually passed” is insufficient.
