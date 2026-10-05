@@ -53,7 +53,7 @@ class RetentionHistoryCassandraTest {
             }
         }
     }
-    private View readAfterHeal(Retention.Store store,int dc,List<HealedRead> evidence) {
+    private View readAfterHeal(Retention.Store store,int dc,List<HealedRead> evidence) throws Exception {
         Failure last=null;
         for(int attempt=1;attempt<=3;attempt++) {
             try {
@@ -64,6 +64,9 @@ class RetentionHistoryCassandraTest {
                 evidence.add(new HealedRead(dc,attempt,null,e.code.name(),cause));
                 System.err.println("retention-healed dc="+dc+" attempt="+attempt+" cause="+cause);
                 if(e.code!=Code.INDETERMINATE) throw e;
+                // Membership can change while sequential nodetool snapshots are collected.
+                // Require fresh readiness evidence before retrying; never relax state equality.
+                if(attempt<3) command("ready");
             }
         }
         throw new AssertionError("dc"+dc+" must return an authoritative healed view within three attempts",last);
