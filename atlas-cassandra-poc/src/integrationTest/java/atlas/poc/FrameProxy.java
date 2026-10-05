@@ -19,7 +19,7 @@ final class FrameProxy implements AutoCloseable {
     private final AtomicReference<Fault> armed = new AtomicReference<>();
     record Witness(String query,String requestBody,int stream,Fault fault,boolean forwarded,
                    int responseOpcode,String responseBody) {}
-    private volatile String target = "";
+    private volatile String queryMarker = "";
     private volatile Witness witness;
     final AtomicInteger matchingRequests = new AtomicInteger();
     Witness witness() { return witness; }
@@ -45,7 +45,7 @@ final class FrameProxy implements AutoCloseable {
     }
     int port() { return listener.getLocalPort(); }
     void arm(Fault fault) { arm(fault, ""); }
-    void arm(Fault fault,String target) { this.target=target; armed.set(fault); }
+    void arm(Fault fault,String target) { this.queryMarker=target; armed.set(fault); }
     private void pipe(Socket source, Socket target, boolean request, Set<Integer> drops) {
         try {
             DataInputStream input = new DataInputStream(source.getInputStream());
@@ -65,7 +65,7 @@ final class FrameProxy implements AutoCloseable {
                     if(queryLength<0 || queryLength>length-4)throw new IOException("invalid QUERY length");
                     query=new String(body,4,queryLength,StandardCharsets.UTF_8);
                 }
-                boolean batch=query.stripLeading().startsWith("BEGIN BATCH") && query.contains(target);
+                boolean batch=query.stripLeading().startsWith("BEGIN BATCH") && query.contains(queryMarker);
                 boolean signalSent = false;
                 if (batch) {
                     if(armed.get()!=null || witness!=null)matchingRequests.incrementAndGet();
