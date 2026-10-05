@@ -28,7 +28,10 @@ final class SplitArchiveCheckpoint {
         if(!hash(bytes).equals(digest))throw new IllegalArgumentException(domain+" content differs from trusted root");return bytes;
     }
     static Facts load(Path path,UUID subject) throws Exception {
-        Root r=root(path,subject);
+        return load(path,subject,root(path,subject));
+    }
+    static Facts load(Path path,UUID subject,Root r) throws Exception {
+        if(r.version()!=1||!subject.equals(r.subject()))throw new IllegalArgumentException("invalid root");
         // Read exact root-referenced bytes: no scanning directories or falling back to older objects.
         Facts authority=DurableArchiveServer.decode(read(path,"authority",r.authority()),subject);
         if(!authority.archive().isEmpty())throw new IllegalArgumentException("archive must not be hidden in authority");
@@ -53,10 +56,14 @@ final class SplitArchiveCheckpoint {
         return digest;
     }
     static void publish(Path path,Facts f,String stage,Consumer<String> cut) throws Exception {
+        Root next=stage(path,f,stage,cut);
+        atomic(path,JSON.writeValueAsBytes(next));cut.accept(stage+"_AFTER_ROOT");
+    }
+    static Root stage(Path path,Facts f,String stage,Consumer<String> cut) throws Exception {
         String archive=put(path,"archive",JSON.writeValueAsBytes(new ObjectsFile(1,f.subject(),f.archive())));
         cut.accept(stage+"_AFTER_ARCHIVE");
         Facts authority=new Facts(1,f.subject(),f.genesis(),f.now(),f.highWater(),f.certifiedFloor(),f.grants(),f.manifests(),Map.of(),f.backups(),f.bindings());
         String auth=put(path,"authority",envelope(authority));cut.accept(stage+"_AFTER_AUTHORITY");
-        atomic(path,JSON.writeValueAsBytes(new Root(1,f.subject(),auth,archive)));cut.accept(stage+"_AFTER_ROOT");
+        return new Root(1,f.subject(),auth,archive);
     }
 }

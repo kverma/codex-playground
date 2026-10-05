@@ -17,16 +17,19 @@ class DurableArchiveProcessTest {
         final Transactions.Snapshot genesis=Transactions.initial();
         final Path folder,state;
         final boolean split;
+        final String mode;
         final List<Map<String,Object>> processes=new ArrayList<>();
         final List<Frame> frames=new ArrayList<>();
         int step;
         Harness(String name) throws Exception { this(name,false); }
-        Harness(String name,boolean split) throws Exception {
-            this.split=split;folder=Path.of("build/evidence",split?"split-storage":"durable-server",name);
+        Harness(String name,boolean split) throws Exception { this(name,split?"split":"combined"); }
+        Harness(String name,String mode) throws Exception {
+            this.mode=mode;this.split=!mode.equals("combined");folder=Path.of("build/evidence",mode.equals("authority")?"cassandra-root":split?"split-storage":"durable-server",name);
             Files.createDirectories(folder);state=folder.resolve("facts.json");
             Facts initial=Facts.capture(subject,new Storage(genesis),Map.of());
             if(split)SplitArchiveCheckpoint.publish(state,initial,"INIT",cut->{});
             else publish(state,initial,()->{},()->{});
+            if(mode.equals("authority"))try(var a=new CassandraRootAuthority(subject)) { a.bootstrap(SplitArchiveCheckpoint.root(state,subject)); }
         }
         Input message(String action,Draft draft,Issued issued,String cut) {
             return new Input(subject,new Message(action,subject,action.equals("prepare")?Transactions.edit(UUID.randomUUID(),genesis,Map.of(ROYALTY,"2000")):null,draft,issued),null,cut);
@@ -38,7 +41,7 @@ class DurableArchiveProcessTest {
             int id=++step;Path request=folder.resolve(id+"-input.json"),result=folder.resolve(id+"-report.json");save(request,input);
             Path before=folder.resolve(id+"-before.bin");if(Files.exists(state))Files.copy(state,before,StandardCopyOption.REPLACE_EXISTING);
             Process p=new ProcessBuilder(Path.of(System.getProperty("java.home"),"bin","java").toString(),"-cp",
-                System.getProperty("atlas.test.classpath"),DurableArchiveServer.class.getName(),state.toString(),request.toString(),result.toString(),split?"split":"combined")
+                System.getProperty("atlas.test.classpath"),DurableArchiveServer.class.getName(),state.toString(),request.toString(),result.toString(),mode)
                 .redirectErrorStream(true).redirectOutput(folder.resolve(id+"-server.log").toFile()).start();
             try { assertTrue(p.waitFor(55,TimeUnit.SECONDS),"server process must finish or hit the exact crash cut"); }
             finally { if(p.isAlive()) { p.destroyForcibly();p.waitFor(10,TimeUnit.SECONDS); } }
