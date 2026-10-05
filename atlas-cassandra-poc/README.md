@@ -40,6 +40,11 @@ removes the disposable container; no host data volume is configured.
 
 ## Archive and restore candidate
 
+The [signed-draft client-process fixture](docs/signed-draft-process-recovery.md)
+joins saved Draft/Issued identities to the serial archive candidate. Separate
+client JVMs exercise reply loss and logical recovery; server-side bindings and
+external services remain simulated.
+
 The [Cassandra archive fixture](docs/archive-cassandra-fixture.md) adds real
 conditional HEAD/slot mutations, logical restore and delayed-writer guard tests.
 Run its cross-coordinator cases with `make three-up && make grade-archive`.

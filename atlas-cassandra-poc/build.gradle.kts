@@ -15,7 +15,7 @@ integrationTest.compileClasspath += sourceSets.main.get().output
 integrationTest.runtimeClasspath += sourceSets.main.get().output
 integrationTest.compileClasspath += sourceSets.test.get().output
 integrationTest.runtimeClasspath += sourceSets.test.get().output
-tasks.withType<Test>().configureEach { useJUnitPlatform(); testLogging { events("passed", "failed", "skipped"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL } }
+tasks.withType<Test>().configureEach { doFirst { systemProperty("atlas.test.classpath", classpath.asPath) }; useJUnitPlatform(); testLogging { events("passed", "failed", "skipped"); exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL } }
 val gradeCassandra by tasks.registering(Test::class) {
     description = "Run real Cassandra protocol graders; requires make up"
     testClassesDirs = integrationTest.output.classesDirs

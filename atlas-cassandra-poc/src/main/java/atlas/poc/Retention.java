@@ -51,19 +51,19 @@ public final class Retention {
                 return HexFormat.of().formatHex(mac.doFinal(text.getBytes(StandardCharsets.UTF_8)));
             } catch(java.security.GeneralSecurityException e) { throw new IllegalStateException(e); }
         }
-        private String sign(long sequence,long expiry,UUID operation,String hash) {
+        protected final String sign(long sequence,long expiry,UUID operation,String hash) {
             return hmac("atlas-ticket-v1|"+subject+"|"+sequence+"|"+expiry+"|"+operation+"|"+hash);
         }
         private String draftText(Draft draft) { return "atlas-draft-v1|"+subject+"|"+draft.request().operation()+"|"+draft.anchor()+"|"+draft.expiresAt(); }
-        private String draftId(Draft draft) { return Intent.hash(draftText(draft)); }
-        private String signDraft(Draft draft) { return hmac(draftText(draft)+"|"+draft.request().hash()); }
-        private boolean matches(String left,String right) { return right!=null && MessageDigest.isEqual(left.getBytes(StandardCharsets.US_ASCII),right.getBytes(StandardCharsets.US_ASCII)); }
+        protected final String draftId(Draft draft) { return Intent.hash(draftText(draft)); }
+        protected final String signDraft(Draft draft) { return hmac(draftText(draft)+"|"+draft.request().hash()); }
+        protected final boolean matches(String left,String right) { return right!=null && MessageDigest.isEqual(left.getBytes(StandardCharsets.US_ASCII),right.getBytes(StandardCharsets.US_ASCII)); }
         public Draft prepare(Request template) {
             View observed=view();
             Draft unsigned=new Draft(template,Math.addExact(observed.allocated(),1),Math.max(Math.addExact(clock.millis(),LIFETIME_MILLIS),observed.lastExpiry()),null);
             return new Draft(template,unsigned.anchor(),unsigned.expiresAt(),signDraft(unsigned));
         }
-        private Request allocatedRequest(Draft draft,UUID operation) {
+        protected final Request allocatedRequest(Draft draft,UUID operation) {
             Request r=draft.request();
             return new Request(operation,r.epoch(),r.reads(),r.updates(),r.admittedEpoch(),r.admittedBudget());
         }
@@ -89,7 +89,7 @@ public final class Retention {
             }
             throw new Failure(Code.INDETERMINATE);
         }
-        private void verify(Ticket ticket,Request request) {
+        protected final void verify(Ticket ticket,Request request) {
             if(ticket.sequence()<1||ticket.expiresAt()<1||!request.operation().equals(ticket.operation())||!request.hash().equals(ticket.requestHash())||
                 !matches(sign(ticket.sequence(),ticket.expiresAt(),ticket.operation(),ticket.requestHash()),ticket.signature()))
                 throw new Failure(Code.INVALID_TICKET);
@@ -97,7 +97,7 @@ public final class Retention {
         private View next(View before,long allocated,long floor,long expiry,Snapshot snapshot,Map<Long,Entry> entries) {
             return new View(UUID.randomUUID(),allocated,floor,expiry,snapshot,entries);
         }
-        private UUID operation(long sequence) { return new UUID(subject.getMostSignificantBits(),sequence); }
+        protected final UUID operation(long sequence) { return new UUID(subject.getMostSignificantBits(),sequence); }
         public Request edit(Map<Group,String> updates) {
             // Legacy sequential fixture helper. Concurrent clients use prepare + issueDraft.
             View observed=view(); return Transactions.edit(operation(Math.addExact(observed.allocated(),1)),observed.snapshot(),updates);

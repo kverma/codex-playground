@@ -118,6 +118,8 @@ the user-facing explanations.
 | AT-075 | Keep definite read failures distinct from temporary uncertainty | A shallow supplier returns a definite invalid-ticket error | Preserve the original error and never invoke readiness or retry. |
 | AT-076 | Recover an offer when replicas disappear after readiness passed | Isolate dc1 after all views are ready; witness two peers Down and an authoritative read requiring two replicas but finding one | Fresh readiness precedes bounded retry; complete offer and receipt state survive and retired edits stay closed. |
 | AT-077 | Refuse an authoritative offer while its coordinator stays isolated | Keep the verified partition active after a witnessed quorum failure; require a fresh readiness check with a five-second polling budget | Readiness fails, no second read occurs and no successful view is invented; cleanup restores the fixture afterward. |
+| AT-078 | Preserve a saved offer edit across client exits and archive recovery | Separate JVMs reload the same journal after an allocation or acceptance reply is dropped; later edits, pruning, logical restore and a backward clock follow | Preserve signed identity, original dependencies and exact receipt; fence restore, keep retired IDs closed and permit a fresh edit. |
+| AT-079 | Stop restarted clients from changing an old draft silently | Reload a stale draft after a conflicting edit, change signed payloads or subjects, and load malformed or unsupported journals | Reject conflicts and tampering without refreshing dependencies, reminting IDs or changing accepted terms; invalid local files send no request. |
 
 ## Reading failures and evidence
 
