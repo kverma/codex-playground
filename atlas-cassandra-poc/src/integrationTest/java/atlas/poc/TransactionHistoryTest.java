@@ -9,6 +9,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @Tag("three") @Tag("History")
 class TransactionHistoryTest {
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Validate commercial histories across real Cassandra coordinators
+     * Boundary: Run 14 histories with concurrent edits, reads and partition recovery
+     * Expected: The independent checker accepts them and separate gates require overlap, recovery and progress.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-056 | Validate commercial histories across real Cassandra coordinators")
+    // END ATLAS SCENARIO
     @Test void checksCrossDcConcurrentHistoriesAndPartitionRecovery() throws Exception {
         UUID subject=UUID.randomUUID();
         var stores=new ArrayList<Store>();

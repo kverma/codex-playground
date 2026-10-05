@@ -56,6 +56,14 @@ class ArchiveRecoveryTest {
             assertEquals(verdict,new ArchiveRecoveryChecker().check(replay.genesis(),replay.frames()).verdict(),"saved trace replay");
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Recover the latest offer without reviving old edit identities
+     * Boundary: Restore an old model snapshot after archiving accepted and unaccepted slots; reverse the clock
+     * Expected: Rebuild the accepted history in acceptance order, close old IDs and allow only a new identity to edit.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-038 | Recover the latest offer without reviving old edit identities")
+    // END ATLAS SCENARIO
     @Test void restoresOldSnapshotFromCompleteArchiveInAcceptanceOrderAndNeverReopensIds() throws Exception {
         Harness h=new Harness(1);h.base();var expected=h.model.observe().hot().head();h.seal();h.archive();h.prune();h.restore();
         h.code("FENCED",Kind.ACCEPT,1);h.code("FENCED",h.reservation(4,Map.of(ROYALTY,"3000")));
@@ -64,6 +72,14 @@ class ArchiveRecoveryTest {
         h.ok(h.reservation(4,Map.of(ROYALTY,"3000")));h.ok(Kind.INSTALL,4);h.ok(Kind.ACCEPT,4);
         assertEquals(4,h.model.observe().highWater());h.save("archive-contract",VALID);
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Make every archive step safely retryable
+     * Boundary: Lose the request before effect or lose the reply after effect at eight model boundaries
+     * Expected: All 16 exact-retry scenarios finish with a coherent retired prefix.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-039 | Make every archive step safely retryable")
+    // END ATLAS SCENARIO
     @Test void everyCrossStoreBoundaryRecoversExactLostReplies() throws Exception {
         int seed=10;
         for(Kind fault:List.of(Kind.RESERVE,Kind.INSTALL,Kind.ACCEPT,Kind.SEAL,Kind.PUBLISH,Kind.COPY,Kind.CERTIFY,Kind.PRUNE)) {
@@ -80,6 +96,14 @@ class ArchiveRecoveryTest {
             }
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Do not delete retry records based only on an archive acknowledgement
+     * Boundary: The archive reports success with partial data or volatile data; archive access can also disappear
+     * Expected: Certification and pruning stay blocked until complete records are verified.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-040 | Do not delete retry records based only on an archive acknowledgement")
+    // END ATLAS SCENARIO
     @Test void successfulRpcAndPartialObjectCannotAuthorizePruning() throws Exception {
         int seed=30;
         for(Mode fault:List.of(Mode.PARTIAL,Mode.VOLATILE)) {
@@ -89,12 +113,28 @@ class ArchiveRecoveryTest {
             h.ok(available(Kind.ARCHIVE,false));h.code("UNCOVERED",Kind.PRUNE,3);h.ok(available(Kind.ARCHIVE,true));h.prune();h.save("archive-contract",VALID);
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Resume cleanup after a modeled worker crash
+     * Boundary: Persist model archive records, discard volatile acknowledgements and create a fresh worker facade
+     * Expected: Recover from retained facts and complete idempotent cleanup without changing accepted terms.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-041 | Resume cleanup after a modeled worker crash")
+    // END ATLAS SCENARIO
     @Test void crashAfterArchiveBeforePruneRecoversThroughFreshProcessFacade() throws Exception {
         Harness h=new Harness(40);h.base();h.seal();for(long n=1;n<=3;n++)h.ok(Kind.COPY,n);
         var expected=h.model.observe().hot().head();h.ok(Kind.CRASH,0);h.model=new ArchiveRecovery.Model(h.storage);
         h.code("FENCED",Kind.ACCEPT,3);h.ok(Kind.CERTIFY,3);h.ok(Kind.RECOVER,0);h.prune();h.prune();
         assertEquals(expected,h.model.observe().hot().head());assertEquals(0,h.model.observe().hot().rows().size());h.save("archive-contract",VALID);
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Keep a restored offer closed when its history is uncertain
+     * Boundary: Take the model authority or archive offline, remove a record or corrupt it
+     * Expected: Recovery remains unresolved and edits stay fenced.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-042 | Keep a restored offer closed when its history is uncertain")
+    // END ATLAS SCENARIO
     @Test void unavailableMissingOrChangedRecoveryFactsKeepAuthoringFenced() throws Exception {
         int seed=50;
         for(String damage:List.of("remove","corrupt")) {
@@ -105,6 +145,14 @@ class ArchiveRecoveryTest {
             assertTrue(h.model.observe().hot().fenced());h.code("FENCED",h.reservation(4,Map.of(ROYALTY,"3000")));h.save("archive-contract",VALID);
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Never silently discard a newer edit or reservation during restore
+     * Boundary: Restore an older snapshot while a later reservation or accepted edit lacks archive coverage
+     * Expected: Recovery stays fenced instead of pretending the old snapshot is current.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-043 | Never silently discard a newer edit or reservation during restore")
+    // END ATLAS SCENARIO
     @Test void reservedGapAndUnarchivedAcceptanceCannotDisappearDuringRestore() throws Exception {
         int seed=60;
         for(boolean accepted:List.of(false,true)) {
@@ -115,6 +163,14 @@ class ArchiveRecoveryTest {
             assertTrue(h.model.observe().hot().fenced());h.save("archive-contract",VALID);
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Prove the archive checker catches unsafe recovery decisions
+     * Boundary: Deliberately bypass coverage, trust partial or volatile copies, split cleanup, rewind facts or reopen old edits
+     * Expected: All nine broken models are rejected and their saved counterexamples replay.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-044 | Prove the archive checker catches unsafe recovery decisions")
+    // END ATLAS SCENARIO
     @Test void nineActualBrokenImplementationsFailAndSavedCounterexamplesReplay() throws Exception {
         for(Broken broken:Broken.values()) {
             if(broken==Broken.NONE)continue;
@@ -138,6 +194,14 @@ class ArchiveRecoveryTest {
             assertTrue(h.model.triggered,broken.name());h.save("archive-mutants",INVALID);
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Exercise many archive and restore interruption sequences
+     * Boundary: Run 100 serial model traces with lost replies, partial copies, crashes and old snapshots
+     * Expected: Each trace must recover the exact offer and close old IDs; remaining fenced is not a successful trace.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-045 | Exercise many archive and restore interruption sequences")
+    // END ATLAS SCENARIO
     @Test void oneHundredGeneratedSerialCrashTracesPassWithSeparateProgressChecks() throws Exception {
         for(long seed=1000;seed<1100;seed++) {
             Harness h=new Harness(seed);
@@ -168,6 +232,14 @@ class ArchiveRecoveryTest {
             }
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Preserve the January and February offer intents for audit
+     * Boundary: Model a price edit for NEW customers, then extend eligibility to NEW and CHURNED; prune and restore
+     * Expected: Keep both exact receipts and the latest intent; time alone does not change its hash. Actual effective-date fields are absent.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-046 | Preserve the January and February offer intents for audit")
+    // END ATLAS SCENARIO
     @Test void semanticHistorySurvivesPruningAndClockChangesDoNotCreateAnIntent() throws Exception {
         Harness h=new Harness(2000);h.ok(named(Kind.SAVE,0,"old"));h.ok(h.reservation(1,Map.of(ECONOMICS,"400")));h.ok(Kind.INSTALL,1);
         var january=h.ok(Kind.ACCEPT,1).outcome().receipt();h.ok(h.reservation(2,Map.of(ELIGIBILITY,"NEW,CHURNED")));h.ok(Kind.INSTALL,2);
@@ -178,6 +250,14 @@ class ArchiveRecoveryTest {
         assertEquals("NEW",h.model.observe().archive().get(1L).item().receipt().after().value(ELIGIBILITY));
         assertEquals("NEW,CHURNED",h.model.observe().archive().get(2L).item().receipt().after().value(ELIGIBILITY));h.save("archive-contract",VALID);
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Do not label an unchecked archive history as safe
+     * Boundary: Give the archive checker less capacity than the trace requires
+     * Expected: Return inconclusive rather than a passing verdict.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-047 | Do not label an unchecked archive history as safe")
+    // END ATLAS SCENARIO
     @Test void traceBoundIsExplicitlyInconclusive() {
         Harness h=new Harness(3000);h.ok(Kind.VIEW,0);assertEquals(INCONCLUSIVE,new ArchiveRecoveryChecker(0).check(h.root,h.frames).verdict());
     }

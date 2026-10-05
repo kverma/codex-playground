@@ -23,6 +23,14 @@ class RetentionHistoryTest {
         public View compact() { return delegate.compact(); }
         public void close() { delegate.close(); }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Check draft allocation and retry retention under overlap
+     * Boundary: Generate 200 model histories, including 100 with lost allocation or acceptance replies
+     * Expected: The independent retention checker accepts every history and the workload requires progress.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-034 | Check draft allocation and retry retention under overlap")
+    // END ATLAS SCENARIO
     @Test void twoHundredConcurrentHistoriesIncludeLostAllocationAndAcceptanceReplies() throws Exception {
         for(long seed=1;seed<=200;seed++) {
             UUID subject=UUID.randomUUID(); var clock=new RetentionClock(); var model=new Retention.Model(subject,RetentionContract.KEY,clock);
@@ -80,6 +88,14 @@ class RetentionHistoryTest {
             state.set(stored);return true; // A real broken storage hook, not edited evidence.
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Prove the retention checker detects broken storage
+     * Boundary: Split retirement from deletion, rewind allocation or floors, lose receipts or changes, or reuse metadata versions
+     * Expected: Reject all seven broken variants and replay their saved histories.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-035 | Prove the retention checker detects broken storage")
+    // END ATLAS SCENARIO
     @Test void sevenBrokenStorageHistoriesAreRejectedAndReplayed() throws Exception {
         for(Broken broken:Broken.values()) {
             UUID subject=UUID.randomUUID(); var clock=new RetentionClock(); var store=new BrokenStorage(subject,clock,broken); View initial=store.view();
@@ -97,6 +113,14 @@ class RetentionHistoryTest {
             assertEquals(NON_LINEARIZABLE,new RetentionChecker(replay.subject(),RetentionContract.KEY).check(replay.initial(),replay.calls()).verdict(),"saved mutant replay "+broken);
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Reject a retry service that never resolves an edit
+     * Boundary: Keep returning uncertainty during retention operations
+     * Expected: The progress gate fails even when the safety checker can explain a no-effect history.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-036 | Reject a retry service that never resolves an edit")
+    // END ATLAS SCENARIO
     @Test void blackHoleTransportFailsRecoveryEvenWhenSafetyIsLinearizable() throws Exception {
         UUID subject=UUID.randomUUID();var clock=new RetentionClock();var model=new Retention.Model(subject,RetentionContract.KEY,clock);
         var blackHole=new Delegating(model) { public Issued issueDraft(Draft draft) { throw new Failure(Code.INDETERMINATE); } };
@@ -104,6 +128,14 @@ class RetentionHistoryTest {
         assertThrows(AssertionError.class,()->workload.round(901,Path.of("build/evidence/retention-controls/black-hole"),()->{}));
         assertEquals(LINEARIZABLE,workload.result.verdict(),"safety does not certify availability");assertEquals(0,model.view().allocated());
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Avoid claiming proof outside the retention checker's assumptions
+     * Boundary: Exceed its search limits or cross unsupported clock boundaries
+     * Expected: Return inconclusive, which cannot satisfy a passing workload gate.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-037 | Avoid claiming proof outside the retention checker's assumptions")
+    // END ATLAS SCENARIO
     @Test void boundsAndClockCrossingsFailAsInconclusive() {
         UUID subject=UUID.randomUUID();var clock=new RetentionClock();var model=new Retention.Model(subject,RetentionContract.KEY,clock); View initial=model.view();
         var a=new RetentionChecker.Call(1,4,clock.millis(),"VIEW",null,null,null,initial,null);

@@ -2,6 +2,10 @@
 
 ## Status and scope
 
+A separately gated [Cassandra fixture](archive-cassandra-fixture.md) now implements
+the hot-state persistence and stale-guard experiments. The model assumptions below
+still apply to its simulated archive/authority; it is not a production service.
+
 This is a separate serial crash-boundary candidate in `ArchiveRecovery`, exercised
 by `ArchiveRecoveryTest` and `ArchiveRecoveryChecker`. It does not change
 `RetentionCassandraStore`: that earlier adapter still prunes without an audit

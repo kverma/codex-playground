@@ -10,6 +10,14 @@ import static org.junit.jupiter.api.Assertions.*;
 /** Linux Docker host with nine healthy nodes; never included in the single-node grade. */
 @Tag("fullHa")
 class FullHaTest {
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Explore availability with three replicas in each of three DCs
+     * Boundary: The separate nine-node scaffold removes an ingress DC and tests a three-replica minority
+     * Expected: Its assertions require surviving-majority progress and minority rejection; this scaffold is not part of the qualified hosted run.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-061 | Explore availability with three replicas in each of three DCs")
+    // END ATLAS SCENARIO
     @Test void survivesIngressDcLossAndRejectsThreeReplicaMinority() throws Exception {
         UUID subject = UUID.randomUUID();
         Request first;

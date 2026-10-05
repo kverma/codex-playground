@@ -39,7 +39,7 @@ tasks.register<Test>("gradeFullHa") {
 }
 tasks.register("gradeModel") { dependsOn(tasks.test) }
 tasks.register("grade") { dependsOn(tasks.test, gradeCassandra, gradeFaults) }
-listOf("Partition", "CoordinatorCrash", "Repair", "History", "Retention", "FaultWitness").forEach { scenario ->
+listOf("Partition", "CoordinatorCrash", "Repair", "History", "Retention", "FaultWitness", "Archive").forEach { scenario ->
     tasks.register<Test>("grade$scenario") {
         testClassesDirs = integrationTest.output.classesDirs
         classpath = integrationTest.runtimeClasspath

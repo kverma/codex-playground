@@ -11,6 +11,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("three") @Tag("Retention")
 class RetentionHistoryCassandraTest {
     record HealedRead(int dc,int attempt,View view,String error,String cause) {}
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Validate retry retention across DC isolation and recovery
+     * Boundary: Run six real histories; one isolates dc1, then compare healed coordinator views
+     * Expected: Every view must exactly match the checked final state; three bounded reads and fresh readiness checks cannot replace equality.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-057 | Validate retry retention across DC isolation and recovery")
+    // END ATLAS SCENARIO
     @Test void sixCrossDcHistoriesIncludePartitionRecoveryAndPostHealClosure() throws Exception {
         for(long seed=2000;seed<2006;seed++) {
             UUID subject=UUID.randomUUID();var clock=new RetentionClock();var stores=new ArrayList<Retention.Store>();

@@ -8,6 +8,14 @@ import static atlas.poc.Transactions.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class HistoryCheckerTest {
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Check that overlapping commercial edits have a coherent history
+     * Boundary: Run 400 generated model histories with overlapping edits, reads and lost replies
+     * Expected: An independent checker finds a valid order, and separate assertions require successful recovery and progress.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-014 | Check that overlapping commercial edits have a coherent history")
+    // END ATLAS SCENARIO
     @Test void checksHundredsOfConcurrentModelHistoriesIncludingLostReplies() throws Exception {
         for(int seed=0;seed<20;seed++) {
             Store model=new Model(); Set<UUID> lost=new HashSet<>();
@@ -24,6 +32,14 @@ class HistoryCheckerTest {
             for(int round=0;round<20;round++) workload.round(seed*100L+round,Path.of("build/evidence/history-model"),()->{});
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Prove the commercial-history checker catches unsafe implementations
+     * Boundary: Deliberately lose edits or receipts, accept stale dependencies, apply partial bundles or reuse old version tokens
+     * Expected: Reject all six broken variants and replay their reduced counterexamples.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-015 | Prove the commercial-history checker catches unsafe implementations")
+    // END ATLAS SCENARIO
     @Test void rejectsSixBrokenProtocolVariantsAndRetainsReplayableCounterexamples() throws Exception {
         for(Bug bug:Bug.values()) {
             Store store=new Broken(bug); Snapshot initial=store.read(); var recorder=new HistoryWorkload(store);
@@ -57,6 +73,14 @@ class HistoryCheckerTest {
             assertEquals(HistoryChecker.Verdict.NON_LINEARIZABLE,checker.check(replay.initial(),replay.calls()).verdict());
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Distinguish a legitimate overlapping read from a stale completed read
+     * Boundary: Place an old-value read during an edit, then after that edit has completed; also exhaust the checker budget
+     * Expected: Allow the overlapping read, reject the later stale read and label an exhausted search inconclusive.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-016 | Distinguish a legitimate overlapping read from a stale completed read")
+    // END ATLAS SCENARIO
     @Test void honorsRealTimeAndAllowsOverlappingReadBeforeWrite() {
         Store store=new Model(); Snapshot initial=store.read();
         Request request=edit(new UUID(1,1),initial,Map.of(Group.ROYALTY,"2500")); Receipt receipt=store.commit(request);
@@ -68,6 +92,14 @@ class HistoryCheckerTest {
         assertEquals(HistoryChecker.Verdict.NON_LINEARIZABLE,checker.check(initial,List.of(write,stale)).verdict());
         assertEquals(HistoryChecker.Verdict.INCONCLUSIVE,new HistoryChecker(0).check(initial,List.of(write)).verdict());
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Require Atlas to make progress, not merely avoid bad writes
+     * Boundary: A transport reports uncertainty for every edit forever
+     * Expected: The workload fails its recovery gate even if a no-change history is logically safe.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-017 | Require Atlas to make progress, not merely avoid bad writes")
+    // END ATLAS SCENARIO
     @Test void historyGraderRejectsAnAlwaysIndeterminateTransport() throws Exception {
         Snapshot initial=initial();
         Store blackHole=new Store() {

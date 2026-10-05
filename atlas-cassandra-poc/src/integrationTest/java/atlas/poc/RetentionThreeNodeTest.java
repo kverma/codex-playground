@@ -11,6 +11,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @Tag("three") @Tag("Retention")
 class RetentionThreeNodeTest {
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Keep retired offer edits closed across a partition
+     * Boundary: Attempt cleanup on an isolated DC, prune through the majority, then heal
+     * Expected: Retain the younger receipt, prove old-row deletion and reject the retired request after healing.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-058 | Keep retired offer edits closed across a partition")
+    // END ATLAS SCENARIO
     @Test void majorityPrunesAndMinorityCannotReopenExpiredTicketAfterHealing() throws Exception {
         UUID subject=UUID.randomUUID(); var clock=new RetentionClock(); var events=new ArrayList<Map<String,Object>>();
         try(var minority=new RetentionCassandraStore(subject,RetentionContract.KEY,clock,"127.0.0.1",9042,"dc1","three");
@@ -58,12 +66,28 @@ class RetentionThreeNodeTest {
         }
         throw new AssertionError("majority compaction must resolve within three attempts",last);
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Fail cleanup that never produces a definite result
+     * Boundary: A test supplier returns uncertainty for all three compaction attempts
+     * Expected: The progress gate fails and preserves the unresolved cause.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-059 | Fail cleanup that never produces a definite result")
+    // END ATLAS SCENARIO
     @Test void persistentAmbiguityFailsCompactionProgressGate() {
         var events=new ArrayList<Map<String,Object>>();
         var failure=assertThrows(AssertionError.class,()->recoverCompaction(()->{throw new Failure(Code.INDETERMINATE);},events));
         assertEquals(3,events.size());assertInstanceOf(Failure.class,failure.getCause());
         assertTrue(events.stream().allMatch(e->e.get("outcome").equals("INDETERMINATE")));
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Recover cleanup without changing which edits are expired
+     * Boundary: The model performs cleanup but loses its first reply; retry at the same clock and target
+     * Expected: The next attempt observes the same completed cleanup, with unchanged accepted terms.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-060 | Recover cleanup without changing which edits are expired")
+    // END ATLAS SCENARIO
     @Test void lostCompactionReplyRecoversWithoutMovingClockOrChangingTarget() {
         var clock=new RetentionClock();var model=new Retention.Model(UUID.randomUUID(),RetentionContract.KEY,clock);
         Request request=model.edit(Map.of(Group.ROYALTY,"2000"));Ticket ticket=model.issue(request);Receipt receipt=model.commit(ticket,request);

@@ -7,12 +7,28 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ModelTest extends Contract {
     protected Store open() { return new Model(); }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Track changes in commercial intent rather than calendar time
+     * Boundary: Compare unchanged terms observed later with changed price or eligibility
+     * Expected: Unchanged terms keep the same intent ID; changed terms produce a different ID.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-004 | Track changes in commercial intent rather than calendar time")
+    // END ATLAS SCENARIO
     @Test void revisionCapturesIntentAndExcludesObservationTime() {
         Intent march = new Intent(500,false);
         assertEquals(march.revision(), new Intent(500,false).revision()); // same configuration observed in April
         assertNotEquals(march.revision(),new Intent(500,true).revision()); // eligibility broadened
         assertNotEquals(march.revision(),new Intent(600,false).revision());
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Keep retry results stable through many later offer edits
+     * Boundary: Generate 100 sequences of 100 edits and repeatedly retry earlier requests
+     * Expected: Every retry returns its own original receipt, not the latest offer state.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-005 | Keep retry results stable through many later offer edits")
+    // END ATLAS SCENARIO
     @Test void seededRetryHistoriesPreserveEveryOriginalResult() {
         for (int seed=0;seed<100;seed++) {
             Random rng = new Random(seed);

@@ -8,6 +8,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public abstract class Contract {
     protected abstract Store open();
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Recover the original offer edit after its reply is lost
+     * Boundary: Accept an edit, make a later edit, then retry the original request; also reuse its ID with changed terms
+     * Expected: Return the original receipt without reverting later terms; reject changed content under the same ID.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-001 | Recover the original offer edit after its reply is lost")
+    // END ATLAS SCENARIO
     @Test void lostResponseRetryAfterLaterEditReturnsOriginalReceipt() {
         try (Store store = open()) {
             Request first = new Request(UUID.randomUUID(), store.read().token(), new Intent(600,false));
@@ -18,6 +26,14 @@ public abstract class Contract {
             assertThrows(KeyReuse.class, () -> store.commit(new Request(first.operation(), first.expected(), new Intent(700,false))));
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Prevent two editors from silently overwriting each other
+     * Boundary: Two whole-offer edits start from the same saved version at the same time
+     * Expected: Exactly one succeeds; the other receives a conflict.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-002 | Prevent two editors from silently overwriting each other")
+    // END ATLAS SCENARIO
     @Test void twoConcurrentWritersFromSameBaseHaveExactlyOneWinner() throws Exception {
         try (Store store = open(); ExecutorService pool = Executors.newVirtualThreadPerTaskExecutor()) {
             UUID base = store.read().token();
@@ -35,6 +51,14 @@ public abstract class Contract {
         ready.countDown(); if (!go.await(10,TimeUnit.SECONDS)) throw new AssertionError("start barrier");
         try { store.commit(request); return 1; } catch (Conflict e) { return 0; }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Keep an old draft stale even when the offer returns to its old price
+     * Boundary: Change the offer and then restore its earlier commercial configuration
+     * Expected: The intent ID matches the old configuration, but the old draft still conflicts.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-003 | Keep an old draft stale even when the offer returns to its old price")
+    // END ATLAS SCENARIO
     @Test void abaIntentDoesNotMakeStaleConcurrencyTokenValid() {
         try (Store store = open()) {
             Head base = store.read();

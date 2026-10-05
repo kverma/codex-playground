@@ -8,6 +8,14 @@ import static atlas.poc.Transactions.*;
 import static org.junit.jupiter.api.Assertions.*;
 class RetentionModelTest extends RetentionContract {
     protected Retention.Store open(UUID subject,RetentionClock clock) { return new Retention.Model(subject,KEY,clock); }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Stop a delayed edit after its ticket is retired
+     * Boundary: Pause acceptance after it computes a change, then expire and clean up the ticket before resuming
+     * Expected: The old mutation guard fails and the retired edit cannot enter the offer.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-032 | Stop a delayed edit after its ticket is retired")
+    // END ATLAS SCENARIO
     @Test void compactionFencesAnAcceptanceAlreadyComputedBeforeExpiry() throws Exception {
         var clock=new RetentionClock(); var ready=new CountDownLatch(1); var release=new CountDownLatch(1); var paused=new AtomicBoolean();
         try(var store=new Base(UUID.randomUUID(),KEY,clock) {
@@ -31,6 +39,14 @@ class RetentionModelTest extends RetentionContract {
             assertEquals(Code.REQUEST_TOO_OLD,future.get(10,TimeUnit.SECONDS)); assertEquals(initial,store.view().snapshot());
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Bound live retry records during repeated cleanup
+     * Boundary: Repeat allocation, acceptance, expiry and retirement in the model
+     * Expected: Live rows stay bounded and all retired identities remain closed; disk reclamation is not tested.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-033 | Bound live retry records during repeated cleanup")
+    // END ATLAS SCENARIO
     @Test void repeatedRetirementKeepsLiveRowsBoundedAndOldFloorClosed() {
         var clock=new RetentionClock();
         try(var store=open(UUID.randomUUID(),clock)) {

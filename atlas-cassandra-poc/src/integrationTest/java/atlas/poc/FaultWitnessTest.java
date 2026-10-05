@@ -5,6 +5,14 @@ import java.util.concurrent.*;
 import static org.junit.jupiter.api.Assertions.*;
 @Tag("three") @Tag("FaultWitness")
 class FaultWitnessTest {
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Prove that a claimed network fault really isolates a DC
+     * Boundary: Run a no-op partition injector and one that blocks only one direction
+     * Expected: Reject both invalid fault setups using independent connectivity and packet-counter checks.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-052 | Prove that a claimed network fault really isolates a DC")
+    // END ATLAS SCENARIO
     @Test void rejectsNoOpAndMissingDirectionPartitionFixtures() throws Exception {
         String original=Files.readString(Path.of("scripts/three.sh"));
         String insertion="          sudo nsenter -t \"$pid\" -n iptables -I \"${rule[@]}\"";

@@ -7,6 +7,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class CassandraTest extends Contract {
     protected Store open() { return new CassandraStore(UUID.randomUUID()); }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Recover an accepted offer edit after a client restart
+     * Boundary: Close the Cassandra client and open a new session
+     * Expected: The original receipt remains available in real Cassandra.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-048 | Recover an accepted offer edit after a client restart")
+    // END ATLAS SCENARIO
     @Test void receiptSurvivesClientSessionRestart() {
         UUID subject = UUID.randomUUID();
         Request request; Receipt receipt;

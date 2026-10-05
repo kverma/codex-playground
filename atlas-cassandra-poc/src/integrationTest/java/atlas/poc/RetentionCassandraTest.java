@@ -8,6 +8,14 @@ class RetentionCassandraTest extends RetentionContract {
     protected Retention.Store open(UUID subject,RetentionClock clock) {
         return new RetentionCassandraStore(subject,KEY,clock,"127.0.0.1",9042,"dc1","single");
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Preserve retirement and younger retry results across client restart
+     * Boundary: Clean up expired records, close the client and reconnect to Cassandra
+     * Expected: The retired prefix stays closed and younger receipts remain intact.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-049 | Preserve retirement and younger retry results across client restart")
+    // END ATLAS SCENARIO
     @Test void floorAndUnexpiredReceiptsSurviveSessionRestart() {
         var clock=new RetentionClock(); UUID subject=UUID.randomUUID(); Request old,young; Ticket expired,retained; Receipt receipt;
         try(var store=open(subject,clock)) {

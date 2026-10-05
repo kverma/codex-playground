@@ -1,6 +1,8 @@
 GRADLE ?= gradle
 .PHONY: help build test grade grade-model grade-cassandra up down clean version-check
 help:
+	@echo 'check-test-descriptions (Atlas goals and simulated boundary descriptions)'
+	@echo 'grade-archive (requires three-up; Cassandra archive/restore fixture)'
 	@echo 'build test grade-model grade-cassandra grade-faults grade up down clean version-check'
 	@echo 'grade-maintainer (upstream 4.0.5 phase tests; separate JDK11 + Ant)'
 	@echo 'ha-up grade-full-ha ha-down (Linux Docker, 24 GiB+ memory)'
@@ -62,3 +64,9 @@ grade-fault-witness: version-check
 .PHONY: grade-maintainer
 grade-maintainer: version-check
 	$(GRADLE) --no-daemon gradeMaintainer
+
+.PHONY: check-test-descriptions grade-archive
+check-test-descriptions:
+	python3 scripts/describe-tests.py --check
+grade-archive: version-check
+	$(GRADLE) --no-daemon gradeArchive

@@ -52,6 +52,14 @@ class ThreeNodeTest {
         var list=new ArrayList<>(List.of("docker","compose","-f","compose.three.yaml"));
         list.addAll(List.of(args)); command(list.toArray(String[]::new));
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Keep offer editing coherent during a DC partition
+     * Boundary: Isolate one of three logical DCs while clients continue to reach it
+     * Expected: The majority makes progress, the minority cannot claim acceptance, and state is coherent after healing.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-053 | Keep offer editing coherent during a DC partition")
+    // END ATLAS SCENARIO
     @Test @Tag("Partition") void majorityProgressMinorityRejectionAndHeal() throws Exception {
         UUID subject=UUID.randomUUID();
         try (Store minority=connect(subject,1); Store majority=connect(subject,2)) {
@@ -71,6 +79,14 @@ class ThreeNodeTest {
             record("partition-pass",subject);
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Resolve an uncertain edit after its coordinator dies
+     * Boundary: Witness a batch send, kill that coordinator and recover through another DC
+     * Expected: Resolve the same operation and preserve its original receipt; the internal Paxos phase is not identified.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-054 | Resolve an uncertain edit after its coordinator dies")
+    // END ATLAS SCENARIO
     @Test @Tag("CoordinatorCrash") void killAfterObservedBatchSendThenResolveOnOtherDc() throws Exception {
         UUID subject=UUID.randomUUID();
         try (Store survivor=connect(subject,2); FrameProxy proxy=new FrameProxy();
@@ -91,6 +107,14 @@ class ThreeNodeTest {
             record("crash-pass",subject);
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Bring a rejoined replica back to the accepted offer state
+     * Boundary: Keep a replica away during edits, rejoin it and run full repair alongside authoring activity
+     * Expected: The repaired local replica reaches the final token; exact server-phase overlap remains unproven.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-055 | Bring a rejoined replica back to the accepted offer state")
+    // END ATLAS SCENARIO
     @Test @Tag("Repair") void repairRejoinedReplicaWhileAuthoringContinues() throws Exception {
         UUID subject=UUID.randomUUID();
         try (Store writer=connect(subject,2)) {

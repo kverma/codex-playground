@@ -9,6 +9,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @Tag("fault")
 class FaultTest {
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Safely retry an offer edit that never reached Cassandra
+     * Boundary: Intercept and drop the actual batch frame before it reaches the server
+     * Expected: Observe unchanged state, then accept the exact retry once.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-050 | Safely retry an offer edit that never reached Cassandra")
+    // END ATLAS SCENARIO
     @Test void requestLostBeforeSendLeavesHeadUnchangedAndExactRetryCommits() throws Exception {
         UUID subject = UUID.randomUUID();
         try (FrameProxy proxy = new FrameProxy();
@@ -25,6 +33,14 @@ class FaultTest {
             }
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Recover an edit accepted before its reply was lost
+     * Boundary: Drop an actual server response, verify acceptance, kill Cassandra and restart it
+     * Expected: Recover the same receipt; later edits do not alter the original retry result.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-051 | Recover an edit accepted before its reply was lost")
+    // END ATLAS SCENARIO
     @Test void committedResponseLostThenCoordinatorKilledResolvesOriginalReceipt() throws Exception {
         UUID subject = UUID.randomUUID();
         Request request;

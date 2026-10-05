@@ -10,6 +10,14 @@ import static org.junit.jupiter.api.Assertions.*;
 public abstract class TransactionContract {
     protected abstract Store open();
     private Request edit(Snapshot snapshot,Map<Group,String> changes) { return Transactions.edit(UUID.randomUUID(),snapshot,changes); }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Allow independent price and royalty edits without losing either
+     * Boundary: Prepare both from one version, accept the price edit first, then apply the royalty edit
+     * Expected: Both values survive; the second receipt includes the first change.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-007 | Allow independent price and royalty edits without losing either")
+    // END ATLAS SCENARIO
     @Test void independentGroupEditRevalidatesWithoutLosingPriorChanges() {
         try(Store store=open()) {
             Snapshot base=store.read();
@@ -22,6 +30,14 @@ public abstract class TransactionContract {
             assertEquals(first,store.commit(economics));
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Keep eligibility and price valid together
+     * Boundary: Race a price increase above the fixture limit against extending eligibility to churned customers
+     * Expected: Only one can succeed; Atlas never stores the forbidden combination.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-008 | Keep eligibility and price valid together")
+    // END ATLAS SCENARIO
     @Test void staleValidationDependencyCannotIntroduceWriteSkew() throws Exception {
         try(Store store=open();var pool=Executors.newVirtualThreadPerTaskExecutor()) {
             Snapshot base=store.read();
@@ -40,6 +56,14 @@ public abstract class TransactionContract {
         try { store.commit(request); return 1; }
         catch(Rejected e) { assertEquals(Error.CONFLICT,e.error); return 0; }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Apply a commercial amendment as one complete change
+     * Boundary: Submit an invalid price/eligibility bundle, then a valid price/eligibility/royalty bundle
+     * Expected: Reject the invalid bundle without changes; accept all fields and the receipt together for the valid bundle.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-009 | Apply a commercial amendment as one complete change")
+    // END ATLAS SCENARIO
     @Test void boundedMultiGroupEditCommitsWithExactReceiptOrNothing() {
         try(Store store=open()) {
             Snapshot base=store.read();
@@ -55,6 +79,14 @@ public abstract class TransactionContract {
             assertEquals("2000",receipt.after().value(Group.ROYALTY));
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Stop old drafts after an authoring-rules change
+     * Boundary: Change the admitted rules version while an unsubmitted draft and an older accepted request exist
+     * Expected: Reject the stale draft, but still replay the accepted request's exact receipt.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-010 | Stop old drafts after an authoring-rules change")
+    // END ATLAS SCENARIO
     @Test void modelEpochFencesStaleEditsButDoesNotInvalidateOriginalReceipts() {
         try(Store store=open()) {
             Snapshot base=store.read();
@@ -67,6 +99,14 @@ public abstract class TransactionContract {
             assertEquals(Error.KEY_REUSE,assertThrows(Rejected.class,()->store.commit(new Request(original.operation(),original.epoch(),original.reads(),Map.of(Group.ROYALTY,"3000"),null,null))).error);
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Enforce the offer size limit across independent edits
+     * Boundary: Two individually small changes together exceed the shared payload budget
+     * Expected: The later edit is rejected without losing the first accepted edit.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-011 | Enforce the offer size limit across independent edits")
+    // END ATLAS SCENARIO
     @Test void sharedByteBudgetIsRevalidatedAcrossIndependentEdits() {
         try(Store store=open()) {
             Snapshot base=store.read();
@@ -80,6 +120,14 @@ public abstract class TransactionContract {
             assertEquals(admitted.budget(),store.read().payloadBytes());
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Reject incomplete or ambiguous commercial requests
+     * Boundary: Omit the price dependency from an eligibility edit; submit a price with a leading zero
+     * Expected: Reject both requests and leave the offer unchanged.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-012 | Reject incomplete or ambiguous commercial requests")
+    // END ATLAS SCENARIO
     @Test void omittedReadDependencyAndNonCanonicalNumbersAreRejected() {
         try(Store store=open()) {
             Snapshot base=store.read();
@@ -89,6 +137,14 @@ public abstract class TransactionContract {
             assertEquals(base,store.read());
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Separate intent identity from edit concurrency
+     * Boundary: Write the same royalty value again, then expand eligibility
+     * Expected: The no-op edit gets a fresh concurrency token but the same intent ID; eligibility changes intent identity.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-013 | Separate intent identity from edit concurrency")
+    // END ATLAS SCENARIO
     @Test void semanticIdentityExcludesObservationTimeAndConcurrencyTokens() {
         try(Store store=open()) {
             Snapshot march=store.read();

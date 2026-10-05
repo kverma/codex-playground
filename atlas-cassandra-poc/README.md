@@ -3,6 +3,10 @@
 An isolated starting point for G2-02A / PG-COMMIT. **Experimental, not certified.**
 RevealSwift is a separate project and is not a dependency.
 
+Start with the [plain-language test scenarios](docs/test-scenarios.md): each test
+explains its Atlas goal, simulated boundary and required outcome. Scenario IDs and
+readable descriptions also appear in test reports and source comments.
+
 ## Run
 
 Install JDK 25, Gradle **9.1.0**, Docker and Docker Compose v2. Gradle owns all Java
@@ -28,6 +32,11 @@ Use a disposable database: test subjects and receipts accumulate. `make down`
 removes the disposable container; no host data volume is configured.
 
 ## Archive and restore candidate
+
+The [Cassandra archive fixture](docs/archive-cassandra-fixture.md) adds real
+conditional HEAD/slot mutations, logical restore and delayed-writer guard tests.
+Run its cross-coordinator cases with `make three-up && make grade-archive`.
+Its archive and recovery authority remain simulated; hosted validation is pending.
 
 The [archive/restore state machine](docs/archive-restore-state-machine.md) adds a
 separate serial model and independent oracle to `make grade-model`: complete

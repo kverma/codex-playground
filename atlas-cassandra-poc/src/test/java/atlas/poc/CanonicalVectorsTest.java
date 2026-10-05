@@ -5,6 +5,14 @@ import static atlas.poc.Transactions.*;
 import static org.junit.jupiter.api.Assertions.*;
 /** Fixed spec vectors avoid a hash/codec implementation validating itself. */
 class CanonicalVectorsTest {
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Give downstream teams reproducible intent identities
+     * Boundary: Compare the bounded offer schema against fixed expected bytes and hashes; reject a corrupt size summary
+     * Expected: The canonical representation matches the published vectors and rejects inconsistent summaries.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-006 | Give downstream teams reproducible intent identities")
+    // END ATLAS SCENARIO
     @Test void matchesFixedCanonicalProfileVectorsAndByteSummary() {
         var cells=new EnumMap<Group,Cell>(Group.class);
         cells.put(Group.ECONOMICS,new Cell(new UUID(0,1),"500"));
