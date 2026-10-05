@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @Tag("three") @Tag("Retention")
 class RetentionHistoryCassandraTest {
-    record HealedRead(int dc,int attempt,View view,String error,String cause) {}
     // BEGIN ATLAS SCENARIO
     /**
      * Goal: Validate retry retention across DC isolation and recovery
@@ -22,7 +21,7 @@ class RetentionHistoryCassandraTest {
     @Test void sixCrossDcHistoriesIncludePartitionRecoveryAndPostHealClosure() throws Exception {
         for(long seed=2000;seed<2006;seed++) {
             UUID subject=UUID.randomUUID();var clock=new RetentionClock();var stores=new ArrayList<Retention.Store>();
-            var healedReads=new ArrayList<HealedRead>();
+            var healedReads=new ArrayList<HealedReads.Attempt>();
             try {
                 for(int dc=1;dc<=3;dc++) stores.add(new RetentionCassandraStore(subject,RetentionContract.KEY,clock,"127.0.0.1",9042+(dc-1)*100,"dc"+dc,"three"));
                 Retention.Store majority=stores.get(1);
@@ -61,24 +60,10 @@ class RetentionHistoryCassandraTest {
             }
         }
     }
-    private View readAfterHeal(Retention.Store store,int dc,List<HealedRead> evidence) throws Exception {
-        Failure last=null;
-        for(int attempt=1;attempt<=3;attempt++) {
-            try {
-                View view=store.view();evidence.add(new HealedRead(dc,attempt,view,null,null));return view;
-            } catch(Failure e) {
-                last=e;
-                String cause=e.getCause()==null?e.toString():e.getCause().toString();
-                evidence.add(new HealedRead(dc,attempt,null,e.code.name(),cause));
-                System.err.println("retention-healed dc="+dc+" attempt="+attempt+" cause="+cause);
-                if(e.code!=Code.INDETERMINATE) throw e;
-                // Membership can change while sequential nodetool snapshots are collected.
-                // Require fresh readiness evidence before retrying; never relax state equality.
-                if(attempt<3) command("ready");
-            }
-        }
-        throw new AssertionError("dc"+dc+" must return an authoritative healed view within three attempts",last);
+    private View readAfterHeal(Retention.Store store,int dc,List<HealedReads.Attempt> evidence) throws Exception {
+        return HealedReads.read(store::view,dc,()->command("ready"),evidence::add);
     }
+
     private void command(String action) throws Exception {
         Process p=new ProcessBuilder("bash","scripts/three.sh",action).inheritIO().start();
         if(!p.waitFor(action.equals("ready")?120:30,TimeUnit.SECONDS)) { p.destroyForcibly();fail("fault script timeout"); }

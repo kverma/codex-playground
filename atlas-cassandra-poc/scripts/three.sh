@@ -53,7 +53,9 @@ verify_counters() {
   sudo nsenter -t "$pid" -n iptables -L -n -v -x
 }
 wait_membership() {
-  local deadline=$((SECONDS+90)) attempt=0 healthy node status count
+  local budget=${ATLAS_MEMBERSHIP_TIMEOUT_SECONDS:-90}
+  [[ "$budget" =~ ^[0-9]+$ ]] && [ "$budget" -ge 1 ] && [ "$budget" -le 90 ] || { echo 'Invalid membership budget' >&2; return 1; }
+  local deadline=$((SECONDS+budget)) attempt=0 healthy node status count
   local folder="build/evidence/membership-$(date -u +%s%N)"
   mkdir -p "$folder"
   while [ "$SECONDS" -lt "$deadline" ]; do
@@ -90,6 +92,19 @@ case "${1:-}" in
     done
     echo 'Expected three Up/Normal nodes in every node view' >&2; exit 1 ;;
   ready) wait_membership ;;
+  isolated)
+    folder="build/evidence/isolated-$(date -u +%s%N)"; mkdir -p "$folder"
+    deadline=$((SECONDS+60)); attempt=0
+    while [ "$SECONDS" -lt "$deadline" ]; do
+      attempt=$((attempt+1))
+      status=$(timeout 10 "${compose[@]}" exec -T dc1 nodetool status 2>&1)
+      printf '%s\n' "$status" > "$folder/dc1-attempt-$attempt.txt"
+      up=$(echo "$status" | awk '$1 == "UN" {n++} END {print n+0}')
+      down=$(echo "$status" | awk '$1 == "DN" {n++} END {print n+0}')
+      if [ "$up" = 1 ] && [ "$down" = 2 ]; then echo 'dc1 sees one Up/Normal and two Down/Normal replicas'; exit 0; fi
+      sleep 2
+    done
+    echo 'Did not witness isolated membership' >&2; exit 1 ;;
   partition|heal|counters)
     # Only enter this disposable container's network namespace. Host rules are unchanged.
     id=$("${compose[@]}" ps -q dc1)
@@ -112,5 +127,5 @@ case "${1:-}" in
     if [ "$1" = partition ]; then blocked_edges; client_open; verify_counters; fi
     if [ "$1" = counters ]; then verify_counters; fi
     if [ "$1" = heal ]; then open_edges; client_open; echo 'All peer edges and client port reachable after healing'; fi ;;
-  *) echo 'Usage: three.sh up|partition|heal|counters|ready' >&2; exit 2 ;;
+  *) echo 'Usage: three.sh up|partition|heal|counters|ready|isolated' >&2; exit 2 ;;
 esac

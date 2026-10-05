@@ -37,7 +37,9 @@ tasks.register<Test>("gradeFullHa") {
     useJUnitPlatform { includeTags("fullHa") }
     outputs.upToDateWhen { false }
 }
-tasks.register("gradeModel") { dependsOn(tasks.test) }
+// Compile integration fixtures before provisioning hosted Docker clusters.
+tasks.register("gradeModel") { dependsOn(tasks.test, integrationTest.classesTaskName) }
+tasks.named("build") { dependsOn(integrationTest.classesTaskName) }
 tasks.register("grade") { dependsOn(tasks.test, gradeCassandra, gradeFaults) }
 listOf("Partition", "CoordinatorCrash", "Repair", "History", "Retention", "FaultWitness", "Archive").forEach { scenario ->
     tasks.register<Test>("grade$scenario") {
