@@ -13,17 +13,22 @@ abstract class ArchiveCassandraContract {
     abstract ArchiveCassandraFixture open(UUID subject,Storage external,Broken broken,boolean peer);
     abstract String evidenceFolder();
     final class Scenario implements AutoCloseable {
-        final UUID subject=UUID.randomUUID();
-        final Transactions.Snapshot genesis=Transactions.initial();
-        final Storage external=new Storage(genesis);
+        final UUID subject;
+        final Transactions.Snapshot genesis;
+        final Storage external;
+        java.util.function.Consumer<Frame> observer=f->{};
         final List<Frame> frames=new ArrayList<>();
         final List<Map<String,Object>> witnesses=new ArrayList<>();
         final String name;
         ArchiveCassandraFixture store;
         Scenario(String name) { this(name,Broken.NONE); }
-        Scenario(String name,Broken broken) { this.name=name;store=open(subject,external,broken,false); }
+        Scenario(String name,Broken broken) { this(name,UUID.randomUUID(),new Storage(Transactions.initial()),broken); }
+        Scenario(String name,UUID subject,Storage external,Broken broken) {
+            this.name=name;this.subject=subject;this.external=external;genesis=external.genesis;
+            store=open(subject,external,broken,false);
+        }
         Command cmd(Kind k,long n) { return new Command(k,n,null,null,Mode.NORMAL,true); }
-        Frame run(Command c) { Frame f=store.execute(c);frames.add(f);return f; }
+        Frame run(Command c) { Frame f=store.execute(c);frames.add(f);observer.accept(f);return f; }
         Frame run(Kind k,long n) { return run(cmd(k,n)); }
         Frame ok(Command c) { Frame f=run(c);assertEquals("OK",f.outcome().code(),c.kind().name());return f; }
         Frame ok(Kind k,long n) { return ok(cmd(k,n)); }

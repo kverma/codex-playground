@@ -5,17 +5,23 @@ import static atlas.poc.Retention.*;
 import static atlas.poc.Transactions.*;
 import static atlas.poc.ArchiveRecovery.*;
 
-/** Serial integration fixture. Draft bindings and authority survive clients, not this server JVM. */
+/** Serial integration fixture. Default bindings are in memory; the durable fixture supplies a publication hook. */
 final class SignedArchiveService extends Retention.Base {
     static final class StateFailure extends RuntimeException {
         final String code;StateFailure(String code) { super(code);this.code=code; }
     }
     private final ArchiveCassandraContract.Scenario h;
     private final RetentionClock clock;
-    private final Map<String,Issued> bindings=new HashMap<>();
+    private final Map<String,Issued> bindings;
+    private final Runnable publishBinding;
     private final Map<Long,String> draftIds=new HashMap<>();
     SignedArchiveService(ArchiveCassandraContract.Scenario h,RetentionClock clock) {
+        this(h,clock,new HashMap<>(),()->{});
+    }
+    SignedArchiveService(ArchiveCassandraContract.Scenario h,RetentionClock clock,Map<String,Issued> bindings,Runnable publishBinding) {
         super(h.subject,RetentionContract.KEY,clock);this.h=h;this.clock=clock;
+        this.bindings=bindings;this.publishBinding=publishBinding;
+        bindings.forEach((id,issued)->draftIds.put(issued.ticket().sequence(),id));
     }
     private void active() { if(h.store.read().hot().fenced())throw new StateFailure("FENCED"); }
     private Frame run(Command command) {
@@ -47,7 +53,7 @@ final class SignedArchiveService extends Retention.Base {
         Ticket ticket=new Ticket(sequence,expiry,allocated.operation(),allocated.hash(),sign(sequence,expiry,allocated.operation(),allocated.hash()));
         Issued issued=new Issued(allocated,ticket);
         run(new Command(Kind.RESERVE,sequence,new Grant(sequence,expiry,allocated),null,Mode.NORMAL,true));
-        bindings.put(id,issued);draftIds.put(sequence,id);
+        bindings.put(id,issued);draftIds.put(sequence,id);publishBinding.run();
         run(h.cmd(Kind.INSTALL,sequence));return issued;
     }
     public synchronized Receipt commit(Ticket ticket,Request request) {
