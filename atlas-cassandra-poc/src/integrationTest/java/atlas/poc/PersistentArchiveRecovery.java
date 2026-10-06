@@ -35,12 +35,16 @@ final class PersistentArchiveRecovery {
         return a;
     }
     static void immutable(Path path,byte[] bytes) throws Exception {
+        immutable(path,bytes,p->{});
+    }
+    static void immutable(Path path,byte[] bytes,Consumer<String> cut) throws Exception {
         Files.createDirectories(path.toAbsolutePath().getParent());
         Path tmp=Files.createTempFile(path.toAbsolutePath().getParent(),"archive-",".pending");
         try {
             try(var c=FileChannel.open(tmp,StandardOpenOption.WRITE)) {
                 var b=java.nio.ByteBuffer.wrap(bytes);while(b.hasRemaining())c.write(b);c.force(true);
             }
+            cut.accept("ARCHIVE_BYTES_FORCED");
             try { Files.createLink(path,tmp); }
             catch(FileAlreadyExistsException existing) {
                 if(!Arrays.equals(bytes,Files.readAllBytes(path)))throw new IllegalArgumentException("IMMUTABLE_MISMATCH");
@@ -124,7 +128,7 @@ final class PersistentArchiveRecovery {
             Actor a=read(actorFile,subject);if(a.index()==8)return a;
             if(a.pending()==null) {
                 a=new Actor(1,subject,a.actor(),a.index(),a.facts(),plan(a),a.done());
-                SplitArchiveCheckpoint.atomic(actorFile,encode(a));
+                publish(a,"REQUEST_BYTES_FORCED",cut);
             }
             cut.accept("AFTER_PENDING");Pending p=a.pending();RecoveryJournal.Result result=null;
             if(List.of(Step.CERTIFY,Step.PRUNE,Step.INSTALL,Step.ACTIVATE).contains(p.phase()) &&
@@ -133,12 +137,21 @@ final class PersistentArchiveRecovery {
                 result=(p.store().equals("phase-authority")?root:hot).apply(p.request());
                 if(!result.code().equals("OK"))throw new IllegalStateException("PHASE_CONFLICT:"+result.code());
                 if(!result.receipt().equals(new RecoveryJournal.Receipt(p.request(),p.request().expected(),p.request().next())))throw new IllegalStateException("RECEIPT_BINDING");
-            } else if(p.phase()==Step.COPY)immutable(object(p.object().owner()),JSON.writeValueAsBytes(p.object()));
+            } else if(p.phase()==Step.COPY)immutable(object(p.object().owner()),JSON.writeValueAsBytes(p.object()),cut);
             else if(!load(p.object().owner()).equals(p.object()))throw new IllegalArgumentException("ARCHIVE_CHANGED");
             cut.accept("AFTER_EFFECT");var done=new ArrayList<>(a.done());done.add(new Done(p,result));
             Actor next=new Actor(1,subject,a.actor(),a.index()+1,p.next(),null,done);
-            SplitArchiveCheckpoint.atomic(actorFile,encode(next));cut.accept("AFTER_LOCAL");return next;
+            publish(next,"COMPLETION_BYTES_FORCED",cut);cut.accept("AFTER_LOCAL");return next;
         }
+    }
+    private void publish(Actor actor,String boundary,Consumer<String> cut) throws Exception {
+        Path temp=actorFile.resolveSibling(actorFile.getFileName()+".pending");
+        try(var c=FileChannel.open(temp,StandardOpenOption.CREATE,StandardOpenOption.TRUNCATE_EXISTING,StandardOpenOption.WRITE)) {
+            var b=java.nio.ByteBuffer.wrap(encode(actor));while(b.hasRemaining())c.write(b);c.force(true);
+        }
+        cut.accept(boundary);
+        Files.move(temp,actorFile,StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING);
+        try(var d=FileChannel.open(actorFile.toAbsolutePath().getParent(),StandardOpenOption.READ)) {d.force(true);}
     }
     View view() throws Exception {
         var all=new HashMap<Long,Archive>();Path directory=objects.resolve(subject.toString());

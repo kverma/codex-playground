@@ -1,6 +1,6 @@
 # Persistent archive coordinator fixture
 
-AT-110–117 connect the bounded archive phase contract to separate real Cassandra
+AT-110–118 connect the bounded archive phase contract to separate real Cassandra
 authority/hot journal partitions and local immutable archive files. Each actor has
 a forced, atomically replaced local checkpoint containing captured state, verified
 archive bytes, exact pending operation/expected/next guards, and original receipts.
@@ -15,6 +15,10 @@ original transition, never a later head. Only then is local phase completion
 published. A worker resuming after that local publication starts the next phase.
 Unknown driver outcomes leave the pending bytes in place; no fresh operation ID
 or guard is minted to make an uncertain or conflicting phase succeed.
+Forced temporary bytes that have not been atomically published are not a committed
+checkpoint. No request may be dispatched from them. A restart may plan a new
+request only when that prior request was never published or sent; the test checks
+the abandoned identity is absent from both journals. Published requests stay exact.
 
 Each mutation remains one same-table Cassandra partition conditional batch with
 immutable operation receipt. There is no transaction spanning the authority,
@@ -36,14 +40,17 @@ loss of the last durable edit.
 
 - Single-node and cross-DC clients: two handoffs with an archived prefix and a new
   hot edit; persisted CERTIFY/PRUNE/INSTALL/ACTIVATE requests after takeover;
-  missing/corrupt actor and archive files; competing owner starts; historical
+  missing/corrupt actor and archive files; competing owner starts and edit/freeze
+  races; historical
   phase receipts after a newer owner finishes.
 - Actual unsafe control: replace an old prune request's expected guard with the
   current one. Its old image really overwrites Cassandra. The independent ledger
   rejects that boundary, while the exact-original-request control conflicts.
-- Twenty-four real process halts: all eight phases after pending persistence,
-  after storage effect, and after local completion. Forty-eight fresh JVMs record
-  the interrupted/resumed boundaries.
+- Forty-one real process halts: all eight phases after request bytes are forced,
+  request publication, storage effect, completion bytes are forced, and completion
+  publication; plus COPY after archive bytes are forced before object publication.
+  Eighty-two fresh JVMs record interrupted/resumed boundaries. Unpublished files
+  really exist but cannot authorize a phase or become the selected archive.
 - Twelve actual wire cuts: START/FREEZE/CERTIFY/PRUNE/INSTALL/ACTIVATE before send
   and after a server reply. Twenty-four fresh JVMs recover the exact saved request.
 - Every successful history has full root/hot/archive frames checked against the

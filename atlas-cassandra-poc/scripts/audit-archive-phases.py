@@ -99,7 +99,7 @@ phases=['START','FREEZE','COPY','VERIFY','CERTIFY','PRUNE','INSTALL','ACTIVATE']
 folder=Path(sys.argv[1]);assert folder.is_dir()
 histories=list(folder.glob('*/history.json'));assert histories, 'no phase histories'
 is_single=(folder/'process-pids.json').exists()
-assert len(histories)==(48 if is_single else 12), len(histories)
+assert len(histories)==(66 if is_single else 13), len(histories)
 for path in histories:
     h=load(path);assert replay(h['frames'])==(h['result']['verdict'],h['result']['checked'],h['result']['reason'])
     assert h['result']['verdict']=='VALID'
@@ -138,25 +138,49 @@ for i,r in enumerate(resolved['results']):
     q=race['actors'][i]['pending']['request']
     if i==resolved['winner']:assert r==dict(code='OK',receipt=dict(request=q,before=q['expected'],after=q['next']))
     else:assert r==dict(code='CONFLICT',receipt=None)
+race=load(folder/'edit-freeze-race/initial-race.json');resolved=load(folder/'edit-freeze-race/resolved-race.json')
+assert max(race['invoked'])<min(race['returned'])
+assert race['requests'][0]['expected']==race['requests'][1]['expected']
+assert sum(resolved[k]['code']=='OK' for k in ('edit','freeze'))==1
+for i,key in enumerate(('edit','freeze')):
+    r=resolved[key];q=race['requests'][i]
+    if r['code']=='OK':assert r['receipt']==dict(request=q,before=q['expected'],after=q['next'])
+    else:assert r==dict(code='CONFLICT',receipt=None)
+    if race['initial'][i] is not None:assert race['initial'][i]==r and race['errors'][i]==''
+    else:assert 'TimeoutException' in race['errors'][i]
 print(len(histories),'exact phase histories; two journal chains each; actor proofs; stale/historical recovery; actual unsafe mutation rejected')
 if is_single:
     all_pids=set()
     for phase in phases:
-        for cut in ('AFTER_PENDING','AFTER_EFFECT','AFTER_LOCAL'):
+        for cut in ['REQUEST_BYTES_FORCED','AFTER_PENDING','AFTER_EFFECT','COMPLETION_BYTES_FORCED','AFTER_LOCAL']+(['ARCHIVE_BYTES_FORCED'] if phase=='COPY' else []):
             d=folder/('process-'+phase+'-'+cut);r=load(d/'cut.json');a=r['interrupted'];index=phases.index(phase)
-            op=a['done'][index]['pending'] if cut=='AFTER_LOCAL' else a['pending']
-            assert r['finalActor']['done'][index]['pending']==op
+            op=a['done'][index]['pending'] if cut=='AFTER_LOCAL' else r['stagedActor']['pending'] if cut=='REQUEST_BYTES_FORCED' else a['pending']
+            if cut=='REQUEST_BYTES_FORCED':
+                assert a['pending'] is None
+                final=r['finalActor']['done'][index]['pending']
+                assert final['phase']==op['phase'] and final['store']==op['store']
+                if op['request']:
+                    assert final['request']['operation']!=op['request']['operation']
+                    h=load(d/'history.json');assert op['request']['operation'] not in h['root']['receipts'] and op['request']['operation'] not in h['hot']['receipts']
+                    assert final['request']['expected']==op['request']['expected'] and final['request']['next']['value']==op['request']['next']['value']
+            else:assert r['finalActor']['done'][index]['pending']==op
             assert a['index']==index+(cut=='AFTER_LOCAL')
-            if cut=='AFTER_PENDING':
+            if cut=='COMPLETION_BYTES_FORCED':
+                assert r['stagedActor']['index']==index+1 and r['stagedActor']['pending'] is None
+                assert r['stagedActor']['done'][index]['pending']==op
+            if cut=='ARCHIVE_BYTES_FORCED':
+                unpublished=load(d/'unpublished-object.json');assert unpublished['archive']==op['object'] and unpublished['targetExists'] is False
+                assert unpublished['file'].endswith('.pending')
+            if cut in ('AFTER_PENDING','REQUEST_BYTES_FORCED','ARCHIVE_BYTES_FORCED'):
                 assert r['afterRoot']==r['beforeRoot'] and r['afterHot']==r['beforeHot']
             elif op['request']:
                 q=op['request'];view=r['afterRoot'] if op['store']=='phase-authority' else r['afterHot']
                 assert view['state']==q['next'] and view['receipts'][q['operation']]==dict(request=q,before=q['expected'],after=q['next'])
-            if phase=='COPY':assert (str(op['object']['owner']) in r['afterView']['archive'])==(cut!='AFTER_PENDING')
+            if phase=='COPY':assert (str(op['object']['owner']) in r['afterView']['archive'])==(cut not in ('AFTER_PENDING','REQUEST_BYTES_FORCED','ARCHIVE_BYTES_FORCED'))
             assert not (d/'interrupted.json').exists()
             for f in ('interrupted.json.halt','resumed.json'):
                 pid=load(d/f)['pid'];assert pid not in all_pids;all_pids.add(pid)
-    assert len(all_pids)==48 and all_pids==set(load(folder/'process-pids.json'))
+    assert len(all_pids)==82 and all_pids==set(load(folder/'process-pids.json'))
     wire_pids=set()
     for phase in ('START','FREEZE','CERTIFY','PRUNE','INSTALL','ACTIVATE'):
         for cut in ('BEFORE_SEND','AFTER_RESPONSE'):
@@ -177,5 +201,4 @@ if is_single:
             for f in ('interrupted.json','resumed.json'):
                 pid=load(d/f)['pid'];assert pid not in all_pids|wire_pids;wire_pids.add(pid)
     assert len(wire_pids)==24 and wire_pids==set(load(folder/'wire-pids.json'))
-    print('24 process cuts / 48 JVMs; 12 real wire cuts / 24 JVMs; original persisted phase identities retained')
-
+    print('41 process cuts / 82 JVMs; 12 real wire cuts / 24 JVMs; published identities retained; unpublished actor/archive bytes never trusted')

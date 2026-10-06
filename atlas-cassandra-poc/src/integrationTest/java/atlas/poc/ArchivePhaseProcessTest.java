@@ -27,24 +27,33 @@ class ArchivePhaseProcessTest {
     // BEGIN ATLAS SCENARIO
     /**
      * Goal: Resume every archive recovery phase after a worker crash
-     * Boundary: Halt fresh workers after pending request persistence, storage effect and local completion for all eight phases
-     * Expected: Forty-eight distinct JVMs preserve phase identity and exact receipts; every history retains the edit and resumes authoring.
+     * Boundary: Halt workers at five request/effect/completion boundaries for all eight phases and after archive bytes are forced before object publication
+     * Expected: Eighty-two distinct JVMs ignore unpublished actor and archive files while preserving published request identities and receipts; every history retains the edit and resumes authoring.
      */
     @org.junit.jupiter.api.DisplayName("AT-116 | Resume every archive recovery phase after a worker crash")
     // END ATLAS SCENARIO
     @Test void everyArchivePhaseRecoversAfterPersistedRequestAndEffectCrashes() throws Exception {
-        for(Step target:PHASES)for(String cut:List.of("AFTER_PENDING","AFTER_EFFECT","AFTER_LOCAL"))try(var f=contract.new Fixture("process-"+target+"-"+cut)) {
+        for(Step target:PHASES)for(String cut:target==Step.COPY?List.of("REQUEST_BYTES_FORCED","AFTER_PENDING","ARCHIVE_BYTES_FORCED","AFTER_EFFECT","COMPLETION_BYTES_FORCED","AFTER_LOCAL"):List.of("REQUEST_BYTES_FORCED","AFTER_PENDING","AFTER_EFFECT","COMPLETION_BYTES_FORCED","AFTER_LOCAL"))try(var f=contract.new Fixture("process-"+target+"-"+cut)) {
             f.edit(2);f.init(0);while(PHASES.get(read(f.actor(0),f.subject).index())!=target)f.advance(0);
             int index=read(f.actor(0),f.subject).index();var beforeRoot=f.root.view();var beforeHot=f.hot.view();
             worker(f,"interrupted",9042,cut,86);Actor interrupted=read(f.actor(0),f.subject);
             var afterRoot=f.root.view();var afterHot=f.hot.view();var afterView=f.driver(0).view();
-            Pending operation=cut.equals("AFTER_LOCAL")?interrupted.done().get(index).pending():interrupted.pending();
-            if(!cut.equals("AFTER_PENDING")&&operation.request()!=null) {
+            Actor staged=cut.equals("REQUEST_BYTES_FORCED")||cut.equals("COMPLETION_BYTES_FORCED")?read(f.actor(0).resolveSibling(f.actor(0).getFileName()+".pending"),f.subject):interrupted;
+            Pending operation=cut.equals("AFTER_LOCAL")?interrupted.done().get(index).pending():cut.equals("REQUEST_BYTES_FORCED")?staged.pending():interrupted.pending();
+            boolean beforeEffect=cut.equals("AFTER_PENDING")||cut.equals("REQUEST_BYTES_FORCED")||cut.equals("ARCHIVE_BYTES_FORCED");
+            if(!beforeEffect&&operation.request()!=null) {
                 var observed=operation.store().equals("phase-authority")?afterRoot:afterHot;
                 assertEquals(operation.request().next(),observed.state());
                 assertEquals(new RecoveryJournal.Receipt(operation.request(),operation.request().expected(),operation.request().next()),observed.receipts().get(operation.request().operation()));
             }
-            if(target==Step.COPY)assertEquals(!cut.equals("AFTER_PENDING"),afterView.archive().containsKey(operation.object().owner()));
+            if(target==Step.COPY)assertEquals(!beforeEffect,afterView.archive().containsKey(operation.object().owner()));
+            if(cut.equals("ARCHIVE_BYTES_FORCED")) {
+                try(var files=Files.list(f.driver(0).object(operation.object().owner()).getParent())) {
+                    var pendingFiles=files.filter(p->p.getFileName().toString().endsWith(".pending")).toList();assertEquals(1,pendingFiles.size());
+                    var unpublished=JSON.readValue(pendingFiles.get(0).toFile(),Archive.class);assertEquals(operation.object(),unpublished);
+                    save(f.dir.resolve("unpublished-object.json"),Map.of("archive",unpublished,"targetExists",false,"file",pendingFiles.get(0).getFileName().toString()));
+                }
+            }
             if(cut.equals("AFTER_LOCAL")) {
                 assertEquals(index+1,interrupted.index());assertNull(interrupted.pending());
                 // Replay the last exact receipt without advancing the actor to a new phase.
@@ -52,16 +61,25 @@ class ArchivePhaseProcessTest {
                 f.frame(0,target,"OK");
                 // Fresh worker resumes the next phase, or observes completion after ACTIVATE.
                 worker(f,"resumed",9042,"NONE",0);if(index<7)f.frame(0,PHASES.get(index+1),"OK");
+            } else if(cut.equals("REQUEST_BYTES_FORCED")) {
+                assertEquals(index,interrupted.index());assertNull(interrupted.pending());assertNotNull(staged.pending());
+                assertEquals(beforeRoot,afterRoot);assertEquals(beforeHot,afterHot);
+                worker(f,"resumed",9042,"NONE",0);Actor resumed=read(f.actor(0),f.subject);
+                if(operation.request()!=null) {
+                    assertNotEquals(operation.request().operation(),resumed.done().get(index).pending().request().operation());
+                    assertFalse(f.root.view().receipts().containsKey(operation.request().operation()));assertFalse(f.hot.view().receipts().containsKey(operation.request().operation()));
+                }
+                f.frame(0,target,"OK");
             } else {
                 assertEquals(index,interrupted.index());assertNotNull(interrupted.pending());
-                if(cut.equals("AFTER_PENDING")) {assertEquals(beforeRoot,f.root.view());assertEquals(beforeHot,f.hot.view());}
+                if(beforeEffect) {assertEquals(beforeRoot,f.root.view());assertEquals(beforeHot,f.hot.view());}
                 worker(f,"resumed",9042,"NONE",0);Actor resumed=read(f.actor(0),f.subject);
                 assertEquals(interrupted.pending(),resumed.done().get(index).pending());f.frame(0,target,"OK");
             }
             f.complete(0);f.audit();
-            save(f.dir.resolve("cut.json"),Map.of("phase",target,"cut",cut,"interrupted",interrupted,"finalActor",read(f.actor(0),f.subject),"beforeRoot",beforeRoot,"beforeHot",beforeHot,"afterRoot",afterRoot,"afterHot",afterHot,"afterView",afterView));
+            save(f.dir.resolve("cut.json"),Map.of("phase",target,"cut",cut,"interrupted",interrupted,"finalActor",read(f.actor(0),f.subject),"beforeRoot",beforeRoot,"beforeHot",beforeHot,"afterRoot",afterRoot,"afterHot",afterHot,"afterView",afterView,"stagedActor",staged));
         }
-        assertEquals(48,pids.size());save(Path.of("build/evidence/archive-phase-single/process-pids.json"),pids);
+        assertEquals(82,pids.size());save(Path.of("build/evidence/archive-phase-single/process-pids.json"),pids);
     }
     // BEGIN ATLAS SCENARIO
     /**

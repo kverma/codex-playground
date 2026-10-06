@@ -193,4 +193,45 @@ abstract class ArchivePhaseContract {
             save(f.dir.resolve("historical.json"),Map.of("pending",pending,"recovered",recovered,"root",root,"hot",hot));
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Preserve an offer edit racing a persisted recovery freeze
+     * Boundary: Overlap a whole-offer edit and freeze prepared against the same hot guard through separate clients, then resolve their original requests
+     * Expected: Exactly one takes effect; a winning edit is captured by a new recovery owner, a winning freeze fences the edit, and complete receipt history survives.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-118 | Preserve an offer edit racing a persisted recovery freeze")
+    // END ATLAS SCENARIO
+    @Test void offerEditRacingPersistedFreezeHasOneExactWinner() throws Exception {
+        try(var f=new Fixture("edit-freeze-race");var pool=Executors.newVirtualThreadPerTaskExecutor()) {
+            f.edit(2);f.init(0);f.advance(0);
+            var before=f.hot.view().state();Hot h=hot(before);f.frame(3,Step.READ,"OK");
+            var rows=new ArrayList<>(h.rows());rows.add(new ArchiveFenceModel.Receipt(h.sequence()+1,3,h.cents(),403));
+            var edit=new RecoveryJournal.Request(UUID.randomUUID(),before,state(new Hot(h.epoch(),h.generation()+1,true,h.sequence()+1,403,h.floor(),h.base(),rows)));
+            assertThrows(IllegalStateException.class,()->f.driver(0).advance(ArchivePhaseContract::pause));
+            var freeze=read(f.actor(0),f.subject).pending().request();assertEquals(edit.expected(),freeze.expected());
+            var requests=List.of(edit,freeze);var ready=new CountDownLatch(2);var release=new CountDownLatch(1);
+            long[] invoked=new long[2],returned=new long[2];String[] errors=new String[2];RecoveryJournal.Result[] initial=new RecoveryJournal.Result[2];var tasks=new ArrayList<Future<?>>();
+            for(int id=0;id<2;id++) {final int i=id;tasks.add(pool.submit(()->{
+                invoked[i]=System.nanoTime();ready.countDown();
+                try {assertTrue(release.await(10,TimeUnit.SECONDS));initial[i]=(i==0?f.peerHot:f.hot).apply(requests.get(i));errors[i]="";}
+                catch(com.datastax.oss.driver.api.core.servererrors.WriteTimeoutException | com.datastax.oss.driver.api.core.servererrors.ReadTimeoutException | com.datastax.oss.driver.api.core.DriverTimeoutException e) {errors[i]=e.toString();}
+                catch(Exception e) {throw new RuntimeException(e);}finally {returned[i]=System.nanoTime();}
+            }));}
+            try {assertTrue(ready.await(10,TimeUnit.SECONDS));}finally {release.countDown();}for(var task:tasks)task.get(60,TimeUnit.SECONDS);
+            save(f.dir.resolve("initial-race.json"),Map.of("requests",requests,"initial",initial,"errors",errors,"invoked",invoked,"returned",returned));
+            assertTrue(Math.max(invoked[0],invoked[1])<Math.min(returned[0],returned[1]));
+            var editResult=f.hot.apply(edit);var freezeResult=f.peerHot.apply(freeze);assertNotEquals(editResult.code().equals("OK"),freezeResult.code().equals("OK"));
+            if(initial[0]!=null)assertEquals(initial[0],editResult);if(initial[1]!=null)assertEquals(initial[1],freezeResult);
+            if(editResult.code().equals("OK")) {
+                assertEquals("CONFLICT",freezeResult.code());f.frame(3,Step.WRITE,"OK");
+                assertThrows(IllegalStateException.class,()->f.driver(0).advance(p->{}));
+                // Failed planning CAS made no logical FREEZE; a new owner captures the accepted edit.
+                f.init(1);f.complete(1);
+            } else {
+                assertEquals("CONFLICT",editResult.code());assertEquals("OK",freezeResult.code());
+                f.driver(0).advance(p->{});f.frame(0,Step.FREEZE,"OK");f.frame(3,Step.WRITE,"FENCED");f.complete(0);
+            }
+            f.audit();save(f.dir.resolve("resolved-race.json"),Map.of("edit",editResult,"freeze",freezeResult,"view",f.driver(0).view()));
+        }
+    }
 }
