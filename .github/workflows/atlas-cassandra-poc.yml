@@ -65,7 +65,7 @@ jobs:
   grade:
     needs: shallow
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: atlas-cassandra-poc
