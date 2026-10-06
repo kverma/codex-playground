@@ -50,12 +50,28 @@ The earlier split-file rollback negative control remains: if the authoritative r
 itself is rolled back along with its recovery facts, old identities can reopen.
 The new result only removes local-cache rollback from that trust boundary.
 
+## Later contention and availability evidence
+
+[Run 37421632336](https://github.com/kverma/codex-playground/actions/runs/37421632336)
+passed all four jobs at `aee099c`: **120 POC +16 upstream**. AT-089 adds six
+same-base publication races per topology, including equal-content roots with
+different guards. Exactly one writer wins, full root/guard agrees across clients,
+and both captured conditional replays reject. Saved invocation/response intervals
+establish client overlap, not a named internal Paxos phase.
+
+AT-090 isolates dc1 and witnesses SERIAL UnavailableException with required=2 and
+alive=1 for root reads/write while dc2 publishes. After healing, dc1/dc2/dc3 agree,
+the stale proposal rejects, and dc1 resumes publication. This is an already-open
+client against RF1/DC on one host, not independent-service disaster recovery.
+The wire-fault extension separately covers lost SELECT/CAS requests and replies.
+
 ## Explicit limits
 
 Root and offer rows are separate partitions; no atomic transaction spans them.
-Orchestration remains serial. A root CAS that fails after a hot-state change is not
+Archive/offer orchestration remains serial; AT-089 races root publications only.
+A root CAS that fails after a hot-state change is not
 a general concurrent-writer recovery protocol. The test does not claim root guards
-fence hot-state writers, nor does it qualify a chosen Paxos phase or lost CQL reply.
+fence hot-state writers, nor does it qualify a chosen Paxos phase.
 The halt occurs after a witnessed successful root update.
 
 The extra SERIAL reads and conditional root writes are not latency/throughput
@@ -63,7 +79,7 @@ qualified; no WAN SLO or production capacity claim follows from this grader.
 
 The root is in the same Cassandra cluster, on one hosted runner. Logical offer
 restoration leaves it intact by construction. Whole-cluster restore, stale authority
-backups, replica rollback, independent hosts, root-service unavailability and root
+backups, replica rollback, independent hosts, independent root-service outages and root
 retention/garbage collection are not qualified. In particular this is **not** a
 rollback-resistant production root service. A production recovery authority needs
 its own disaster-recovery contract and failure domain. Nine-node HA, PG-COMMIT and

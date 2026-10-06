@@ -66,6 +66,7 @@ whole-cluster rollback are not established. Proposal-file writes are process-lev
 fixtures, not a power-loss-qualified SDK journal. No Atlas proof gate or nine-node
 HA certification follows from these tests.
 
-The separate AT-089/090 additions test competing root publications and witnessed
-minority quorum loss; their status is tracked in the adversarial review. They do
+The separate AT-089/090 additions passed in run 37421632336: competing root
+publications and witnessed minority quorum loss, with downloaded evidence inspected
+in the adversarial review. They do
 not turn this serial archive/offer fixture into a concurrent cross-store protocol.

@@ -2,9 +2,9 @@
 
 ## Current evidence
 
-Executable `86c1288722d8ef2c148a46190e7ff08d1f2888a0` passed
-[run 37403100828](https://github.com/kverma/codex-playground/actions/runs/37403100828):
-117 distinct POC cases and 16 upstream tests. Models, one-node Cassandra, verified
+Executable `aee099ca846a04eb3b4b91b599032e7f598ff75d` passed
+[run 37421632336](https://github.com/kverma/codex-playground/actions/runs/37421632336):
+120 distinct POC cases and 16 upstream tests. Models, one-node Cassandra, verified
 process/network faults and a three-node RF1-per-DC fixture already run remotely.
 The new archive fixture has real Cassandra hot state but simulated external
 archive/authority in its base tests; the new server-process extension uses one local
@@ -12,9 +12,10 @@ root table outside logical offer restoration, with separately read archive/autho
 files. All orchestration is serial. These are bounded POC results.
 
 The root wire-fault extension now passed four exact read/publication cuts with
-17 server processes and checked recovery traces. Next hosted slice, implemented
-pending evidence: AT-089 same-base competing root publications and AT-090 root
-quorum loss/majority progress/healing. These are root-only tests. Rank 5 below
+17 server processes and checked recovery traces. AT-089 same-base competing root publications and AT-090 root
+quorum loss/majority progress/healing also passed: twelve witnessed races across
+two topologies, three exact minority quorum-loss errors and six matching
+post-heal/resumed full root views. These are root-only tests. Rank 5 below
 still requires a concurrent cross-store oracle and remains unexecuted.
 
 ## Ranked next experiments on standard hosted Linux runners

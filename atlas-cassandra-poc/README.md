@@ -54,7 +54,7 @@ root selection outside logical offer restore and stale root-publication guards.
 The [Cassandra archive fixture](docs/archive-cassandra-fixture.md) adds real
 conditional HEAD/slot mutations, logical restore and delayed-writer guard tests.
 Run its cross-coordinator cases with `make three-up && make grade-archive`.
-Its base archive and recovery authority remain simulated. Hosted [run 37403100828](https://github.com/kverma/codex-playground/actions/runs/37403100828) passed all four jobs at `86c1288`: **117 distinct POC cases plus 16 upstream tests**, including authoritative-root recovery, cross-DC stale-root rejection and read/publication wire faults. Root-contention and quorum-isolation extensions are implemented pending hosted validation; see the adversarial review.
+Its base archive and recovery authority remain simulated. Hosted [run 37421632336](https://github.com/kverma/codex-playground/actions/runs/37421632336) passed all four jobs at `aee099c`: **120 distinct POC cases plus 16 upstream tests**, including authoritative-root recovery, cross-DC stale-root rejection, read/publication wire faults, competing root writers and quorum isolation/healing. All four artifacts were inspected; see the adversarial review.
 The archive fault grader now covers actual seal/prune request and reply loss,
 exact recovery and a rejected partial-pruning control.
 The [readiness boundary tests](docs/readiness-recovery.md) now force membership

@@ -2,14 +2,15 @@
 
 ## Decision
 
-Executable commit `86c1288722d8ef2c148a46190e7ff08d1f2888a0` passed all four jobs in
-[run 37403100828](https://github.com/kverma/codex-playground/actions/runs/37403100828).
-Downloaded XML confirms **117 distinct POC cases plus 16 upstream tests**, with no
-failures, errors or skips: 51 shallow cases are included in the 99-case
-model/single-node/fault job; 18 three-node cases complete the POC total.
-The executed catalog contained 88 unique Atlas scenarios. Shared contracts appear
+Executable commit `aee099ca846a04eb3b4b91b599032e7f598ff75d` passed all four jobs in
+[run 37421632336](https://github.com/kverma/codex-playground/actions/runs/37421632336).
+Downloaded XML confirms **120 distinct POC cases plus 16 upstream tests**, with no
+failures, errors or skips: 51 shallow cases are included in the 100-case
+model/single-node/fault job; 20 three-node cases complete the POC total.
+The executed catalog contained 90 unique Atlas scenarios. Shared contracts appear
 in multiple fixture classes; generated histories do not inflate JUnit case counts.
-The description gate passed. The new AT-089/090 scenarios below await hosted evidence.
+The description gate passed. All four artifacts were downloaded and inspected.
+No failed attempt preceded this result; no rerun was needed.
 
 ## Latest authority wire-fault evidence — 2026-10-06 UTC
 
@@ -20,9 +21,10 @@ unchanged cache bytes and offer state, exact recovered signed identities/receipt
 and three VALID histories (5, 4 and 4 checked commands). Before-send publication
 resolves UNCHANGED; lost applied reply resolves PUBLISHED. Later equal-content roots
 with different guards resolve UNKNOWN and reject the captured stale proposal.
-The single-node count is 99, not 99 plus the repeated 51 shallow cases.
+The wire scenarios passed again in the latest run; the single-node count is now
+100, not 100 plus the repeated 51 shallow cases.
 
-## Root contention and isolated authority — implementation awaiting hosted validation
+## Root contention and isolated authority — passed and inspected 2026-10-06 UTC
 
 AT-089 adds six two-client publication races to the existing single-node and
 three-node root contract. Both recorded invocations precede a dispatch barrier;
@@ -40,6 +42,21 @@ must publish one exact proposal in at most three attempts while isolation remain
 After fresh membership readiness, all three full root versions must match; the
 captured minority proposal must reject, and dc1 must recover publication progress.
 All retries, causes, membership/fault logs and final guards are preserved.
+
+Downloaded evidence confirms twelve overlapping races, six per topology, with
+exactly one winner in each; six total equal-content/different-guard rounds preserve
+winner identity. Both coordinators won at least one three-node round; this is not
+a fairness claim. The minority emitted three exact SERIAL UnavailableException
+witnesses (two reads, one publication), each required=2/alive=1. Four blocked TCP
+edges, membership snapshots, DROP counters and healed readiness are saved. Majority
+publication and resumed dc1 publication each completed on attempt 1; all six
+post-heal/resumed authoritative views matched the expected full Version on attempt 1.
+No latency SLO follows from those bounded successful attempts.
+
+Local `make grade-model` and `make grade-cassandra` could not start because this
+workspace lacks Gradle 9.1.0 (also no JDK25/Docker). The hosted shallow job compiled
+the new fixtures, and the hosted one/three-node jobs executed them. Description
+checks and whitespace checks also passed locally.
 
 These additions exercise the root table alone. They do not integrate simultaneous
 root and hot-offer writers, provide a distributed fence, or establish independent
