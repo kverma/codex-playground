@@ -11,6 +11,7 @@ The separate [maintainer-test guide](docs/upstream-test-scenarios.md) explains a
 
 Next steps: [further GitHub Actions validation](docs/github-actions-validation-roadmap.md)
 and the [nine-node laptop agent handoff](docs/nine-node-ha-agent-handoff.md).
+For a short continuation checkpoint, read [current status](docs/current-status.md).
 The latter is an execution guide for the existing HA scaffold, not evidence that
 the nine-node topology has passed.
 
@@ -74,7 +75,7 @@ root selection outside logical offer restore and stale root-publication guards.
 The [Cassandra archive fixture](docs/archive-cassandra-fixture.md) adds real
 conditional HEAD/slot mutations, logical restore and delayed-writer guard tests.
 Run its cross-coordinator cases with `make three-up && make grade-archive`.
-Its base archive and recovery authority remain simulated. Hosted [run 37447187294](https://github.com/kverma/codex-playground/actions/runs/37447187294) passed all four jobs at `843a17c`: **155 distinct passing tests = 135 POC +4 Atlas overlay +16 upstream**, zero failures/errors/skips. All four artifacts were downloaded and audited; the 59 shallow cases are included in the 112-case single/model/fault result, with 23 three-node cases. The catalog contains 102 scenarios. See the adversarial review for failed attempts and exact scope, and the [Actions-only stopping boundary](docs/actions-only-boundary.md) for required contracts/infrastructure. More bounded tests remain possible; production E2E and PG-COMMIT/PG-CASS remain UNPROVEN.
+Its base archive and recovery authority remain simulated. Hosted [run 37497216337](https://github.com/kverma/codex-playground/actions/runs/37497216337) passed all four jobs at `eed0c99`: **162 distinct passing tests = 142 POC +4 Atlas overlay +16 upstream**, zero failures/errors/skips. All four artifacts were downloaded and audited; the 66 shallow cases are included in the 119-case single/model/fault result, with 23 three-node cases. The catalog contains 109 scenarios. See the adversarial review for failed attempts and exact scope, and the [remaining Actions work and external limits](docs/actions-only-boundary.md). More bounded integration work remains possible; production E2E and PG-COMMIT/PG-CASS remain UNPROVEN.
 The archive fault grader now covers actual seal/prune request and reply loss,
 exact recovery and a rejected partial-pruning control.
 The [readiness boundary tests](docs/readiness-recovery.md) now force membership

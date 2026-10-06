@@ -59,6 +59,15 @@ different guards. Exactly one writer wins, full root/guard agrees across clients
 and both captured conditional replays reject. Saved invocation/response intervals
 establish client overlap, not a named internal Paxos phase.
 
+The follow-on contention harness preserves explicit initial timeout outcomes as
+unknown, with a nullable applied field in the evidence. A fresh SERIAL read must
+identify a full original proposal, including its guard. Only an unchanged base
+permits one original-proposal replay; there is no refreshed token or unbounded
+retry. Definitive initial results must agree with the resolved winner. The test
+excludes later writers during resolution, so it cannot prove historical publication
+after the winning guard has been superseded. See the adversarial review for the
+failed run that motivated this correction and the corrective validation result.
+
 AT-090 isolates dc1 and witnesses SERIAL UnavailableException with required=2 and
 alive=1 for root reads/write while dc2 publishes. After healing, dc1/dc2/dc3 agree,
 the stale proposal rejects, and dc1 resumes publication. This is an already-open

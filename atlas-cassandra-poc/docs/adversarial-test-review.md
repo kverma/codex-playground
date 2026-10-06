@@ -2,6 +2,59 @@
 
 ## Decision
 
+### Archive-bound fencing and timeout recovery — 2026-10-06 UTC
+
+Executable `eed0c99c509d57d7aaaddc5c73638d4000f77742` passed all four jobs in
+[run 37497216337](https://github.com/kverma/codex-playground/actions/runs/37497216337).
+All four downloaded artifacts were audited: **162 distinct passing tests = 142
+POC +4 Atlas-authored overlay +16 upstream**, zero failures/errors/skips.
+The 119 single/model/fault cases include the 66 repeated shallow cases; 23
+three-node cases complete the POC total. There are 109 scenario IDs. Neither
+schedule counts nor repeated shallow execution inflate the distinct test count.
+
+AT-103–109 extend the test-only handoff to COPY/VERIFY/CERTIFY/PRUNE/INSTALL:
+
+- 2,970 writer/recovery schedules and 12,870 two-owner takeover schedules retain
+  exact accepted receipt history. All 283,140 exhaustive prefixes are checked;
+  these are bounded serialized interleavings, not real process races.
+- A focused archived-prefix/new-hot-tail history and three malformed archive
+  controls check full receipt coverage, fence binding and endpoint price.
+- Seven actually broken implementations fail at their named boundary, with
+  passing identical-command controls. An undersized checker returns INCONCLUSIVE.
+- A separate environmental counterexample deletes a verified archive object.
+  The correct candidate can certify cached proof and then prune away the last
+  durable receipt in this three-store model. The checker rejects that exact prune;
+  the retained-object control passes. This exposes a required archive retention
+  premise, not a proved data-loss bug in the separate fixture with an unbounded
+  recovery journal. No production archive provider is qualified.
+
+Two validation failures exposed an incorrect assumption in the older race tests:
+[37493947602](https://github.com/kverma/codex-playground/actions/runs/37493947602)
+failed AT-102 and
+[37494827327](https://github.com/kverma/codex-playground/actions/runs/37494827327)
+failed AT-089 on CAS WriteTimeoutException at SERIAL. A timed-out call has an
+unknown outcome. The harness now preserves initial results/errors before bounded
+exact-request resolution. Definitive results and any durable winner must remain
+unchanged; unresolved recovery still fails. Root resolution compares full guards
+and payloads, never payload equality alone. These failed runs are not erased by
+the corrective run, and their timeouts are not interpreted as aborted writes.
+
+The corrective run's initial race calls all returned definitive results; it did
+not naturally reproduce the earlier CAS timeouts. The saved initial/final results
+and pre-resolution views agree. The separate deterministic interruption suite
+still passes all twelve lost-send/lost-reply/worker-halt cases across 24 JVMs.
+Regression audits also retain the 17-JVM authority wire histories, all 3570 prior
+fence schedules, quorum/healing witnesses and 256 independent encoding vectors.
+All twelve server-phase cut witnesses and the actual partial-prune rejection pass;
+an 81.942 ms edit is strictly inside an 82.210 ms repair pause in this run.
+These remain bounded fixture claims, not production durability certification.
+
+The [remaining Actions work](actions-only-boundary.md) includes durable actor
+captures/proofs and adapter integration; this model does not exhaust hosted tests.
+The draft PR remains unmerged and production proof gates remain UNPROVEN.
+
+### Previous fully audited baseline
+
 Executable `843a17c4f579c1e1f095b8564d3d54d50b1427c3` passed all four jobs in
 [run 37447187294](https://github.com/kverma/codex-playground/actions/runs/37447187294).
 All four downloaded artifacts were audited: **155 distinct passing tests = 135
@@ -62,7 +115,7 @@ Proposal-request loss resolved as applied in an earlier run and unapplied in the
 final run. Both are permitted complete outcomes, not flaky verdicts or inferred
 aborts. The audit compares explicit full before/after row sets, then exact replay.
 
-Stop at the [current Actions-only boundary](actions-only-boundary.md): combined
+That baseline recorded the [Actions-only limits](actions-only-boundary.md): combined
 concurrent archive/prune/restore still needs an integrated persistent coordinator
 contract; authority rollback and archive ACK qualification need selected backends;
 RF3/DC and independent-host/WAN/storage tests need a different authorized
