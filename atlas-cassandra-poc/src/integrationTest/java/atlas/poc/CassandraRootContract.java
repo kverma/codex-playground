@@ -10,12 +10,12 @@ import static org.junit.jupiter.api.Assertions.*;
 abstract class CassandraRootContract {
     abstract CassandraRootAuthority open(UUID subject,boolean peer);
     abstract String folder();
-    record PublicationCall(int writer,long invoked,long returned,boolean applied,String error) {}
+    record PublicationCall(int writer,long invoked,long returned,Boolean applied,String error) {}
     // BEGIN ATLAS SCENARIO
     /**
      * Goal: Choose exactly one recovery pointer when two Atlas writers compete
-     * Boundary: Release two clients from the same observed root in six rounds, including identical payloads with different guards, on one node and through different DCs
-     * Expected: Exactly one conditional publication applies; full root and guard match the winner, both stale replays fail, and equal content never identifies the wrong proposal.
+     * Boundary: Release two clients from the same observed root in six rounds, including identical payloads with different guards; preserve any initial timeout as unknown
+     * Expected: Bounded exact-token resolution identifies one original proposal; definitive results stay consistent, both stale replays fail, and equal content never identifies the wrong proposal.
      */
     @org.junit.jupiter.api.DisplayName("AT-089 | Choose exactly one recovery pointer when two Atlas writers compete")
     // END ATLAS SCENARIO
@@ -42,8 +42,11 @@ abstract class CassandraRootContract {
                                 if(!release.await(10,TimeUnit.SECONDS))throw new IllegalStateException("dispatch gate timed out");
                                 boolean applied=authority.publish(proposals.get(id));
                                 calls[id]=new PublicationCall(id,invoked,System.nanoTime(),applied,"");
+                            } catch(com.datastax.oss.driver.api.core.servererrors.WriteTimeoutException |
+                                    com.datastax.oss.driver.api.core.servererrors.ReadTimeoutException |
+                                    com.datastax.oss.driver.api.core.DriverTimeoutException e) {
+                                calls[id]=new PublicationCall(id,invoked,System.nanoTime(),null,e.toString());
                             } catch(Exception e) {
-                                calls[id]=new PublicationCall(id,invoked,System.nanoTime(),false,e.toString());
                                 throw new RuntimeException(e);
                             }
                         }));
@@ -53,17 +56,32 @@ abstract class CassandraRootContract {
                     for(var future:futures)future.get(60,TimeUnit.SECONDS);
                 } finally {
                     evidence.add(Map.of("round",round,"base",base,"proposals",proposals,"calls",Arrays.asList(calls)));
+                    save(Path.of("build/evidence",folder(),"root-contention.json"),evidence);
                 }
                 assertTrue(Math.max(calls[0].invoked(),calls[1].invoked())<Math.min(calls[0].returned(),calls[1].returned()),"recorded calls overlap");
-                assertNotEquals(calls[0].applied(),calls[1].applied(),"exactly one proposal must apply");
-                int winner=calls[0].applied()?0:1;var accepted=proposals.get(winner);var rejected=proposals.get(1-winner);
+                var beforeResolution=a.read();
+                // No later writer runs here: an exact token identifies the durable winner.
+                // If neither effect is durable, permit just one replay with the original guard.
+                Boolean recoveryApplied=null;
+                if(beforeResolution.equals(base))recoveryApplied=b.publish(proposals.get(0));
+                var resolved=a.read();
+                int winner=resolved.equals(proposals.get(0).next())?0:1;
+                var accepted=proposals.get(winner);var rejected=proposals.get(1-winner);
+                assertEquals(accepted.next(),resolved,"a full original proposal must be durable");
+                for(var call:calls)if(call.applied()!=null) {
+                    if(call.applied())assertEquals(call.writer(),winner);
+                    else assertNotEquals(call.writer(),winner,"a definitive initial rejection cannot become the winner");
+                }
+                if(!beforeResolution.equals(base))assertEquals(beforeResolution,resolved);
                 assertEquals(accepted.next(),a.read());assertEquals(accepted.next(),b.read());
                 assertEquals(CassandraRootAuthority.Resolution.PUBLISHED,b.resolve(accepted));
                 assertEquals(CassandraRootAuthority.Resolution.UNKNOWN,a.resolve(rejected),"payload equality cannot identify the winner");
                 assertFalse(a.publish(accepted),"exact replay must not apply twice");
                 assertFalse(b.publish(rejected),"loser must not silently refresh its expected guard");
                 assertEquals(accepted.next(),a.read());assertEquals(accepted.next(),b.read());
-                evidence.add(Map.of("round",round,"winner",winner,"afterReplays",a.read(),"loserResolution",a.resolve(rejected)));
+                var resolution=new LinkedHashMap<String,Object>();resolution.put("round",round);resolution.put("winner",winner);
+                resolution.put("beforeResolution",beforeResolution);resolution.put("recoveryApplied",recoveryApplied);
+                resolution.put("afterReplays",a.read());resolution.put("loserResolution",a.resolve(rejected));evidence.add(resolution);
             }
         } finally { save(Path.of("build/evidence",folder(),"root-contention.json"),evidence); }
     }

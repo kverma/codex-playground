@@ -32,6 +32,14 @@ AT-091–094 enumerate 3570 per-store interleavings and five broken-fence contro
 This does not implement concurrent archive/prune/restore operations, so the larger
 rank-5 gate remains open. See [recovery-fence model](recovery-fence-model.md).
 
+The follow-on [archive-bound fence model](archive-fence-model.md) now combines
+copy, verify, certify, prune, install and activation with the fence. Its hosted
+shallow run and independent artifact audit cover 2970 writer schedules and 12870
+two-owner schedules, seven unsafe candidates, three malformed copies and a
+prefix-plus-hot-tail recovery. An explicit lost-object counterexample shows the
+retained archive premise failing at PRUNE. This narrows the rank-5 design gap;
+it still has no persistent actors, allocation gaps or real concurrent adapters.
+
 Rank 1 is now implemented and passed: AT-069–071 cover four actual wire-loss
 boundaries and a real partial-pruning mutant. Saved byte-level witnesses and
 full-state recovery were inspected; see the [review](adversarial-test-review.md).
@@ -77,7 +85,7 @@ control; “the command succeeded” or “the suite eventually passed” is ins
 | 2 — passed | Does recovery handle membership changing during readiness checks? | Deterministically arrange an Up/Normal snapshot followed by a peer-down transition before a SERIAL read; test eventual recovery and persistent unavailability separately. | Witness both transitions and a failed read; prove fresh readiness checks occur between bounded retries. Exact final-state equality remains mandatory. A permanently unavailable supplier must fail progress. | Shallow controller tests, then three nodes |
 | 3 — fixture passed | Does a real saved draft remain the same edit across process restarts and archive recovery? | Integrate the signed Draft/Issued path with the archive candidate; persist the complete pair and restart the client process after allocation/acceptance reply loss. Include changed payloads, retired anchors and backward controlled clocks. | Same identity, original dependencies and exact receipt; no silent reminting or stale draft reopening. Distinguish process persistence from whole-host durability. | Model plus one/three nodes |
 | 4 — local slice passed | Is a partially written audit record ever mistaken for a durable one? | Define a storage contract; run a local disk-backed or object-store service fixture with partial writes, process restart, unavailable reads and corrupt/missing records. Keep authority separate. | Document what its ACK means, verify complete bytes and binding, preserve facts across **service process** restart, block pruning on uncertainty. A local emulator cannot qualify a remote provider's persistence guarantee. | Separate one-node + service job |
-| 5 | Can concurrent cleanup and restore violate an offer's edit history? | Extend the serial archive candidate/oracle to recorded overlapping accept, seal, copy, certify, prune and restore operations, including unarchived tails and reservation gaps. | Actual overlap intervals and an independent bounded concurrent oracle; negative controls for premature deletion, fence bypass and discarded tails. Do not reuse the serial checker as if it proved concurrent behavior. | Shallow first, then three nodes |
+| 5 — expanded model slice | Can concurrent cleanup and restore violate an offer's edit history? | The archive-bound model checks 15,840 phase schedules and exact conservation; next persist actor proofs/requests and bridge real adapters, including reservation gaps. | The model uses independent accepted-history reconstruction. Real concurrent adapters still need measured intervals and a bounded concurrent oracle; model interleavings are not measured thread overlap. | Shallow passed; integrated adapters still open |
 | 6 — bounded slice passed | What happens to Atlas-shaped conditional batches at specific Paxos phases? | Pinned overlay runs HEAD/receipt and floor/delete shapes through six request/response cuts each. | Twelve exact verb hit counters; complete before/after partitions on all coordinators; exact reissue; actual broken-prune rejection. Adapter orchestration and disk durability remain outside this overlay. | Existing JDK11/Ant job |
 | 7 — bounded slice passed | Does repair really overlap an edit, rather than merely run nearby? | Hold an actual VALIDATION_RSP while an edit completes; disable hints and read repair. | Strictly nested monotonic interval, successful parent repair, local missing-row healing and exact retained edit. This is a pending validation-response boundary, not a claimed disk-streaming callback. | Existing maintainer harness |
 | 8 — current profile passed | Can independent encoders disagree about an intent ID? | 256 independent Python byte/hash vectors; reversed Java map insertion; changed metadata and royalty; malformed admission values. | Exact wire/hash equality, metadata invariance, semantic-change distinction and state-preserving rejection. Larger configurations/schedules still await fields and contracts. | Shallow |
@@ -89,10 +97,10 @@ result and resource profile. Keep every failed attempt visible; avoid “retry u
 green.” Bound jobs, use fail-fast only where it will not discard useful independent
 evidence, upload artifacts on failure, and clean up only the job's own containers.
 All additions extend existing graders; no extra runner job or nine-node execution
-was added. Rank 5's full archive/prune/restore concurrency and rank 9 remain
-unexecuted. Ranks 6–8 now have the narrow passed slices above. Next select the
-integrated persistent coordinator/authority/archive contracts, then bind archive
-coverage and snapshot installation to the frozen generation. The
+was added. Rank 5's persistent concurrent adapters and rank 9 remain
+unexecuted. Ranks 6–8 have the narrow passed slices above. The new archive-fence
+model binds coverage and installation to frozen generations; next persist the
+actor proofs and exact phase requests and integrate the tested storage pieces. The
 [Actions-only campaign boundary](actions-only-boundary.md) separates further
 possible bounded tests from claims requiring new contracts or infrastructure.
 Rank 4 narrows server-process persistence

@@ -74,3 +74,23 @@ offer restoration is not SSTable/whole-cluster rollback resistance. There is no
 external authority service, object-store durability qualification, credentials,
 provider SLA, backup installation fence, or production archive coverage proof.
 PG-COMMIT and PG-CASS remain UNPROVEN.
+# Contention and uncertain replies
+
+Actions runs 37493947602 and 37494827327 exposed CAS write timeouts in the
+journal and root publication contention tests respectively. The original tests
+incorrectly required every initial call to return a definitive answer. These are
+failed validation runs, not evidence that the timed-out write did not apply.
+
+The race harness now records each initial result or explicit driver/server timeout
+before resolution. Unexpected exceptions still fail. Journal recovery performs
+one replay of each unchanged request through the other client and requires exact
+original receipts, one effect, and agreement on the complete partition. Definitive
+initial results cannot change, and an already durable winner cannot be replaced.
+Any timeout during this bounded recovery fails the progress gate; there is no
+retry-until-green loop. Original call intervals remain separate from recovery.
+
+The root fixture has no operation journal. With later writers excluded in this
+test, a SERIAL read identifies an exact original guard and payload. Only if the
+original base remains does the harness allow one unchanged proposal replay.
+Both subsequent stale publications must reject. This does not generalize to
+historical root resolution after later writers have hidden an earlier guard.

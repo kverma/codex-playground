@@ -11,6 +11,17 @@ assert any((root / name).is_dir() for name in ("recovery-journal-model", "recove
 def read(path):
     return json.loads(path.read_text())
 
+def resolution(race, genesis):
+    for side in ("left", "right"):
+        attempt = race["initial" + side.title()]
+        if attempt["result"] is not None:
+            assert attempt["error"] is None and attempt["result"] == race[side]
+        else:
+            assert attempt["error"].split(":", 1)[0].rsplit(".", 1)[-1] in (
+                "WriteTimeoutException", "ReadTimeoutException", "DriverTimeoutException")
+    before = race["beforeResolution"]
+    assert before == (race["view"] if before["receipts"] else dict(state=genesis, receipts={}))
+
 def oracle(trace):
     current = trace["genesis"]
     receipts = {}
@@ -56,6 +67,7 @@ for name in ("recovery-journal-single", "recovery-journal-three"):
     assert result == race["right"] == dict(code="OK", receipt=dict(request=request, before=request["expected"], after=request["next"]))
     assert max(race["invoked"]) < min(race["returned"])
     assert race["view"] == dict(state=request["next"], receipts={request["operation"]: result["receipt"]})
+    resolution(race, request["expected"])
     competing = list(folder.glob("competing-*.json")); assert len(competing) == 6
     for file in competing:
         race = read(file)
@@ -68,6 +80,7 @@ for name in ("recovery-journal-single", "recovery-journal-three"):
         assert race[winner] == dict(code="OK", receipt=receipt)
         assert race[loser] == dict(code="KEY_REUSE" if race["sameKey"] else "CONFLICT", receipt=None)
         assert race["view"] == dict(state=request["next"], receipts={request["operation"]: receipt})
+        resolution(race, request["expected"])
     print(name, "exact historical replay and overlapping deduplication audited")
 
 wire = root / "recovery-journal-wire"

@@ -44,6 +44,12 @@ still retains hot data; the identical plan without object loss passes. This is a
 expected environmental counterexample, not a passing disaster-recovery claim or a
 real provider fault experiment. It demonstrates why a trustworthy durable/retained
 archive ACK is required; more generation checks alone do not supply that guarantee.
+This particular counterexample has no other durable receipt source. The separate
+unbounded recovery-journal fixture retains before/after state and could provide
+additional recovery data; it is not included in this model. A real integration
+must account for those copies and their retirement policy before claiming either
+safe deletion or unrecoverable loss. No data-loss bug in that existing Cassandra
+journal is inferred from AT-109.
 
 ## Independent evidence
 
