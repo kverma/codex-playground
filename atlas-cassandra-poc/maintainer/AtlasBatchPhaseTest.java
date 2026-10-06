@@ -2,11 +2,18 @@ package org.apache.cassandra.distributed.test;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.junit.Test;
 import org.apache.cassandra.distributed.Cluster;
 import org.apache.cassandra.distributed.api.ConsistencyLevel;
 import org.apache.cassandra.net.Verb;
 import static org.junit.Assert.*;
+import static org.apache.cassandra.distributed.api.Feature.NETWORK;
+import static org.apache.cassandra.distributed.api.Feature.GOSSIP;
 
 /** Atlas-authored overlay on the pinned 4.0.5 harness, not an upstream test. */
 public class AtlasBatchPhaseTest extends TestBaseImpl {
@@ -79,6 +86,49 @@ public class AtlasBatchPhaseTest extends TestBaseImpl {
             assertFalse("the actual partial state must be rejected",whole(batch,partial));
             assertEquals(2,partial.length);assertEquals(batch.after[0][2],partial[0][2]);assertEquals("S:1",partial[1][0]);
             System.out.println("ATLAS_SPLIT_PRUNE rejected="+Arrays.deepToString(partial));
+        }
+    }
+    @Test public void editCompletesInsideWitnessedRepairValidationPause() throws Throwable {
+        try(Cluster c=init(Cluster.build().withNodes(3).withConfig(config->config.with(NETWORK).with(GOSSIP)
+            .set("hinted_handoff_enabled",false)).start())) {
+            String table=KEYSPACE+".atlas_subject";
+            c.schemaChange("CREATE TABLE "+table+" (subject uuid,row text,commit_token uuid,request_hash text,cents int,churned boolean,PRIMARY KEY(subject,row)) WITH read_repair='NONE'");
+            Batch edit=setup(c,false,120);
+            UUID divergent=new UUID(21,1),token=new UUID(22,1);
+            String insert="INSERT INTO "+table+"(subject,row,commit_token,cents,churned) VALUES (?, 'HEAD', ?, 123, false)";
+            c.get(1).executeInternal(insert,divergent,token);c.get(2).executeInternal(insert,divergent,token);
+            String local="SELECT row,commit_token,request_hash,cents,churned FROM "+table+" WHERE subject=?";
+            assertEquals(0,c.get(3).executeInternal(local,divergent).length);
+            for(int peer=1;peer<=3;peer++)c.get(peer).flush(KEYSPACE);
+            var entered=new CountDownLatch(1);var release=new CountDownLatch(1);var once=new AtomicBoolean();
+            var pauseStart=new AtomicLong();var pauseEnd=new AtomicLong();var timedOut=new AtomicBoolean();
+            var filter=c.filters().verbs(Verb.VALIDATION_RSP.id).from(2).to(1).messagesMatching((from,to,message)->{
+                if(once.compareAndSet(false,true)) {
+                    pauseStart.set(System.nanoTime());entered.countDown();
+                    try {if(!release.await(45,TimeUnit.SECONDS))timedOut.set(true);}
+                    catch(InterruptedException e) {Thread.currentThread().interrupt();timedOut.set(true);}
+                    finally {pauseEnd.set(System.nanoTime());}
+                }
+                return false; // pause and deliver, never silently drop the repair result
+            }).drop();
+            var pool=Executors.newSingleThreadExecutor();
+            try {
+                var repair=pool.submit(()->DistributedRepairUtils.repair(c,DistributedRepairUtils.RepairType.FULL,true,KEYSPACE,"atlas_subject"));
+                long writeStart,writeEnd;
+                try {
+                    assertTrue("repair must reach the selected validation response",entered.await(60,TimeUnit.SECONDS));
+                    assertFalse("repair is still in flight",repair.isDone());
+                    writeStart=System.nanoTime();assertEquals(true,c.coordinator(3).execute(edit.mutation,ConsistencyLevel.QUORUM)[0][0]);writeEnd=System.nanoTime();
+                    assertEquals(0,pauseEnd.get());assertTrue(pauseStart.get()<writeStart);
+                } finally {release.countDown();}
+                repair.get(120,TimeUnit.SECONDS).asserts().success();
+                assertFalse(timedOut.get());assertTrue(writeEnd<pauseEnd.get());
+                DistributedRepairUtils.assertParentRepairSuccess(c,KEYSPACE,"atlas_subject");
+                // Local reads first: no quorum read or read repair can explain healing this sentinel.
+                for(int peer=1;peer<=3;peer++)assertTrue(Arrays.deepEquals(new Object[][]{{"HEAD",token,null,123,false}},c.get(peer).executeInternal(local,divergent)));
+                for(int peer=1;peer<=3;peer++)assertTrue(Arrays.deepEquals(edit.after,c.coordinator(peer).execute(edit.select,ConsistencyLevel.SERIAL)));
+                System.out.println("ATLAS_REPAIR_PAUSE verb=VALIDATION_RSP from=2 to=1 pauseStart="+pauseStart.get()+" writeStart="+writeStart+" writeEnd="+writeEnd+" pauseEnd="+pauseEnd.get()+" hints=false readRepair=NONE localSentinelReplicas=3 exactEditReplicas=3");
+            } finally {release.countDown();filter.off();pool.shutdownNow();pool.awaitTermination(10,TimeUnit.SECONDS);}
         }
     }
 }

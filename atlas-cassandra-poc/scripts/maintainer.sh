@@ -58,7 +58,7 @@ ant -Duse.jdk11=true test-jvm-dtest-some \
 ant -Duse.jdk11=true test-jvm-dtest-some \
     -Dtest.name=org.apache.cassandra.distributed.test.CasWriteTest \
     -Dtest.methods="$write_methods" 2>&1 | tee "$evidence_dir/cas-write.log"
-atlas_methods=headReceiptAtEveryPaxosMessageBoundary,floorDeleteAtEveryPaxosMessageBoundary,atomicityOracleRejectsAnActualSplitPrune
+atlas_methods=headReceiptAtEveryPaxosMessageBoundary,floorDeleteAtEveryPaxosMessageBoundary,atomicityOracleRejectsAnActualSplitPrune,editCompletesInsideWitnessedRepairValidationPause
 ant -Duse.jdk11=true test-jvm-dtest-some \
     -Dtest.name=org.apache.cassandra.distributed.test.AtlasBatchPhaseTest \
     -Dtest.methods="$atlas_methods" 2>&1 | tee "$evidence_dir/atlas-batch.log"
@@ -69,7 +69,7 @@ expected = {"org.apache.cassandra.distributed.test.CASTest": set(sys.argv[3].spl
             "org.apache.cassandra.distributed.test.CasWriteTest": set(sys.argv[4].split(",")),
             "org.apache.cassandra.distributed.test.AtlasBatchPhaseTest": set(sys.argv[5].split(","))}
 seen = {name: set() for name in expected}
-assert sorted(map(len,expected.values())) == [3,8,8]
+assert sorted(map(len,expected.values())) == [4,8,8]
 for path in pathlib.Path(sys.argv[1]).rglob("*.xml"):
     root = ET.parse(path).getroot()
     for case in root.iter("testcase"):
@@ -81,5 +81,5 @@ for path in pathlib.Path(sys.argv[1]).rglob("*.xml"):
         assert method in expected[name] and method not in seen[name], (path, case.attrib)
         seen[name].add(method)
 assert seen == expected, (seen, expected)
-pathlib.Path(sys.argv[2]).write_text(json.dumps({"tests": {name: sorted(methods) for name, methods in seen.items()}, "failures": 0, "scope": "16 upstream smoke + 3 Atlas-authored batch phase cases; not adapter or durability certification"}, indent=2) + "\n")
+pathlib.Path(sys.argv[2]).write_text(json.dumps({"tests": {name: sorted(methods) for name, methods in seen.items()}, "failures": 0, "scope": "16 upstream smoke + 4 Atlas-authored batch/repair cases; not adapter or durability certification"}, indent=2) + "\n")
 PY

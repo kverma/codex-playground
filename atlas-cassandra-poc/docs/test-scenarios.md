@@ -142,6 +142,8 @@ the user-facing explanations.
 | AT-097 | Keep journal retries historical across Cassandra sessions | Apply two guarded transitions, replay the first, alter its request and attempt a stale new operation | Original receipts survive session reopening, historical replay changes nothing and mismatched or stale proposals reject. |
 | AT-098 | Deduplicate simultaneous recovery retries | Release two Cassandra clients with the exact same persisted operation request | Both overlapping calls return one identical receipt and the partition contains exactly one effect and receipt. |
 | AT-099 | Recover each handoff phase from a durable exact request | Run start, freeze, publish and activate with lost sends, dropped applied replies and halted workers against separate Cassandra partitions | Twenty-four fresh worker processes cover twelve cuts; exact replay completes two handoffs, preserves receipts and rejects stale hot-state writes. |
+| AT-100 | Keep bounded intent and request encodings reproducible across languages | Generate 256 independent Python byte/hash vectors and compare Java results with reversed map order and changed storage tokens | Complete codec bytes and hashes agree, storage metadata does not alter semantic IDs and a changed royalty does. |
+| AT-101 | Reject ambiguous commercial strings before committing state | Submit noncanonical numbers, delimiters, Unicode digits and malformed eligibility lists | Every invalid request rejects explicitly without changing the complete state. |
 
 ## Reading failures and evidence
 
