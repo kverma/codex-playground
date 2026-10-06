@@ -2,17 +2,49 @@
 
 ## Decision
 
-Executable commit `f8aced5c4fbb652d8a79307931dc81ca48555420` passed all four jobs in
-[run 37327005478](https://github.com/kverma/codex-playground/actions/runs/37327005478).
-Downloaded XML confirms **115 distinct POC cases plus 16 upstream tests**, with no
-failures, errors or skips: 51 shallow cases are included in the 97-case
+Executable commit `86c1288722d8ef2c148a46190e7ff08d1f2888a0` passed all four jobs in
+[run 37403100828](https://github.com/kverma/codex-playground/actions/runs/37403100828).
+Downloaded XML confirms **117 distinct POC cases plus 16 upstream tests**, with no
+failures, errors or skips: 51 shallow cases are included in the 99-case
 model/single-node/fault job; 18 three-node cases complete the POC total.
+The executed catalog contained 88 unique Atlas scenarios. Shared contracts appear
+in multiple fixture classes; generated histories do not inflate JUnit case counts.
+The description gate passed. The new AT-089/090 scenarios below await hosted evidence.
 
-All four artifacts were downloaded and inspected. All 115 POC report cases now
-show readable Atlas scenario IDs/titles. The [scenario guide](test-scenarios.md)
-describes 86 unique goals, simulated boundaries and expected outcomes; shared
-contracts run under multiple fixture classes. The description gate passed.
-A [separate guide](upstream-test-scenarios.md) explains all 16 upstream methods.
+## Latest authority wire-fault evidence — 2026-10-06 UTC
+
+Inspected AT-087/088 artifacts independently of the green job summaries: 17 distinct
+server JVMs, four exact wire cuts, the SELECT response's saved guard/root bytes,
+CAS expected/proposed guards and actual applied RESULT, exit75 timeout reports,
+unchanged cache bytes and offer state, exact recovered signed identities/receipts,
+and three VALID histories (5, 4 and 4 checked commands). Before-send publication
+resolves UNCHANGED; lost applied reply resolves PUBLISHED. Later equal-content roots
+with different guards resolve UNKNOWN and reject the captured stale proposal.
+The single-node count is 99, not 99 plus the repeated 51 shallow cases.
+
+## Root contention and isolated authority — implementation awaiting hosted validation
+
+AT-089 adds six two-client publication races to the existing single-node and
+three-node root contract. Both recorded invocations precede a dispatch barrier;
+exactly one conditional publication must apply. Three rounds use identical root
+content with distinct guards. Full winner state, loser UNKNOWN resolution and
+rejection of both old conditional replays are checked and saved per round.
+This witnesses overlapping client calls, not a named internal Paxos interleaving.
+Any exception or missing response fails the race; no ambiguous result is counted
+as a losing publication.
+
+AT-090 adds a witnessed 2-vs-1 partition in the existing three-node archive grader.
+The minority must report UnavailableException (required=2, alive=1) on reads and a
+root write. Generic timeout/setup errors do not satisfy this witness. The majority
+must publish one exact proposal in at most three attempts while isolation remains.
+After fresh membership readiness, all three full root versions must match; the
+captured minority proposal must reject, and dc1 must recover publication progress.
+All retries, causes, membership/fault logs and final guards are preserved.
+
+These additions exercise the root table alone. They do not integrate simultaneous
+root and hot-offer writers, provide a distributed fence, or establish independent
+storage-service recovery. Whole-cluster rollback, named Paxos phases, RF3/DC,
+independent-host failures, durability and latency proof remain OPEN.
 
 The new Cassandra archive fixture passed six inherited scenarios on one node and
 six through dc1/dc2 coordinators on the three-node cluster, plus one real server

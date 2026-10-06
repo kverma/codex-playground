@@ -1,6 +1,6 @@
 # Authority read and publication wire faults
 
-Status: implemented; hosted validation pending. AT-087–088 run through
+Status: passed in hosted [run 37403100828](https://github.com/kverma/codex-playground/actions/runs/37403100828) at `86c1288`; downloaded protocol/process/history artifacts inspected. AT-087–088 run through
 `make grade-faults` in the existing one-node job, with JDK25 and Cassandra4.0.5.
 The three-node root CAS contract remains a separate gate.
 
@@ -65,3 +65,7 @@ hot-state writer, arbitrary Paxos phases, power loss, independent-host recovery 
 whole-cluster rollback are not established. Proposal-file writes are process-level
 fixtures, not a power-loss-qualified SDK journal. No Atlas proof gate or nine-node
 HA certification follows from these tests.
+
+The separate AT-089/090 additions test competing root publications and witnessed
+minority quorum loss; their status is tracked in the adversarial review. They do
+not turn this serial archive/offer fixture into a concurrent cross-store protocol.
