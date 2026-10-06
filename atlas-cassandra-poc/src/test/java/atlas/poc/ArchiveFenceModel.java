@@ -6,7 +6,7 @@ import java.util.*;
 
 /** Test-only three-store protocol. Archive ACK assumes immutable complete objects, not a provider guarantee. */
 final class ArchiveFenceModel {
-    enum Step { READ, WRITE, START, FREEZE, COPY, VERIFY, CERTIFY, PRUNE, INSTALL, ACTIVATE }
+    enum Step { READ, WRITE, START, FREEZE, COPY, VERIFY, CERTIFY, PRUNE, INSTALL, ACTIVATE, LOSE_ARCHIVE }
     enum Copy { NORMAL, OMIT_TAIL, WRONG_FENCE, WRONG_PRICE }
     enum Broken { NONE, VERIFY_BAD_COPY, CERTIFY_STALE, PRUNE_UNCERTIFIED, PRUNE_STALE, INSTALL_OLD_IMAGE, INSTALL_OLD_GENERATION, ACTIVATE_WITHOUT_INSTALL }
     record Command(int actor,Step step,Copy copy) { Command(int actor,Step step) {this(actor,step,Copy.NORMAL);} }
@@ -81,6 +81,11 @@ final class ArchiveFenceModel {
                 Archive actual=archive.get(tickets.get(actor));boolean good=actual.equals(expected(actor));
                 if(!good&&broken!=Broken.VERIFY_BAD_COPY)return "COVERAGE_MISMATCH";
                 if(!good)triggered=true;verified.put(actor,actual);return "OK";
+            }
+            case LOSE_ARCHIVE -> {
+                // Explicit environment fault: violates the retained immutable-object premise.
+                if(!tickets.containsKey(actor)||!archive.containsKey(tickets.get(actor)))return "NOT_READY";
+                archive.remove(tickets.get(actor));return "OK";
             }
             case CERTIFY -> {
                 if(!verified.containsKey(actor))return "NOT_READY";

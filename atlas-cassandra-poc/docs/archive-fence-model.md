@@ -1,6 +1,6 @@
 # Archive coverage bound to a recovery fence
 
-AT-103–108 extend the bounded recovery experiments with a **test-only** three-store
+AT-103–109 extend the bounded recovery experiments with a **test-only** three-store
 model and independent checker. Execution status is recorded in the adversarial
 review. No production adapter, provider or existing business semantics changes.
 
@@ -35,6 +35,15 @@ the model does not establish a remote provider's durability, prevent authority
 rollback, or tolerate arbitrary deletion of certified archives. Faulty COPY inputs
 model malformed artifacts **before verification**; they do not claim post-ACK
 provider corruption has been handled. Objects rejected by VERIFY stay uncertified.
+
+AT-109 deliberately **violates** this storage premise: remove the already verified
+object, certify using the earlier proof, then prune with every candidate guard
+enabled. The checker must reject the actual state at PRUNE because neither hot
+rows nor the archive retain the accepted receipt. The prefix through certification
+still retains hot data; the identical plan without object loss passes. This is an
+expected environmental counterexample, not a passing disaster-recovery claim or a
+real provider fault experiment. It demonstrates why a trustworthy durable/retained
+archive ACK is required; more generation checks alone do not supply that guarantee.
 
 ## Independent evidence
 
@@ -72,7 +81,7 @@ of unsafe/control traces. Schedule counts never inflate reported JUnit test coun
 ## Still outside this model
 
 There are no network threads, storage processes, actor restarts, journal allocation,
-lost replies, reservations/gaps, archive deletion or bounded journal retirement.
+lost replies, reservations/gaps, supported archive deletion or bounded journal retirement.
 The separately tested exact-operation journal and real Cassandra adapters are not
 integrated here. INSTALL is a logical hot-state replacement, not SSTable restore.
 The result narrows the coordinator design but does not supply an authenticated,

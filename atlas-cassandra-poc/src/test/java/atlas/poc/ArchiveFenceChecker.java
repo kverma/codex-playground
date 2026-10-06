@@ -55,6 +55,10 @@ final class ArchiveFenceChecker {
                     outcome=!cuts.containsKey(actor)||!objects.containsKey(tickets.get(actor))?"NOT_READY":!cuts.get(actor).equals(objects.get(tickets.get(actor)))?"COVERAGE_MISMATCH":"OK";
                     if(outcome.equals("OK"))checkedCopies.add(actor);
                 }
+                case LOSE_ARCHIVE -> {
+                    outcome=!tickets.containsKey(actor)||!objects.containsKey(tickets.get(actor))?"NOT_READY":"OK";
+                    if(outcome.equals("OK"))objects.remove(tickets.get(actor));
+                }
                 case CERTIFY -> {
                     outcome=!checkedCopies.contains(actor)?"NOT_READY":tickets.get(actor)!=owner?"STALE":"OK";
                     if(outcome.equals("OK")) {root=manifest(cuts.get(actor));certified.add(actor);}

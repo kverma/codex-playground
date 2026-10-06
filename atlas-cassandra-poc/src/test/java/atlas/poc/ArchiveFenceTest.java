@@ -172,4 +172,25 @@ class ArchiveFenceTest {
     @Test void archiveFenceCheckerNeverTreatsAnExceededBoundAsProof() {
         var evidence=execute(0,recovery(0),Broken.NONE);assertEquals(INCONCLUSIVE,new ArchiveFenceChecker(7).check(evidence.frames()).verdict());
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Expose why a verified archive must remain durable before cleanup
+     * Boundary: Delete the verified archive object before certification and pruning with every candidate guard still enabled
+     * Expected: The independent ledger detects actual loss of durable receipt coverage at prune; the otherwise identical retained-object control passes.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-109 | Expose why a verified archive must remain durable before cleanup")
+    // END ATLAS SCENARIO
+    @Test void losingVerifiedArchiveBeforePruningExposesTheRequiredDurabilityContract() throws Exception {
+        var plan=new ArrayList<>(seed());for(Step step:RECOVERY.subList(0,4))plan.add(new Command(0,step));
+        plan.add(new Command(0,Step.LOSE_ARCHIVE));plan.add(new Command(0,Step.CERTIFY));plan.add(new Command(0,Step.PRUNE));
+        var evidence=execute(0,plan,Broken.NONE);assertFalse(evidence.triggered(),"candidate guards remain enabled; only the environment premise changes");
+        assertEquals(VALID,new ArchiveFenceChecker().check(evidence.frames().subList(0,8)).verdict());
+        assertEquals(INVALID,evidence.result().verdict());assertEquals(8,evidence.result().checked());assertEquals("missing certified coverage",evidence.result().reason());
+        Frame lost=evidence.frames().get(6),prune=evidence.frames().get(8);
+        assertEquals("OK",lost.outcome());assertTrue(lost.observed().archive().isEmpty());assertEquals(1,lost.observed().hot().rows().size());
+        assertEquals(Step.PRUNE,prune.command().step());assertEquals("OK",prune.outcome());assertEquals(1,prune.observed().hot().floor());assertTrue(prune.observed().hot().rows().isEmpty());assertTrue(prune.observed().archive().isEmpty());
+        save("lost-verified-object-counterexample",evidence);
+        var control=new ArrayList<>(plan);control.removeIf(c->c.step()==Step.LOSE_ARCHIVE);var retained=execute(0,control,Broken.NONE);
+        assertEquals(VALID,retained.result().verdict());assertEquals(1,retained.frames().get(7).observed().archive().get(1L).receipts().size());save("retained-verified-object-control",retained);
+    }
 }

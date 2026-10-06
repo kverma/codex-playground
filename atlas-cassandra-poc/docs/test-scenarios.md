@@ -151,6 +151,7 @@ the user-facing explanations.
 | AT-106 | Keep bad archive copies from authorizing cleanup | Supply copies missing the last receipt, bound to an older fence or carrying the wrong final price, then let a new owner recover | Verification rejects each copy, cleanup and activation stay blocked, and later valid recovery retains the accepted edit. |
 | AT-107 | Prove archive recovery checks detect real unsafe transitions | Execute seven broken verification, certification, pruning, installation and activation variants | Each saved trace fails at its named boundary and the identical command sequence passes on the correct candidate. |
 | AT-108 | Keep oversized archive recovery traces from being called verified | Give the independent checker a seven-step limit for an eight-step recovery | Return INCONCLUSIVE rather than a passing proof. |
+| AT-109 | Expose why a verified archive must remain durable before cleanup | Delete the verified archive object before certification and pruning with every candidate guard still enabled | The independent ledger detects actual loss of durable receipt coverage at prune; the otherwise identical retained-object control passes. |
 
 ## Reading failures and evidence
 
