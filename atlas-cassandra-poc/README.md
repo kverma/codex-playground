@@ -40,6 +40,12 @@ removes the disposable container; no host data volume is configured.
 
 ## Archive and restore candidate
 
+The [archive-bound fence model](docs/archive-fence-model.md) extends the handoff
+with explicit copy, coverage verification, certification, pruning and installation.
+It checks 15,840 bounded schedules, archived-prefix/hot-tail recovery and seven
+unsafe controls. This is an additional test-only design experiment; its execution
+status is tracked in the adversarial review, not inferred from earlier green runs.
+
 The [bounded recovery-fence model](docs/recovery-fence-model.md) separately explores
 competing offer writers and recovery owners across two modeled stores. Its 3570
 schedules, independent checker and five exact mutation witnesses passed hosted validation; this
