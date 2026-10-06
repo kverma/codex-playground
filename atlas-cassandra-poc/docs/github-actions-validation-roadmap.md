@@ -68,9 +68,11 @@ passed a 17-process recovery history with two root-publication halt cuts and sta
 publication CAS on one node and across dc1/dc2. Local cache rollback no longer
 chooses authority; whole-cluster rollback resistance remains open.
 Rank 5 also has the [exact-operation journal extension](recovery-journal.md),
-including interrupted workers and real Cassandra request/reply cuts. This still
-does not combine concurrent archive/certify/prune/restore into one persistent
-coordinator. Ranks 6/7 now have passed, artifact-inspected
+including interrupted workers and real Cassandra request/reply cuts. The newer
+[persistent coordinator fixture](persistent-archive-coordinator.md) connects these
+pieces, with durable actor proofs, exact pending requests, takeover and competing
+phase mutations. Its precise run/audit status is in the adversarial review.
+Ranks 6/7 have passed, artifact-inspected
 [Atlas-authored server-harness slices](maintainer-atlas-overlay.md) in run
 37447187294: twelve counted batch message cuts, an actual split-prune control and
 a witnessed repair-validation-response pause. Rank 8 now has 256 independent
@@ -85,7 +87,7 @@ control; “the command succeeded” or “the suite eventually passed” is ins
 | 2 — passed | Does recovery handle membership changing during readiness checks? | Deterministically arrange an Up/Normal snapshot followed by a peer-down transition before a SERIAL read; test eventual recovery and persistent unavailability separately. | Witness both transitions and a failed read; prove fresh readiness checks occur between bounded retries. Exact final-state equality remains mandatory. A permanently unavailable supplier must fail progress. | Shallow controller tests, then three nodes |
 | 3 — fixture passed | Does a real saved draft remain the same edit across process restarts and archive recovery? | Integrate the signed Draft/Issued path with the archive candidate; persist the complete pair and restart the client process after allocation/acceptance reply loss. Include changed payloads, retired anchors and backward controlled clocks. | Same identity, original dependencies and exact receipt; no silent reminting or stale draft reopening. Distinguish process persistence from whole-host durability. | Model plus one/three nodes |
 | 4 — local slice passed | Is a partially written audit record ever mistaken for a durable one? | Define a storage contract; run a local disk-backed or object-store service fixture with partial writes, process restart, unavailable reads and corrupt/missing records. Keep authority separate. | Document what its ACK means, verify complete bytes and binding, preserve facts across **service process** restart, block pruning on uncertainty. A local emulator cannot qualify a remote provider's persistence guarantee. | Separate one-node + service job |
-| 5 — expanded model slice | Can concurrent cleanup and restore violate an offer's edit history? | The archive-bound model checks 15,840 phase schedules and exact conservation; next persist actor proofs/requests and bridge real adapters, including reservation gaps. | The model uses independent accepted-history reconstruction. Real concurrent adapters still need measured intervals and a bounded concurrent oracle; model interleavings are not measured thread overlap. | Shallow passed; integrated adapters still open |
+| 5 — bounded persistent fixture passed | Can concurrent cleanup and restore violate an offer's edit history? | The 15,840-schedule model now has a persistent coordinator extension with real journals, disk proofs, 41 process cuts, twelve wire cuts, historical/takeover recovery and competing starts, edits and maintenance phases. | Measured call overlap, exact competing requests/outcomes, complete journal chains and independent logical-phase histories; failed planning CAS is recorded separately and is not counted as a logical phase effect. | Dedicated recovery-phase job plus three-node archive grader passed in run 37513953485; see review for audited scope |
 | 6 — bounded slice passed | What happens to Atlas-shaped conditional batches at specific Paxos phases? | Pinned overlay runs HEAD/receipt and floor/delete shapes through six request/response cuts each. | Twelve exact verb hit counters; complete before/after partitions on all coordinators; exact reissue; actual broken-prune rejection. Adapter orchestration and disk durability remain outside this overlay. | Existing JDK11/Ant job |
 | 7 — bounded slice passed | Does repair really overlap an edit, rather than merely run nearby? | Hold an actual VALIDATION_RSP while an edit completes; disable hints and read repair. | Strictly nested monotonic interval, successful parent repair, local missing-row healing and exact retained edit. This is a pending validation-response boundary, not a claimed disk-streaming callback. | Existing maintainer harness |
 | 8 — current profile passed | Can independent encoders disagree about an intent ID? | 256 independent Python byte/hash vectors; reversed Java map insertion; changed metadata and royalty; malformed admission values. | Exact wire/hash equality, metadata invariance, semantic-change distinction and state-preserving rejection. Larger configurations/schedules still await fields and contracts. | Shallow |
@@ -96,16 +98,17 @@ budgeted scheduled/manual matrix. Record each seed, fault witness, bounds, timin
 result and resource profile. Keep every failed attempt visible; avoid “retry until
 green.” Bound jobs, use fail-fast only where it will not discard useful independent
 evidence, upload artifacts on failure, and clean up only the job's own containers.
-All additions extend existing graders; no extra runner job or nine-node execution
-was added. Rank 5's persistent concurrent adapters and rank 9 remain
-unexecuted. Ranks 6–8 have the narrow passed slices above. The new archive-fence
-model binds coverage and installation to frozen generations; next persist the
-actor proofs and exact phase requests and integrate the tested storage pieces. The
+The current coordinator extension adds one standard-runner job for its larger
+crash matrix; no nine-node execution or larger runner was added. Rank 9 still
+awaits an event contract. Ranks 6–8 retain the narrow passed slices above. Rank 5
+now has persisted actor proofs and exact phase requests connected to real journal
+partitions and local immutable archive objects; production service interfaces,
+journal retirement and independent storage guarantees remain unspecified. The
 [Actions-only campaign boundary](actions-only-boundary.md) separates further
 possible bounded tests from claims requiring new contracts or infrastructure.
-Rank 4 narrows server-process persistence
-only; independent service durability,
-concurrent allocation and partial client journal-write crashes remain open.
+Rank 4 remains local-process persistence only. The new coordinator covers forced
+but unpublished actor/archive bytes and concurrent owner allocation; independent
+service durability still requires a chosen backend and failure environment.
 
 ## Where standard runners stop being the right tool
 

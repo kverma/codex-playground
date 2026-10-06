@@ -2,6 +2,76 @@
 
 ## Decision
 
+### Persistent coordinator and publication boundaries — 2026-10-06 UTC
+
+Executable `85e608d033f180518a5b746b09b0e2bcba421a26` passed all five jobs in
+[run 37513953485](https://github.com/kverma/codex-playground/actions/runs/37513953485).
+All five artifacts were downloaded and audited: **180 distinct passing tests =
+160 POC +4 Atlas-authored overlay +16 upstream**, zero failures/errors/skips.
+The 119 single/model/fault cases include 66 repeated shallow cases; 31 three-node
+and ten dedicated recovery-phase cases complete the POC total. The catalog has
+119 scenario IDs. The new recovery grader finished in 19 minutes 30 seconds,
+within its separate 25-minute standard-runner job budget.
+
+AT-110–119 connect persisted actor captures/proofs and exact phase requests to
+real Cassandra journal partitions and local immutable archive objects. Planning
+uses the candidate's durable facts, not model-generated next states. The independent
+archive ledger and Python artifact audit compare full semantic state; complete
+per-store journal chains retain every accepted before/after transition.
+
+The process matrix contains 41 cuts and 82 fresh JVMs: five actor request/effect/
+completion publication boundaries for every phase, plus COPY after archive bytes
+are forced but before publication. Unpublished bytes cannot authorize dispatch or
+become the selected archive. The twelve real wire cuts use 24 more fresh JVMs,
+covering six mutation phases before send and after a decoded server response.
+
+Single/cross-DC cases cover archived prefix/new hot tail, four stale pending phases,
+five historical receipt recoveries after newer ownership, competing starts,
+edit/freeze races and three maintenance/freeze races. Complete captured requests
+and intervals are saved. A failed planning CAS is recorded separately and causes
+no logical phase transition; it is never silently refreshed. Explicit timeout
+outcomes stay unknown until one bounded replay resolves the exact request.
+
+Negative cases reject malformed/checksum-invalid/foreign-subject actor files and
+missing/malformed/wrong-endpoint archives without changing Cassandra state or
+published pending bytes. A valid temporary actor file cannot substitute for a
+missing committed checkpoint. An actual unsafe refreshed-guard prune overwrites
+Cassandra and is rejected at that exact boundary by the independent ledger.
+
+One new standard-runner job isolates the larger process matrix from the existing
+fault suite; the full workflow now has five jobs. There is no global coordinator
+lock, but each actor serializes its local checkpoint. This remains a trusted,
+bounded fixture with unbounded journals and local storage, not a production
+multi-service deployment. Backend durability, journal-retirement/authorization
+contracts, RF3/DC capacity and independent failure domains remain outside it.
+
+The saved artifacts contain 69 single-node and 16 three-node valid phase histories
+and 170 complete per-store journal chains. An additional effect-count audit matches
+every accepted root/hot mutation to a successful logical phase or edit: there are
+no extra journal operations. Both copies of the actual unsafe mutation are rejected.
+All 106 process IDs in the new recovery job are distinct; published request
+identities survive uncertainty and unpublished actor/archive files are not selected.
+
+All ten new measured races resolved without natural timeout in this run; the
+separate twelve wire cuts supply deterministic timeout evidence. The offer edit
+won both edit/freeze races. Single-node old prune/install won their races, whereas
+newer freeze won activation and all three cross-DC maintenance races. Each exact
+recorded outcome passes; this is not a claim to exhaust real thread schedules.
+
+Regression audits retain both copies of all 15,840 archive schedules and 3570
+earlier fence schedules, journal and root process/wire histories, minority quorum
+loss/healing, twelve server-phase witnesses and the actual partial-prune control.
+The repair witness contains a 79.938 ms edit inside an 80.078 ms pause. The
+earlier smaller [run 37512649109](https://github.com/kverma/codex-playground/actions/runs/37512649109)
+and expanded [run 37513305398](https://github.com/kverma/codex-playground/actions/runs/37513305398)
+also passed all five jobs; the latest run validates the final corruption and
+maintenance-race additions. No failure was reclassified as a passing recovery.
+
+The [current boundary](actions-only-boundary.md) now closes the identified
+persistent-phase implementation gap. Further production work needs concrete
+retirement/authorization/event contracts or qualified storage/failure environments;
+arbitrary new bounded tests remain possible but cannot establish those guarantees.
+
 ### Archive-bound fencing and timeout recovery — 2026-10-06 UTC
 
 Executable `eed0c99c509d57d7aaaddc5c73638d4000f77742` passed all four jobs in

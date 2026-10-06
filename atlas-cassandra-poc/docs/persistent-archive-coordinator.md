@@ -5,8 +5,8 @@ authority/hot journal partitions and local immutable archive files. Each actor h
 a forced, atomically replaced local checkpoint containing captured state, verified
 archive bytes, exact pending operation/expected/next guards, and original receipts.
 The candidate plans transitions from those persisted facts, not from the model.
-Execution status belongs in the adversarial review; adding these tests is not a
-passing validation claim.
+Executable `85e608d` passed all five jobs in run 37513953485. All five artifacts
+were audited; see the adversarial review for the exact counts and bounded scope.
 
 The actor checkpoint is published before dispatch. After a worker disappears,
 the next worker reuses its exact pending request. If its effect already happened,
@@ -20,6 +20,12 @@ checkpoint. No request may be dispatched from them. A restart may plan a new
 request only when that prior request was never published or sent; the test checks
 the abandoned identity is absent from both journals. Published requests stay exact.
 
+The semantic payload remains the archive-fence model's one price and exact receipt
+ledger. This extension does not replace the richer transaction/retention fixtures,
+introduce production eligibility or royalty schemas, or qualify provider-to-event
+end-to-end behavior. It connects the storage and recovery boundaries for this
+specific bounded phase contract.
+
 Each mutation remains one same-table Cassandra partition conditional batch with
 immutable operation receipt. There is no transaction spanning the authority,
 hot state, actor checkpoint and archive. Per-actor file locks serialize only that
@@ -29,7 +35,7 @@ existing different object. Their containing directory is forced too. The local
 Linux filesystem is a test backend, not an independent durability service.
 
 Before certification, cleanup, installation or activation the fixture checks that
-the verified archive remains readable and byte-equivalent. Observed missing or
+the archive remains readable and matches the complete verified record. Observed missing or
 corrupt files block progress without changing the saved request. This read does
 not close the cross-store race against subsequent storage loss: retained immutable
 archive durability remains an explicit assumption. The actor proof and unbounded

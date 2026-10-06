@@ -12,7 +12,7 @@ The separate [maintainer-test guide](docs/upstream-test-scenarios.md) explains a
 Next steps: [further GitHub Actions validation](docs/github-actions-validation-roadmap.md)
 and the [nine-node laptop agent handoff](docs/nine-node-ha-agent-handoff.md).
 For a short continuation checkpoint, read [current status](docs/current-status.md).
-The latter is an execution guide for the existing HA scaffold, not evidence that
+The nine-node handoff is an execution guide for the existing HA scaffold, not evidence that
 the nine-node topology has passed.
 
 ## Run
@@ -44,8 +44,9 @@ removes the disposable container; no host data volume is configured.
 The [persistent archive coordinator fixture](docs/persistent-archive-coordinator.md)
 connects saved phase captures/proofs to real Cassandra journals and local immutable
 objects. Its new restart, takeover and wire-loss tests run with
-`make grade-recovery-phase` and the cross-DC archive grader; their current result
-is recorded in the adversarial review.
+`make grade-recovery-phase` and the cross-DC archive grader. The audited run covers
+85 phase histories, 170 complete journal chains and 106 fresh worker JVMs; see
+the adversarial review for the exact scope and remaining production limits.
 
 The [archive-bound fence model](docs/archive-fence-model.md) extends the handoff
 with explicit copy, coverage verification, certification, pruning and installation.
@@ -81,7 +82,7 @@ root selection outside logical offer restore and stale root-publication guards.
 The [Cassandra archive fixture](docs/archive-cassandra-fixture.md) adds real
 conditional HEAD/slot mutations, logical restore and delayed-writer guard tests.
 Run its cross-coordinator cases with `make three-up && make grade-archive`.
-Its base archive and recovery authority remain simulated. Hosted [run 37497216337](https://github.com/kverma/codex-playground/actions/runs/37497216337) passed all four jobs at `eed0c99`: **162 distinct passing tests = 142 POC +4 Atlas overlay +16 upstream**, zero failures/errors/skips. All four artifacts were downloaded and audited; the 66 shallow cases are included in the 119-case single/model/fault result, with 23 three-node cases. The catalog contains 109 scenarios. See the adversarial review for failed attempts and exact scope, and the [remaining Actions work and external limits](docs/actions-only-boundary.md). More bounded integration work remains possible; production E2E and PG-COMMIT/PG-CASS remain UNPROVEN.
+Its base archive and recovery authority remain simulated; the persistent phase fixture above is a separate extension. Hosted [run 37513953485](https://github.com/kverma/codex-playground/actions/runs/37513953485) passed all five jobs at `85e608d`: **180 distinct passing tests = 160 POC +4 Atlas overlay +16 upstream**, zero failures/errors/skips. All five artifacts were downloaded and audited; the 66 shallow cases are included in the 119-case single/model/fault result, with 31 three-node and ten recovery-phase cases. The catalog contains 119 scenarios. See the adversarial review for exact scope and the [current Actions boundary](docs/actions-only-boundary.md) for required contracts/infrastructure. Production E2E and PG-COMMIT/PG-CASS remain UNPROVEN.
 The archive fault grader now covers actual seal/prune request and reply loss,
 exact recovery and a rejected partial-pruning control.
 The [readiness boundary tests](docs/readiness-recovery.md) now force membership
