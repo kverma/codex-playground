@@ -106,14 +106,24 @@ abstract class ArchivePhaseContract {
             f.edit(2);f.init(0);while(read(f.actor(0),f.subject).index()<5)f.advance(0);
             var before=f.hot.view();byte[] actor=Files.readAllBytes(f.actor(0));Path object=f.driver(0).object(1);byte[] archive=Files.readAllBytes(object);
             Files.writeString(f.actor(0),"{broken");assertThrows(Exception.class,()->f.driver(0).advance(p->{}));assertEquals(before,f.hot.view());
+            Envelope envelope=JSON.readValue(actor,Envelope.class);
+            Files.write(f.actor(0),JSON.writeValueAsBytes(new Envelope(envelope.payload()+" ",envelope.digest())));
+            assertEquals("ACTOR_CHECKSUM",assertThrows(IllegalArgumentException.class,()->f.driver(0).advance(p->{})).getMessage());assertEquals(before,f.hot.view());
+            Actor decoded=JSON.readValue(envelope.payload(),Actor.class);
+            Files.write(f.actor(0),encode(new Actor(1,UUID.randomUUID(),decoded.actor(),decoded.index(),decoded.facts(),decoded.pending(),decoded.done())));
+            assertEquals("ACTOR_BINDING",assertThrows(IllegalArgumentException.class,()->f.driver(0).advance(p->{})).getMessage());assertEquals(before,f.hot.view());
+            Files.write(f.actor(0).resolveSibling(f.actor(0).getFileName()+".pending"),actor);
             Files.delete(f.actor(0));assertThrows(Exception.class,()->f.driver(0).advance(p->{}));assertEquals(before,f.hot.view());
             SplitArchiveCheckpoint.atomic(f.actor(0),actor);
             assertThrows(IllegalStateException.class,()->f.driver(0).advance(ArchivePhaseContract::pause));byte[] pending=Files.readAllBytes(f.actor(0));Actor planned=read(f.actor(0),f.subject);
             Files.delete(object);assertThrows(Exception.class,()->f.driver(0).advance(p->{}));assertEquals(before,f.hot.view());assertArrayEquals(pending,Files.readAllBytes(f.actor(0)));
             Files.writeString(object,"{broken");assertThrows(Exception.class,()->f.driver(0).advance(p->{}));assertEquals(before,f.hot.view());assertArrayEquals(pending,Files.readAllBytes(f.actor(0)));
+            Archive valid=JSON.readValue(archive,Archive.class);
+            Files.write(object,JSON.writeValueAsBytes(new Archive(valid.owner(),valid.fence(),valid.sequence(),valid.cents()+1,valid.receipts())));
+            assertEquals("ARCHIVE_PROOF_UNAVAILABLE",assertThrows(IllegalArgumentException.class,()->f.driver(0).advance(p->{})).getMessage());assertEquals(before,f.hot.view());assertArrayEquals(pending,Files.readAllBytes(f.actor(0)));
             Files.delete(object);immutable(object,archive);f.complete(0);f.audit();
             assertEquals(planned.pending(),read(f.actor(0),f.subject).done().get(5).pending());
-            save(f.dir.resolve("blocked.json"),Map.of("missingActor",true,"corruptActor",true,"missingArchive",true,"corruptArchive",true,"before",before,"pendingBytes",Base64.getEncoder().encodeToString(pending)));
+            save(f.dir.resolve("blocked.json"),Map.of("missingActor",true,"corruptActor",true,"checksumMismatch",true,"subjectMismatch",true,"unpublishedNotSelected",true,"missingArchive",true,"corruptArchive",true,"wrongArchiveEndpoint",true,"before",before,"pendingBytes",Base64.getEncoder().encodeToString(pending)));
         }
     }
     // BEGIN ATLAS SCENARIO

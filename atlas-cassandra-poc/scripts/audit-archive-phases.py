@@ -127,7 +127,7 @@ for phase in ('FREEZE','CERTIFY','PRUNE','INSTALL','ACTIVATE'):
     assert r['root']==load(folder/('historical-'+phase)/'history.json')['root']
     assert r['hot']==load(folder/('historical-'+phase)/'history.json')['hot']
 blocked=load(folder/'proof-failures/blocked.json')
-assert all(blocked[k] for k in ('missingActor','corruptActor','missingArchive','corruptArchive'))
+assert all(blocked[k] for k in ('missingActor','corruptActor','checksumMismatch','subjectMismatch','unpublishedNotSelected','missingArchive','corruptArchive','wrongArchiveEndpoint'))
 saved=json.loads(json.loads(base64.b64decode(blocked['pendingBytes']))['payload'])
 final=actor(folder/'proof-failures/actor-0.json',load(folder/'proof-failures/history.json'))
 assert saved['pending']==final['done'][5]['pending']
