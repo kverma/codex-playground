@@ -10,6 +10,7 @@ import static atlas.poc.DraftProcessClient.*;
 
 /** One request per real server JVM. Local single-writer checkpoint contract, not an Atlas service. */
 public final class DurableArchiveServer {
+    static final class PublicationUnknown extends RuntimeException { PublicationUnknown(Throwable cause) { super(cause); } }
     record Facts(int version,UUID subject,Transactions.Snapshot genesis,long now,long highWater,long certifiedFloor,
                  Map<Long,Grant> grants,Map<Long,String> manifests,Map<Long,Blob> archive,Map<String,Hot> backups,
                  Map<String,Issued> bindings) {
@@ -62,9 +63,11 @@ public final class DurableArchiveServer {
         Input in=JSON.readValue(input.toFile(),Input.class);Facts loaded;
         boolean authorityMode=args.length>3&&args[3].equals("authority");
         boolean split=authorityMode||(args.length>3&&args[3].equals("split"));
-        CassandraRootAuthority authority=authorityMode?new CassandraRootAuthority(in.subject()):null;
+        int authorityPort=args.length>4?Integer.parseInt(args[4]):9042;
+        CassandraRootAuthority authority=authorityMode?new CassandraRootAuthority(in.subject(),authorityPort,"dc1","single",
+            java.time.Duration.ofSeconds(authorityPort==9042?20:3)):null;
         CassandraRootAuthority.Version[] rootVersion=new CassandraRootAuthority.Version[1];
-        // A missing/corrupt checkpoint never bootstraps an existing subject or opens Cassandra.
+        // Missing/corrupt authority facts never bootstrap a root or open the offer fixture.
         try {
             if(authorityMode) { rootVersion[0]=authority.read();loaded=SplitArchiveCheckpoint.load(state,in.subject(),rootVersion[0].root()); }
             else loaded=split?SplitArchiveCheckpoint.load(state,in.subject()):load(state,in.subject());
@@ -87,12 +90,17 @@ public final class DurableArchiveServer {
                 try {
                     if(authorityMode) {
                         var next=SplitArchiveCheckpoint.stage(state,facts(),stage,this::cut);
-                        if(!authority.compareAndSet(rootVersion[0],next))throw new IllegalStateException("STALE_AUTHORITY");
+                        var proposal=authority.propose(rootVersion[0],next);
+                        save(state.resolveSibling("root-proposal.json"),proposal);
+                        try {
+                            if(!authority.publish(proposal))throw new IllegalStateException("STALE_AUTHORITY");
+                        } catch(com.datastax.oss.driver.api.core.DriverException e) { throw new PublicationUnknown(e); }
                         rootVersion[0]=authority.read();cut(stage+"_AFTER_ROOT_CAS");
                         SplitArchiveCheckpoint.atomic(state,JSON.writeValueAsBytes(next));
                     } else if(split)SplitArchiveCheckpoint.publish(state,facts(),stage,this::cut);
                     else publish(state,facts(),()->cut(stage+"_BEFORE_MOVE"),()->cut(stage+"_AFTER_MOVE"));
                 }
+                catch(PublicationUnknown e) { throw e; }
                 catch(Exception e) { throw new IllegalStateException(e); }
             }
         }
@@ -116,9 +124,13 @@ public final class DurableArchiveServer {
                     default -> throw new IllegalArgumentException("unknown action");
                 };
             }
+        } catch(PublicationUnknown e) {
+            save(state.resolveSibling("publication-error.json"),Map.of("error",e.getCause().toString()));
+            runtime.witness("ROOT_PUBLICATION_UNKNOWN",null);System.exit(75);return;
         } catch(Failure e) { reply=new Reply(e.code.name(),null,null,null); }
         catch(Transactions.Rejected e) { reply=new Reply(e.error.name(),null,null,null); }
         catch(SignedArchiveService.StateFailure e) { reply=new Reply(e.code,null,null,null); }
         runtime.witness("REPLY",reply);h.store.close();if(authority!=null)authority.close();System.exit(reply.code().equals("OK")?0:2);
     }
 }
+

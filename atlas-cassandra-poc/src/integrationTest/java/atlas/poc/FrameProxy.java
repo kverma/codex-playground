@@ -20,6 +20,7 @@ final class FrameProxy implements AutoCloseable {
     record Witness(String query,String requestBody,int stream,Fault fault,boolean forwarded,
                    int responseOpcode,String responseBody) {}
     private volatile String queryMarker = "";
+    private volatile boolean batchOnly=true;
     private volatile Witness witness;
     final AtomicInteger matchingRequests = new AtomicInteger();
     Witness witness() { return witness; }
@@ -45,7 +46,11 @@ final class FrameProxy implements AutoCloseable {
     }
     int port() { return listener.getLocalPort(); }
     void arm(Fault fault) { arm(fault, ""); }
-    void arm(Fault fault,String target) { this.queryMarker=target; armed.set(fault); }
+    void arm(Fault fault,String target) { batchOnly=true;this.queryMarker=target;armed.set(fault); }
+    void armQuery(Fault fault,String marker) {
+        if(marker.isEmpty())throw new IllegalArgumentException("exact query marker required");
+        batchOnly=false;queryMarker=marker;armed.set(fault);
+    }
     private void pipe(Socket source, Socket target, boolean request, Set<Integer> drops) {
         try {
             DataInputStream input = new DataInputStream(source.getInputStream());
@@ -65,7 +70,7 @@ final class FrameProxy implements AutoCloseable {
                     if(queryLength<0 || queryLength>length-4)throw new IOException("invalid QUERY length");
                     query=new String(body,4,queryLength,StandardCharsets.UTF_8);
                 }
-                boolean batch=query.stripLeading().startsWith("BEGIN BATCH") && query.contains(queryMarker);
+                boolean batch=request && header[4]==7 && (!batchOnly||query.stripLeading().startsWith("BEGIN BATCH")) && query.contains(queryMarker);
                 boolean signalSent = false;
                 if (batch) {
                     if(armed.get()!=null || witness!=null)matchingRequests.incrementAndGet();
@@ -98,3 +103,4 @@ final class FrameProxy implements AutoCloseable {
         threads.shutdownNow();
     }
 }
+

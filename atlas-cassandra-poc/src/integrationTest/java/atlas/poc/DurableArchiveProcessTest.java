@@ -21,6 +21,7 @@ class DurableArchiveProcessTest {
         final List<Map<String,Object>> processes=new ArrayList<>();
         final List<Frame> frames=new ArrayList<>();
         int step;
+        int authorityPort=9042;
         Harness(String name) throws Exception { this(name,false); }
         Harness(String name,boolean split) throws Exception { this(name,split?"split":"combined"); }
         Harness(String name,String mode) throws Exception {
@@ -41,7 +42,7 @@ class DurableArchiveProcessTest {
             int id=++step;Path request=folder.resolve(id+"-input.json"),result=folder.resolve(id+"-report.json");save(request,input);
             Path before=folder.resolve(id+"-before.bin");if(Files.exists(state))Files.copy(state,before,StandardCopyOption.REPLACE_EXISTING);
             Process p=new ProcessBuilder(Path.of(System.getProperty("java.home"),"bin","java").toString(),"-cp",
-                System.getProperty("atlas.test.classpath"),DurableArchiveServer.class.getName(),state.toString(),request.toString(),result.toString(),mode)
+                System.getProperty("atlas.test.classpath"),DurableArchiveServer.class.getName(),state.toString(),request.toString(),result.toString(),mode,Integer.toString(authorityPort))
                 .redirectErrorStream(true).redirectOutput(folder.resolve(id+"-server.log").toFile()).start();
             try { assertTrue(p.waitFor(55,TimeUnit.SECONDS),"server process must finish or hit the exact crash cut"); }
             finally { if(p.isAlive()) { p.destroyForcibly();p.waitFor(10,TimeUnit.SECONDS); } }
@@ -177,3 +178,4 @@ class DurableArchiveProcessTest {
         }
     }
 }
+
