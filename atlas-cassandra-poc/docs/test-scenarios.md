@@ -144,6 +144,7 @@ the user-facing explanations.
 | AT-099 | Recover each handoff phase from a durable exact request | Run start, freeze, publish and activate with lost sends, dropped applied replies and halted workers against separate Cassandra partitions | Twenty-four fresh worker processes cover twelve cuts; exact replay completes two handoffs, preserves receipts and rejects stale hot-state writes. |
 | AT-100 | Keep bounded intent and request encodings reproducible across languages | Generate 256 independent Python byte/hash vectors and compare Java results with reversed map order and changed storage tokens | Complete codec bytes and hashes agree, storage metadata does not alter semantic IDs and a changed royalty does. |
 | AT-101 | Reject ambiguous commercial strings before committing state | Submit noncanonical numbers, delimiters, Unicode digits and malformed eligibility lists | Every invalid request rejects explicitly without changing the complete state. |
+| AT-102 | Keep concurrent recovery proposals from sharing or overwriting a receipt | Race different payloads from one state with shared and distinct operation IDs through separate clients in six rounds | Exactly one proposal wins; the other reports key reuse or conflict, both coordinators agree on the full state and retries cannot change the winner. |
 
 ## Reading failures and evidence
 

@@ -42,7 +42,7 @@ public class AtlasBatchPhaseTest extends TestBaseImpl {
             new Object[][]{{"HEAD",next,null,400,true},{"OP:"+operation,next,"exact-request-hash",400,true}});
     }
     private Cluster cluster() throws Exception {
-        Cluster c=init(Cluster.create(3,config->config.set("write_request_timeout_in_ms",2000L).set("cas_contention_timeout_in_ms",2000L)));
+        Cluster c=init(Cluster.create(3,config->config.set("write_request_timeout_in_ms",2000L).set("cas_contention_timeout_in_ms",2000L).set("hinted_handoff_enabled",false)));
         c.schemaChange("CREATE TABLE "+KEYSPACE+".atlas_subject (subject uuid,row text,commit_token uuid,request_hash text,cents int,churned boolean,PRIMARY KEY(subject,row))");
         c.schemaChange("CREATE TABLE "+KEYSPACE+".atlas_archive (subject uuid,row text,guard uuid,payload text,PRIMARY KEY(subject,row))");
         return c;
@@ -80,7 +80,7 @@ public class AtlasBatchPhaseTest extends TestBaseImpl {
         try(Cluster c=cluster()) {
             Batch batch=setup(c,true,99);
             // Deliberately execute only the HEAD effect from the real batch; the row deletion is absent.
-            String update=batch.mutation.substring("BEGIN BATCH ".length(),batch.mutation.indexOf(';'));
+            String update=batch.mutation.substring("BEGIN BATCH ".length(),batch.mutation.indexOf("; DELETE FROM"));
             assertEquals(true,c.coordinator(1).execute(update,ConsistencyLevel.QUORUM)[0][0]);
             Object[][] partial=c.coordinator(2).execute(batch.select,ConsistencyLevel.SERIAL);
             assertFalse("the actual partial state must be rejected",whole(batch,partial));

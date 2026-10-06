@@ -49,10 +49,10 @@ final class CassandraRecoveryJournal implements Store {
         Receipt receipt=new Receipt(request,before.state(),request.next());
         boolean applied=PocPolicy.execute(transport.sessionForPoc(),write("""
             BEGIN BATCH
-              UPDATE atlas_poc.recovery_journal SET guard=?,payload=? WHERE subject=? AND store=? AND row='HEAD' IF guard=?;
+              UPDATE atlas_poc.recovery_journal SET guard=?,payload=? WHERE subject=? AND store=? AND row='HEAD' IF guard=? AND payload=?;
               INSERT INTO atlas_poc.recovery_journal(subject,store,row,guard,payload) VALUES (?,?,?,?,?) IF NOT EXISTS;
             APPLY BATCH
-            """+marker(subject,store),request.next().guard(),request.next().value(),subject,store,request.expected().guard(),
+            """+marker(subject,store),request.next().guard(),request.next().value(),subject,store,request.expected().guard(),request.expected().value(),
             subject,store,"OP:"+request.operation(),request.next().guard(),JSON.writeValueAsString(receipt)),true,dc).wasApplied();
         if(applied)return new Result("OK",receipt);
         prior=view().receipts().get(request.operation());return prior==null?new Result("CONFLICT",null):replay(prior,request);
