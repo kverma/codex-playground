@@ -21,7 +21,7 @@ val gradeCassandra by tasks.registering(Test::class) {
     testClassesDirs = integrationTest.output.classesDirs
     classpath = integrationTest.runtimeClasspath
     outputs.upToDateWhen { false }
-    useJUnitPlatform { excludeTags("fault", "fullHa", "three") }
+    useJUnitPlatform { excludeTags("fault", "fullHa", "three", "phase") }
 }
 val gradeFaults by tasks.registering(Test::class) {
     description = "Real protocol-frame response loss and Docker coordinator restart"
@@ -41,6 +41,12 @@ tasks.register<Test>("gradeFullHa") {
 tasks.register("gradeModel") { dependsOn(tasks.test, integrationTest.classesTaskName) }
 tasks.named("build") { dependsOn(integrationTest.classesTaskName) }
 tasks.register("grade") { dependsOn(tasks.test, gradeCassandra, gradeFaults) }
+tasks.register<Test>("gradeRecoveryPhase") {
+    testClassesDirs = integrationTest.output.classesDirs
+    classpath = integrationTest.runtimeClasspath
+    useJUnitPlatform { includeTags("phase") }
+    outputs.upToDateWhen { false }
+}
 listOf("Partition", "CoordinatorCrash", "Repair", "History", "Retention", "FaultWitness", "Archive").forEach { scenario ->
     tasks.register<Test>("grade$scenario") {
         testClassesDirs = integrationTest.output.classesDirs

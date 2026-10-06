@@ -119,6 +119,7 @@ jobs:
       - run: make grade-history
       - run: make grade-retention
       - run: make grade-archive
+      - run: python3 scripts/audit-archive-phases.py build/evidence/archive-phase-three
       - name: Collect three-node evidence
         if: always()
         run: |
@@ -134,4 +135,40 @@ jobs:
             atlas-cassandra-poc/build/test-results/
             atlas-cassandra-poc/build/evidence/
       - run: make three-down
+        if: always()
+
+  recovery-phase:
+    needs: shallow
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: atlas-cassandra-poc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+      - run: make up
+      - run: make grade-recovery-phase
+      - run: python3 scripts/audit-archive-phases.py build/evidence/archive-phase-single
+      - name: Recovery phase diagnostics
+        if: always()
+        run: |
+          mkdir -p build/evidence
+          docker compose logs --no-color > build/evidence/phase-cassandra.log
+          docker stats --no-stream > build/evidence/phase-resources.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-recovery-phase-evidence
+          path: |
+            atlas-cassandra-poc/build/reports/
+            atlas-cassandra-poc/build/test-results/
+            atlas-cassandra-poc/build/evidence/
+      - run: make down
         if: always()

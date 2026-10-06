@@ -41,6 +41,12 @@ removes the disposable container; no host data volume is configured.
 
 ## Archive and restore candidate
 
+The [persistent archive coordinator fixture](docs/persistent-archive-coordinator.md)
+connects saved phase captures/proofs to real Cassandra journals and local immutable
+objects. Its new restart, takeover and wire-loss tests run with
+`make grade-recovery-phase` and the cross-DC archive grader; their current result
+is recorded in the adversarial review.
+
 The [archive-bound fence model](docs/archive-fence-model.md) extends the handoff
 with explicit copy, coverage verification, certification, pruning and installation.
 It checks 15,840 bounded schedules, archived-prefix/hot-tail recovery and seven

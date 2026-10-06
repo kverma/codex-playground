@@ -70,3 +70,7 @@ check-test-descriptions:
 	python3 scripts/describe-tests.py --check
 grade-archive: version-check
 	$(GRADLE) --no-daemon gradeArchive
+
+.PHONY: grade-recovery-phase
+grade-recovery-phase: version-check
+	$(GRADLE) --no-daemon gradeRecoveryPhase
