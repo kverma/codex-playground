@@ -1,6 +1,6 @@
 # Persistent archive coordinator fixture
 
-AT-110–118 connect the bounded archive phase contract to separate real Cassandra
+AT-110–119 connect the bounded archive phase contract to separate real Cassandra
 authority/hot journal partitions and local immutable archive files. Each actor has
 a forced, atomically replaced local checkpoint containing captured state, verified
 archive bytes, exact pending operation/expected/next guards, and original receipts.
@@ -41,7 +41,7 @@ loss of the last durable edit.
 - Single-node and cross-DC clients: two handoffs with an archived prefix and a new
   hot edit; persisted CERTIFY/PRUNE/INSTALL/ACTIVATE requests after takeover;
   missing/corrupt actor and archive files; competing owner starts and edit/freeze
-  races; historical
+  races; pruning/installation/activation racing a newer freeze; historical
   phase receipts after a newer owner finishes.
 - Actual unsafe control: replace an old prune request's expected guard with the
   current one. Its old image really overwrites Cassandra. The independent ledger

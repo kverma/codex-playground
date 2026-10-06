@@ -99,7 +99,7 @@ phases=['START','FREEZE','COPY','VERIFY','CERTIFY','PRUNE','INSTALL','ACTIVATE']
 folder=Path(sys.argv[1]);assert folder.is_dir()
 histories=list(folder.glob('*/history.json'));assert histories, 'no phase histories'
 is_single=(folder/'process-pids.json').exists()
-assert len(histories)==(66 if is_single else 13), len(histories)
+assert len(histories)==(69 if is_single else 16), len(histories)
 for path in histories:
     h=load(path);assert replay(h['frames'])==(h['result']['verdict'],h['result']['checked'],h['result']['reason'])
     assert h['result']['verdict']=='VALID'
@@ -149,6 +149,15 @@ for i,key in enumerate(('edit','freeze')):
     if race['initial'][i] is not None:assert race['initial'][i]==r and race['errors'][i]==''
     else:assert 'TimeoutException' in race['errors'][i]
 print(len(histories),'exact phase histories; two journal chains each; actor proofs; stale/historical recovery; actual unsafe mutation rejected')
+for phase in ('PRUNE','INSTALL','ACTIVATE'):
+    race=load(folder/('maintenance-race-'+phase)/'initial-race.json');resolved=load(folder/('maintenance-race-'+phase)/'resolved-race.json')
+    assert max(race['invoked'])<min(race['returned']) and race['requests'][0]['expected']==race['requests'][1]['expected']
+    assert sum(resolved[k]['code']=='OK' for k in ('old','newer'))==1
+    for i,key in enumerate(('old','newer')):
+        r=resolved[key];q=race['requests'][i]
+        assert r==(dict(code='OK',receipt=dict(request=q,before=q['expected'],after=q['next'])) if r['code']=='OK' else dict(code='CONFLICT',receipt=None))
+        if race['initial'][i] is not None:assert race['initial'][i]==r and race['errors'][i]==''
+        else:assert 'TimeoutException' in race['errors'][i]
 if is_single:
     all_pids=set()
     for phase in phases:

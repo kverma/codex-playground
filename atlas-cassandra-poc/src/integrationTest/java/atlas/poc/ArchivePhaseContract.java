@@ -234,4 +234,43 @@ abstract class ArchivePhaseContract {
             f.audit();save(f.dir.resolve("resolved-race.json"),Map.of("edit",editResult,"freeze",freezeResult,"view",f.driver(0).view()));
         }
     }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Prevent old recovery work from crossing a newer freeze
+     * Boundary: Race persisted prune, install and activate requests against a new owner freeze using the same original hot guard through separate clients
+     * Expected: One exact mutation wins; the losing request stays stale, a valid owner completes recovery and the complete accepted edit history is conserved.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-119 | Prevent old recovery work from crossing a newer freeze")
+    // END ATLAS SCENARIO
+    @Test void cleanupInstallAndActivationRaceNewFreezeWithoutCrossingItsFence() throws Exception {
+        for(Step phase:List.of(Step.PRUNE,Step.INSTALL,Step.ACTIVATE))try(var f=new Fixture("maintenance-race-"+phase);var pool=Executors.newVirtualThreadPerTaskExecutor()) {
+            f.edit(2);f.init(0);while(PHASES.get(read(f.actor(0),f.subject).index())!=phase)f.advance(0);
+            assertThrows(IllegalStateException.class,()->f.driver(0).advance(ArchivePhaseContract::pause));
+            f.init(1);f.advance(1);assertThrows(IllegalStateException.class,()->f.driver(1).advance(ArchivePhaseContract::pause));
+            var requests=List.of(read(f.actor(0),f.subject).pending().request(),read(f.actor(1),f.subject).pending().request());
+            assertEquals(requests.get(0).expected(),requests.get(1).expected());
+            var ready=new CountDownLatch(2);var release=new CountDownLatch(1);long[] invoked=new long[2],returned=new long[2];
+            String[] errors=new String[2];RecoveryJournal.Result[] initial=new RecoveryJournal.Result[2];var tasks=new ArrayList<Future<?>>();
+            for(int id=0;id<2;id++) {final int i=id;tasks.add(pool.submit(()->{
+                invoked[i]=System.nanoTime();ready.countDown();
+                try {assertTrue(release.await(10,TimeUnit.SECONDS));initial[i]=(i==0?f.hot:f.peerHot).apply(requests.get(i));errors[i]="";}
+                catch(com.datastax.oss.driver.api.core.servererrors.WriteTimeoutException | com.datastax.oss.driver.api.core.servererrors.ReadTimeoutException | com.datastax.oss.driver.api.core.DriverTimeoutException e) {errors[i]=e.toString();}
+                catch(Exception e) {throw new RuntimeException(e);}finally {returned[i]=System.nanoTime();}
+            }));}
+            try {assertTrue(ready.await(10,TimeUnit.SECONDS));}finally {release.countDown();}for(var task:tasks)task.get(60,TimeUnit.SECONDS);
+            save(f.dir.resolve("initial-race.json"),Map.of("phase",phase,"requests",requests,"initial",initial,"errors",errors,"invoked",invoked,"returned",returned));
+            assertTrue(Math.max(invoked[0],invoked[1])<Math.min(returned[0],returned[1]));
+            var old=f.hot.apply(requests.get(0));var newer=f.peerHot.apply(requests.get(1));
+            assertNotEquals(old.code().equals("OK"),newer.code().equals("OK"));
+            if(initial[0]!=null)assertEquals(initial[0],old);if(initial[1]!=null)assertEquals(initial[1],newer);
+            if(old.code().equals("OK")) {
+                assertEquals("CONFLICT",newer.code());f.driver(0).advance(p->{});f.frame(0,phase,"OK");
+                assertThrows(IllegalStateException.class,()->f.driver(1).advance(p->{}));f.init(2);f.complete(2);
+            } else {
+                assertEquals("CONFLICT",old.code());assertEquals("OK",newer.code());f.driver(1).advance(p->{});f.frame(1,Step.FREEZE,"OK");
+                assertThrows(IllegalStateException.class,()->f.driver(0).advance(p->{}));f.frame(0,phase,"STALE");f.complete(1);
+            }
+            f.audit();save(f.dir.resolve("resolved-race.json"),Map.of("old",old,"newer",newer,"view",f.driver(0).view()));
+        }
+    }
 }
