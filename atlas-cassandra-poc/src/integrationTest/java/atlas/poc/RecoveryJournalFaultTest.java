@@ -8,7 +8,8 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import static atlas.poc.RecoveryJournal.*;
 import static atlas.poc.RecoveryJournalTest.*;
-import static atlas.poc.DraftProcessClient.*;
+import static atlas.poc.DraftProcessClient.JSON;
+import static atlas.poc.DraftProcessClient.save;
 import static org.junit.jupiter.api.Assertions.*;
 
 @Tag("fault")

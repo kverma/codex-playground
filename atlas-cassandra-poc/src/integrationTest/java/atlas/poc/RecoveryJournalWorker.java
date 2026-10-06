@@ -4,7 +4,8 @@ import java.nio.file.*;
 import java.time.Duration;
 import java.util.UUID;
 import static atlas.poc.RecoveryJournal.*;
-import static atlas.poc.DraftProcessClient.*;
+import static atlas.poc.DraftProcessClient.JSON;
+import static atlas.poc.DraftProcessClient.save;
 
 /** New JVM per attempt, reading the exact persisted proposal. Not an authenticated production service. */
 public final class RecoveryJournalWorker {
