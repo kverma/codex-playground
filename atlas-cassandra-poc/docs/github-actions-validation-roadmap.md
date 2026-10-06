@@ -20,6 +20,11 @@ still requires a concurrent cross-store oracle and remains unexecuted.
 
 ## Ranked next experiments on standard hosted Linux runners
 
+Rank 5 now has a **bounded handoff model implemented pending hosted evidence**:
+AT-091–094 enumerate 3570 per-store interleavings and five broken-fence controls.
+This does not implement concurrent archive/prune/restore operations, so the larger
+rank-5 gate remains open. See [recovery-fence model](recovery-fence-model.md).
+
 Rank 1 is now implemented and passed: AT-069–071 cover four actual wire-loss
 boundaries and a real partial-pruning mutant. Saved byte-level witnesses and
 full-state recovery were inspected; see the [review](adversarial-test-review.md).

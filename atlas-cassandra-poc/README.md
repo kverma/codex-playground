@@ -40,6 +40,11 @@ removes the disposable container; no host data volume is configured.
 
 ## Archive and restore candidate
 
+The [bounded recovery-fence model](docs/recovery-fence-model.md) separately explores
+competing offer writers and recovery owners across two modeled stores. Its 3570
+schedules and independent checker are implemented pending hosted evidence; this
+does not change the serial Cassandra archive adapter or certify a production fence.
+
 The [signed-draft client-process fixture](docs/signed-draft-process-recovery.md)
 joins saved Draft/Issued identities to the serial archive candidate. Separate
 client JVMs exercise reply loss and logical recovery; server-side bindings and

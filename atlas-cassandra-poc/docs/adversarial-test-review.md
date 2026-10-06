@@ -2,6 +2,29 @@
 
 ## Decision
 
+### New bounded handoff slice — hosted validation pending
+
+AT-091–094 add a separate two-store recovery-fence model, not a production adapter.
+All 420 one-recovery/two-writer and 3150 two-recovery/one-writer schedules are
+enumerated with per-actor order preserved. An independent checker owns its own
+receipt ledger and freeze/ownership cuts. Five actually executed broken storage
+variants must be rejected and replay from saved traces; the same schedule on the
+correct model must pass. Full schedule completion has a separate authoring-progress
+check, and bounded-checker INCONCLUSIVE is not accepted.
+
+The model makes an important boundary explicit: root START requests recovery;
+only the hot-state FREEZE closes authoring. Accepted edits during that drain window
+must be captured. Old ACTIVATE attempts cannot override a newer hot fence. Each
+step touches only one store; no cross-partition atomicity is assumed.
+
+A local Java17 diagnostic of the dependency-free model/checker passed all 3570
+schedules and exposed all five mutants. This is not the pinned JDK25 Gradle grade;
+hosted execution and persisted JSON replay remain pending. Archive pruning, physical
+restore, interrupted actors, lost replies and production writer fencing remain open.
+See [the exact model contract and limits](recovery-fence-model.md).
+
+### Last fully verified hosted result
+
 Executable commit `aee099ca846a04eb3b4b91b599032e7f598ff75d` passed all four jobs in
 [run 37421632336](https://github.com/kverma/codex-playground/actions/runs/37421632336).
 Downloaded XML confirms **120 distinct POC cases plus 16 upstream tests**, with no
