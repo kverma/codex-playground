@@ -37,9 +37,10 @@ final class RecoveryFenceModel {
             }
             case WRITE -> {
                 Hot read=reads.get(actor);if(read==null)return "NOT_READY";
-                if(!hot.active()&&broken!=Broken.WRITE_WHILE_FROZEN)return "FENCED";
+                boolean bypassFence=!hot.active()&&broken==Broken.WRITE_WHILE_FROZEN;
+                if(!hot.active()&&!bypassFence)return "FENCED";
                 boolean stale=read.generation()!=hot.generation();
-                if(stale&&broken!=Broken.STALE_WRITE&&broken!=Broken.WRITE_WHILE_FROZEN)return "STALE";
+                if(stale&&broken!=Broken.STALE_WRITE&&!bypassFence)return "STALE";
                 if(stale||!hot.active())triggered=true;
                 int target=400+actor;var receipts=new ArrayList<>(hot.image().receipts());
                 receipts.add(new Receipt(actor,hot.image().cents(),target));

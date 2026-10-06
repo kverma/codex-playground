@@ -61,6 +61,12 @@ published checkpoint. Each captured schedule is rerun against the correct model
 and must pass. Saved JSON is reloaded and checked again. Counterexamples are complete
 bounded traces; no minimality claim is made.
 
+Each saved counterexample also asserts its named failure boundary: a closed gate
+for WRITE_WHILE_FROZEN, an open gate with an outdated read generation for STALE_WRITE,
+a superseded owner for STALE_ROOT, a changed hot generation for STALE_ACTIVATE,
+and a nonempty captured receipt chain omitted by DROP_TAIL. This prevents two
+different mutant names from merely demonstrating the same stale-write condition.
+
 Evidence: `build/evidence/recovery-fence/` contains all 3570 full traces, two census
 summaries and five rejected/replayed mutant traces. The four JUnit cases remain
 four tests in reported counts; schedule/prefix counts do not inflate that number.

@@ -36,6 +36,34 @@ class RecoveryFenceTest {
         var replay=mapper.readValue(path.toFile(),Evidence.class);
         assertEquals(e.result(),new RecoveryFenceChecker().check(replay.frames()),"persisted trace must replay identically");
     }
+    private void exactMutationBoundary(Evidence e) {
+        int index=e.result().checked();assertTrue(index>0);
+        Frame bad=e.frames().get(index);View before=e.frames().get(index-1).observed();
+        assertEquals("OK",bad.outcome(),"control must execute the unsafe mutation, not merely throw");
+        var earlier=e.frames().subList(0,index).stream().filter(f->f.command().actor()==bad.command().actor()).toList();
+        switch(e.broken()) {
+            case WRITE_WHILE_FROZEN -> assertFalse(before.hot().active(),"must actually write through a closed gate");
+            case STALE_WRITE -> {
+                assertTrue(before.hot().active());
+                var read=earlier.stream().filter(f->f.command().step()==Step.READ).findFirst().orElseThrow();
+                assertNotEquals(read.observed().hot().generation(),before.hot().generation());
+            }
+            case STALE_ROOT -> {
+                var start=earlier.stream().filter(f->f.command().step()==Step.START).findFirst().orElseThrow();
+                assertNotEquals(start.observed().root().owner(),before.root().owner());
+            }
+            case STALE_ACTIVATE -> {
+                var freeze=earlier.stream().filter(f->f.command().step()==Step.FREEZE).findFirst().orElseThrow();
+                assertNotEquals(freeze.observed().hot().generation(),before.hot().generation());
+            }
+            case DROP_TAIL -> {
+                var freeze=earlier.stream().filter(f->f.command().step()==Step.FREEZE).findFirst().orElseThrow();
+                assertFalse(freeze.observed().hot().image().receipts().isEmpty());
+                assertTrue(bad.observed().root().checkpoint().image().receipts().isEmpty());
+            }
+            case NONE -> fail("not a mutation witness");
+        }
+    }
     private void exhaustive(boolean takeover,int expectedCount) throws Exception {
         var schedules=schedules(takeover);assertEquals(expectedCount,schedules.size());int index=0,accepted=0,stale=0,fenced=0;
         for(var commands:schedules) {
@@ -92,7 +120,8 @@ class RecoveryFenceTest {
                 var candidate=execute(index++,schedule,broken);
                 if(candidate.result().verdict()==INVALID) { witness=candidate;break; }
             }
-            assertNotNull(witness,"must actually expose "+broken);assertTrue(witness.triggered());save("mutant-"+broken,witness);
+            assertNotNull(witness,"must actually expose "+broken);assertTrue(witness.triggered());
+            exactMutationBoundary(witness);save("mutant-"+broken,witness);
             // The same schedule with the correct implementation must be accepted.
             assertEquals(VALID,execute(0,witness.frames().stream().map(Frame::command).toList(),Broken.NONE).result().verdict());
         }

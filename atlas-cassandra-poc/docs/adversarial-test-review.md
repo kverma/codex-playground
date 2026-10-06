@@ -4,6 +4,13 @@
 
 ### New bounded handoff slice — hosted validation pending
 
+Evidence review of the first shallow run at `cdbfc59` found that the
+WRITE_WHILE_FROZEN mutant could first fail at a stale write after activation,
+duplicating STALE_WRITE rather than witnessing a closed-gate write. The bypass is
+now restricted to an actually closed gate, and each of the five counterexamples
+must assert its exact named unsafe boundary. This is a test-quality correction,
+not a newly discovered failure of the correct candidate. Both run records remain.
+
 AT-091–094 add a separate two-store recovery-fence model, not a production adapter.
 All 420 one-recovery/two-writer and 3150 two-recovery/one-writer schedules are
 enumerated with per-actor order preserved. An independent checker owns its own
