@@ -2,25 +2,27 @@
 
 ## Current evidence
 
-Executable `aee099ca846a04eb3b4b91b599032e7f598ff75d` passed
-[run 37421632336](https://github.com/kverma/codex-playground/actions/runs/37421632336):
-120 distinct POC cases and 16 upstream tests. Models, one-node Cassandra, verified
+Executable `134f124302e3c2f42c93dbf2acafad727794a983` passed
+[run 37436678301](https://github.com/kverma/codex-playground/actions/runs/37436678301):
+124 distinct POC cases and 16 upstream tests. Models, one-node Cassandra, verified
 process/network faults and a three-node RF1-per-DC fixture already run remotely.
 The new archive fixture has real Cassandra hot state but simulated external
 archive/authority in its base tests; the new server-process extension uses one local
 root table outside logical offer restoration, with separately read archive/authority
-files. All orchestration is serial. These are bounded POC results.
+files. Archive/offer service orchestration remains serial; root races and the
+bounded handoff model are separate. These are bounded POC results.
 
 The root wire-fault extension now passed four exact read/publication cuts with
 17 server processes and checked recovery traces. AT-089 same-base competing root publications and AT-090 root
 quorum loss/majority progress/healing also passed: twelve witnessed races across
 two topologies, three exact minority quorum-loss errors and six matching
 post-heal/resumed full root views. These are root-only tests. Rank 5 below
-still requires a concurrent cross-store oracle and remains unexecuted.
+still requires an integrated concurrent archive/prune/restore oracle; only the
+separate handoff slice below has passed.
 
 ## Ranked next experiments on standard hosted Linux runners
 
-Rank 5 now has a **bounded handoff model implemented pending hosted evidence**:
+Rank 5 now has a **passed, artifact-inspected bounded handoff model**:
 AT-091–094 enumerate 3570 per-store interleavings and five broken-fence controls.
 This does not implement concurrent archive/prune/restore operations, so the larger
 rank-5 gate remains open. See [recovery-fence model](recovery-fence-model.md).
@@ -52,7 +54,7 @@ and unavailable remote reads. The [Cassandra-root extension](cassandra-root-auth
 passed a 17-process recovery history with two root-publication halt cuts and stale
 publication CAS on one node and across dc1/dc2. Local cache rollback no longer
 chooses authority; whole-cluster rollback resistance remains open.
-Ranks 5–9 remain proposals.
+Rank 5 has only the handoff model slice above; ranks 6–9 remain proposals.
 Give each addition an independent failure witness and a negative
 control; “the command succeeded” or “the suite eventually passed” is insufficient.
 
@@ -74,7 +76,10 @@ result and resource profile. Keep every failed attempt visible; avoid “retry u
 green.” Bound jobs, use fail-fast only where it will not discard useful independent
 evidence, upload artifacts on failure, and clean up only the job's own containers.
 Ranks 1–4 extend existing graders; no extra runner job or nine-node execution
-was added. Ranks 5–9 remain unexecuted. Rank 4 narrows server-process persistence
+was added. Rank 5's full archive/prune/restore concurrency and ranks 6–9 remain
+unexecuted. Next extend handoff recovery to interrupted actors and exact replies,
+then bind archive coverage and snapshot installation to the frozen generation.
+Rank 4 narrows server-process persistence
 only; independent service durability,
 concurrent allocation and partial client journal-write crashes remain open.
 

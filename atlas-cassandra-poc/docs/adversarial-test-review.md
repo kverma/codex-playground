@@ -2,7 +2,15 @@
 
 ## Decision
 
-### New bounded handoff slice — hosted validation pending
+Executable `134f124302e3c2f42c93dbf2acafad727794a983` passed all four jobs in
+[run 37436678301](https://github.com/kverma/codex-playground/actions/runs/37436678301).
+All four downloaded artifacts confirm **124 distinct POC +16 upstream tests**,
+zero failures/errors/skips: 104 model/single/fault cases (including the repeated
+55 shallow cases), plus 20 three-node. The description gate verifies 94 scenarios.
+The preceding [run 37434913605](https://github.com/kverma/codex-playground/actions/runs/37434913605)
+also passed all four jobs; the follow-up below tightened negative-control evidence.
+
+### New bounded handoff slice — passed and inspected 2026-10-06 UTC
 
 Evidence review of the first shallow run at `cdbfc59` found that the
 WRITE_WHILE_FROZEN mutant could first fail at a stale write after activation,
@@ -24,13 +32,22 @@ only the hot-state FREEZE closes authoring. Accepted edits during that drain win
 must be captured. Old ACTIVATE attempts cannot override a newer hot fence. Each
 step touches only one store; no cross-partition atomicity is assumed.
 
-A local Java17 diagnostic of the dependency-free model/checker passed all 3570
-schedules and exposed all five mutants. This is not the pinned JDK25 Gradle grade;
-hosted execution and persisted JSON replay remain pending. Archive pruning, physical
+A local Java17 diagnostic preceded the pinned JDK25 hosted grade. Both hosted
+model copies passed and all 3570 full traces were independently inspected in each
+artifact. The 420 writer schedules contain 200 accepted writes, 136 stale outcomes
+and 504 fenced outcomes; the 3150 takeover schedules contain 506 accepted writes,
+3282 stale outcomes and 2332 fenced outcomes. These are events across independent
+schedules, not extra JUnit tests. Every full schedule restores authoring progress.
+Each step changes only its intended modeled store; full hot receipt chains remain
+intact and checkpoints match the exact captured fence cut. The five actual mutant
+witnesses fail at their named boundaries and replay as INVALID. The closed-gate
+write is now witnessed at step index 4, separately from stale-after-reopen at index 7.
+The checker also validates 38430 whole-execution prefixes per model run; this is
+prefix safety, not interrupted-worker recovery. Archive pruning, physical
 restore, interrupted actors, lost replies and production writer fencing remain open.
 See [the exact model contract and limits](recovery-fence-model.md).
 
-### Last fully verified hosted result
+### Earlier root-contention hosted result
 
 Executable commit `aee099ca846a04eb3b4b91b599032e7f598ff75d` passed all four jobs in
 [run 37421632336](https://github.com/kverma/codex-playground/actions/runs/37421632336).
@@ -52,7 +69,7 @@ and three VALID histories (5, 4 and 4 checked commands). Before-send publication
 resolves UNCHANGED; lost applied reply resolves PUBLISHED. Later equal-content roots
 with different guards resolve UNKNOWN and reject the captured stale proposal.
 The wire scenarios passed again in the latest run; the single-node count is now
-100, not 100 plus the repeated 51 shallow cases.
+104, not 104 plus the repeated 55 shallow cases.
 
 ## Root contention and isolated authority — passed and inspected 2026-10-06 UTC
 

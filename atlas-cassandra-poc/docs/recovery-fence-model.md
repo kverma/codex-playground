@@ -1,6 +1,10 @@
 # Bounded recovery-fence handoff
 
-Status: implemented; GitHub validation pending. AT-091–094 run in `make grade-model`
+Status: passed and inspected at `134f124` in
+[run 37436678301](https://github.com/kverma/codex-playground/actions/runs/37436678301).
+All four jobs passed: **124 distinct POC +16 upstream**, zero failures/errors/skips.
+All 3570 traces and five exact mutant boundaries were audited in both model artifacts.
+AT-091–094 run in `make grade-model`
 and the existing hosted model/single-node job. These are test-only models, not a
 change to the Cassandra archive/retention adapters or a new production protocol.
 

@@ -42,7 +42,7 @@ removes the disposable container; no host data volume is configured.
 
 The [bounded recovery-fence model](docs/recovery-fence-model.md) separately explores
 competing offer writers and recovery owners across two modeled stores. Its 3570
-schedules and independent checker are implemented pending hosted evidence; this
+schedules, independent checker and five exact mutation witnesses passed hosted validation; this
 does not change the serial Cassandra archive adapter or certify a production fence.
 
 The [signed-draft client-process fixture](docs/signed-draft-process-recovery.md)
@@ -59,7 +59,7 @@ root selection outside logical offer restore and stale root-publication guards.
 The [Cassandra archive fixture](docs/archive-cassandra-fixture.md) adds real
 conditional HEAD/slot mutations, logical restore and delayed-writer guard tests.
 Run its cross-coordinator cases with `make three-up && make grade-archive`.
-Its base archive and recovery authority remain simulated. Hosted [run 37421632336](https://github.com/kverma/codex-playground/actions/runs/37421632336) passed all four jobs at `aee099c`: **120 distinct POC cases plus 16 upstream tests**, including authoritative-root recovery, cross-DC stale-root rejection, read/publication wire faults, competing root writers and quorum isolation/healing. All four artifacts were inspected; see the adversarial review.
+Its base archive and recovery authority remain simulated. Hosted [run 37436678301](https://github.com/kverma/codex-playground/actions/runs/37436678301) passed all four jobs at `134f124`: **124 distinct POC cases plus 16 upstream tests**, including the bounded recovery-fence model, authoritative-root recovery, cross-DC stale-root rejection, read/publication wire faults, competing root writers and quorum isolation/healing. All four artifacts were inspected; see the adversarial review.
 The archive fault grader now covers actual seal/prune request and reply loss,
 exact recovery and a rejected partial-pruning control.
 The [readiness boundary tests](docs/readiness-recovery.md) now force membership
