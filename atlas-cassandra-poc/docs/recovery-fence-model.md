@@ -77,14 +77,19 @@ four tests in reported counts; schedule/prefix counts do not inflate that number
 
 ## Still open
 
+The separate [exact-operation journal extension](recovery-journal.md) has now
+passed real Cassandra worker/reply interruption tests, including twelve wire/halt
+cuts and exact historical replay. It uses trusted sequential handoff plans and
+does not turn this original interleaving model into a production coordinator.
+
 No archive copying/pruning, SSTable/whole-database restore, restored allocator,
 lost request/reply, actor restart, journal durability, service outage or rollback
 is modeled here. In particular, hot state must not be physically restored in a way
 that revives an old authoring generation. Numeric ownership is not an independently
 durable production recovery authority. Root-only Cassandra results remain separate.
 
-Next extend the handoff to interrupted actors and exact-operation recovery, then
-bind archive coverage and installation to the fenced generation, with independent
+Next integrate the separately tested exact-operation recovery with a specified
+persistent coordinator, then bind archive coverage and installation to the fenced generation, with independent
 checks for old snapshots and missing/unarchived tails. Only after those contracts
 are concrete should the two-store Cassandra adapter integrate this candidate.
 PG-COMMIT, PG-CASS, RF3/DC and production certification remain UNPROVEN.

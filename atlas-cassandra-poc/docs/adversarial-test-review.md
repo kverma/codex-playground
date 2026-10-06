@@ -2,6 +2,75 @@
 
 ## Decision
 
+Executable `843a17c4f579c1e1f095b8564d3d54d50b1427c3` passed all four jobs in
+[run 37447187294](https://github.com/kverma/codex-playground/actions/runs/37447187294).
+All four downloaded artifacts were audited: **155 distinct passing tests = 135
+POC +4 Atlas-authored overlay +16 upstream**, zero failures/errors/skips. The
+112 single/model/fault cases include the 59 repeated shallow cases; 23 three-node
+cases complete the POC total. The catalog contains 102 scenario IDs. Counts do
+not turn the 3570 schedules, twelve wire cuts or twelve phase cuts into extra tests.
+
+### Recovery journal, server-phase and encoding campaign — 2026-10-06 UTC
+
+- AT-095–099 and AT-102 test exact state/receipt journaling. Sixteen saved model
+  histories include eight deterministic retry cuts, four actually broken journals
+  rejected at their precise boundary, and four passing same-request controls.
+  Real Cassandra stores state and accepted receipt in one conditional partition
+  batch, with full expected-state conditions. Single/cross-DC sessions preserve
+  original receipts after later writes and reopening. Identical overlapping calls
+  deduplicate; twelve competing-proposal races across both topologies have one
+  winner and exact key-reuse/conflict outcomes.
+- Twelve real cuts cover START/FREEZE/PUBLISH/ACTIVATE, each with before-send
+  loss, a dropped decoded applied reply and a halted worker. Twenty-four distinct
+  JVMs read byte-identical saved inputs. The Python artifact audit checks wire
+  effects, original receipts, full state and all 24 per-store histories. Each
+  two-handoff trace retains the accepted price edit and rejects a stale writer.
+  These handoff plans are trusted and sequential, not a production coordinator.
+- Four Atlas-authored overlay tests run beside the original sixteen upstream
+  cases. Twelve prepare/propose/commit request/response cuts each record two
+  intercepted messages. Exact whole-partition before/after states and final replay
+  states agree. The actual HEAD-only prune control leaves the slot present and is
+  rejected. A real VALIDATION_RSP pause contains a 100.85 ms write inside 102.96 ms;
+  full repair succeeds, three local sentinel views heal, and the edit remains.
+  Hints/read repair are disabled for that repair test. This is not disk-streaming
+  or independent-host durability evidence.
+- AT-100–101 compare 256 separately generated Python encodings/hashes with Java,
+  reverse map order, vary non-semantic storage metadata and a semantic royalty,
+  and reject ambiguous numeric/eligibility strings without changing state.
+- Regression artifact audits again validate both copies of all 3570 fence traces
+  and their five exact mutant witnesses; twelve root-only contention races; exact
+  minority quorum failures and healed views; and the existing 17-JVM authority
+  wire-fault histories. The independent journal auditor is committed as
+  `scripts/audit-recovery-journal.py`.
+
+Failed attempts are retained, not hidden by reruns:
+
+1. [37445915897](https://github.com/kverma/codex-playground/actions/runs/37445915897)
+   at `7b23e74` stopped in compilation: wildcard imports made `Result` ambiguous.
+   Explicit imports fixed the test worker; Cassandra jobs did not run.
+2. [37446216601](https://github.com/kverma/codex-playground/actions/runs/37446216601)
+   at `e278cf7` passed shallow/single/three. All twelve phase cuts passed, but the
+   new partial-prune control extracted CQL at a semicolon inside a quoted payload,
+   producing a syntax error before its intended mutation.
+3. [37446589497](https://github.com/kverma/codex-playground/actions/runs/37446589497)
+   at `c685807` had already started with that helper and retains the same error;
+   its encoding and repair-overlap additions passed. Fixing extraction at the
+   actual statement boundary yields the final passing control. Hints are disabled
+   in the phase fixture too, removing unrelated shutdown-hint noise.
+
+Proposal-request loss resolved as applied in an earlier run and unapplied in the
+final run. Both are permitted complete outcomes, not flaky verdicts or inferred
+aborts. The audit compares explicit full before/after row sets, then exact replay.
+
+Stop at the [current Actions-only boundary](actions-only-boundary.md): combined
+concurrent archive/prune/restore still needs an integrated persistent coordinator
+contract; authority rollback and archive ACK qualification need selected backends;
+RF3/DC and independent-host/WAN/storage tests need a different authorized
+environment. No claim that all imaginable hosted tests are exhausted is made.
+The draft PR remains unmerged; PG-COMMIT/PG-CASS and production E2E remain UNPROVEN.
+
+### Previous verified baseline
+
 Executable `134f124302e3c2f42c93dbf2acafad727794a983` passed all four jobs in
 [run 37436678301](https://github.com/kverma/codex-playground/actions/runs/37436678301).
 All four downloaded artifacts confirm **124 distinct POC +16 upstream tests**,

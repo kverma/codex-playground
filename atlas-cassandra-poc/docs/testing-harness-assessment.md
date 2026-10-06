@@ -5,7 +5,19 @@ and [nine-node agent handoff](nine-node-ha-agent-handoff.md). The nine-node scaf
 currently exercises one legacy whole-offer case; newer retention/archive suites
 need explicit full-topology integration. No nine-node run is certified here.
 
-## Latest addition — signed drafts across client JVM exits
+## Latest server-harness addition — Atlas-shaped phase cuts and repair overlap
+
+The [Atlas-authored overlay](maintainer-atlas-overlay.md) now complements the
+sixteen upstream checks. The maintainer job in
+[run 37447187294](https://github.com/kverma/codex-playground/actions/runs/37447187294)
+passed all twenty cases. Downloaded evidence confirms twelve counted message cuts,
+complete before/after partition recovery, an actual partial-prune rejection and a
+100.85 ms edit strictly inside a 102.96 ms validation-response pause. Hints and
+read repair are disabled for the repair test; direct local sentinel reads precede
+coordinator checks. These narrow rank-6/7 fixture results do not qualify disk
+durability or production service orchestration. See the [Actions-only boundary](actions-only-boundary.md).
+
+## Earlier addition — signed drafts across client JVM exits
 
 [Run 37298208324](https://github.com/kverma/codex-playground/actions/runs/37298208324) passed at
 `521bc1843ae54073ceef8769e97a3f17f5ee2784`: **107 distinct POC + 16 upstream**.

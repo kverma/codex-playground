@@ -7,7 +7,7 @@ Start with the [plain-language test scenarios](docs/test-scenarios.md): each tes
 explains its Atlas goal, simulated boundary and required outcome. Scenario IDs and
 readable descriptions also appear in test reports and source comments.
 The separate [maintainer-test guide](docs/upstream-test-scenarios.md) explains all
-16 pinned upstream checks while preserving their original report names.
+16 pinned upstream checks and four Atlas-authored batch/repair overlay cases.
 
 Next steps: [further GitHub Actions validation](docs/github-actions-validation-roadmap.md)
 and the [nine-node laptop agent handoff](docs/nine-node-ha-agent-handoff.md).
@@ -45,6 +45,15 @@ competing offer writers and recovery owners across two modeled stores. Its 3570
 schedules, independent checker and five exact mutation witnesses passed hosted validation; this
 does not change the serial Cassandra archive adapter or certify a production fence.
 
+The [exact-operation journal extension](docs/recovery-journal.md) adds real
+Cassandra state/receipt atomicity, fresh-worker recovery at twelve lost-request,
+lost-reply and halt cuts, exact historical replay and competing-request races.
+Authority/hot partitions remain separate, and handoff planning is test-only and
+sequential. The [server-harness overlay](docs/maintainer-atlas-overlay.md) adds twelve
+counted Paxos message cuts and witnessed repair overlap. AT-100–101 compare the
+bounded Java encoding with 256 independently generated Python vectors and reject
+malformed commercial values.
+
 The [signed-draft client-process fixture](docs/signed-draft-process-recovery.md)
 joins saved Draft/Issued identities to the serial archive candidate. Separate
 client JVMs exercise reply loss and logical recovery; server-side bindings and
@@ -59,7 +68,7 @@ root selection outside logical offer restore and stale root-publication guards.
 The [Cassandra archive fixture](docs/archive-cassandra-fixture.md) adds real
 conditional HEAD/slot mutations, logical restore and delayed-writer guard tests.
 Run its cross-coordinator cases with `make three-up && make grade-archive`.
-Its base archive and recovery authority remain simulated. Hosted [run 37436678301](https://github.com/kverma/codex-playground/actions/runs/37436678301) passed all four jobs at `134f124`: **124 distinct POC cases plus 16 upstream tests**, including the bounded recovery-fence model, authoritative-root recovery, cross-DC stale-root rejection, read/publication wire faults, competing root writers and quorum isolation/healing. All four artifacts were inspected; see the adversarial review.
+Its base archive and recovery authority remain simulated. Hosted [run 37447187294](https://github.com/kverma/codex-playground/actions/runs/37447187294) passed all four jobs at `843a17c`: **155 distinct passing tests = 135 POC +4 Atlas overlay +16 upstream**, zero failures/errors/skips. All four artifacts were downloaded and audited; the 59 shallow cases are included in the 112-case single/model/fault result, with 23 three-node cases. The catalog contains 102 scenarios. See the adversarial review for failed attempts and exact scope, and the [Actions-only stopping boundary](docs/actions-only-boundary.md) for required contracts/infrastructure. More bounded tests remain possible; production E2E and PG-COMMIT/PG-CASS remain UNPROVEN.
 The archive fault grader now covers actual seal/prune request and reply loss,
 exact recovery and a rejected partial-pruning control.
 The [readiness boundary tests](docs/readiness-recovery.md) now force membership

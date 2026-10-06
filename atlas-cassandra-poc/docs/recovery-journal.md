@@ -1,8 +1,10 @@
 # Exact-operation recovery journal
 
-AT-095–099 are a test-only extension of the bounded recovery fence. They do not
+AT-095–099 and AT-102 are a test-only extension of the bounded recovery fence. They do not
 replace the existing serial archive adapter or implement a production coordinator.
-Hosted validation results are recorded in the adversarial review.
+Hosted [run 37447187294](https://github.com/kverma/codex-playground/actions/runs/37447187294)
+passed at `843a17c`; all saved model, race, wire/process and journal histories were
+independently audited. Full counts and failed attempts are in the adversarial review.
 
 ## Contract
 
@@ -36,6 +38,9 @@ checked by the conditional mutation, not just a prior read.
 - Single-node and cross-DC session contracts: old replay after a later write,
   stale/key-reuse rejection, reopening sessions, and two overlapping identical
   calls yielding exactly one state effect and one identical receipt.
+- Six competing-proposal races per topology: different IDs and shared IDs with
+  different payloads. Require one exact winner, explicit conflict/key reuse for
+  its competitor, full cross-coordinator equality and non-mutating retries.
 - Twelve real interruption cases: START, FREEZE, PUBLISH and ACTIVATE each lose
   an unsent request, lose a decoded `[applied]=true` reply, or halt a worker after
   the effect before its normal response. Twenty-four distinct JVMs cover the
