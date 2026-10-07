@@ -45,8 +45,9 @@ correctness. See [the harness assessment](testing-harness-assessment.md).
 ## Atlas-authored overlay (not upstream tests)
 
 These four methods live in `maintainer/AtlasBatchPhaseTest.java`; the script copies
-the overlay into the pinned source tree without changing server code or the
-original sixteen tests. [Run 37447187294](https://github.com/kverma/codex-playground/actions/runs/37447187294)
+the overlay into the pinned source tree without changing server code. Evidence
+overlays log checked operands while delegating to the original test comparisons.
+[Run 37447187294](https://github.com/kverma/codex-playground/actions/runs/37447187294)
 passed the twenty-case maintainer job and its artifact audit.
 
 | Human goal | Witness and required result | Overlay method |

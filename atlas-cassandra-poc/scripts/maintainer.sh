@@ -36,16 +36,21 @@ printf '%s\n' "$source_sha" > "$evidence_dir/source-sha.txt"
 cp "$project_dir/maintainer/AtlasBatchPhaseTest.java" "$source_dir/test/distributed/org/apache/cassandra/distributed/test/AtlasBatchPhaseTest.java"
 cp "$project_dir/maintainer/AtlasBatchPhaseTest.java" "$evidence_dir/AtlasBatchPhaseTest.java"
 cp "$project_dir/maintainer/TraceRows.java" "$source_dir/test/distributed/org/apache/cassandra/distributed/test/TraceRows.java"
+cp "$project_dir/maintainer/TraceChecks.java" "$source_dir/test/distributed/org/apache/cassandra/distributed/test/TraceChecks.java"
 # Preserve expected/actual row operands without changing the upstream comparator.
-python3 - "$source_dir" "$evidence_dir" <<'PY'
+python3 - "$source_dir" "$evidence_dir" "$project_dir" <<'PY'
 from pathlib import Path
 import re,sys
-source,evidence=map(Path,sys.argv[1:])
+source,evidence,project=map(Path,sys.argv[1:])
+selected=set(re.findall(r'\| `(\w+)` \|', (project/'docs/upstream-test-scenarios.md').read_text()))
+assert len(selected)==20
 for name in ('CASTest','CasWriteTest','AtlasBatchPhaseTest'):
     p=source/'test/distributed/org/apache/cassandra/distributed/test'/f'{name}.java'
     text=p.read_text()
+    text=text.replace('import static org.junit.Assert.', 'import static org.apache.cassandra.distributed.test.TraceChecks.')
+    text=re.sub(r'(?<![.\w])Assert\.', 'TraceChecks.',text)
     text=re.sub(r'(?<![.\w])assertRows\(', 'TraceRows.assertRows(',text)
-    text=re.sub(r'(public void (\w+)\([^)]*\)[^{]*\{)',lambda m:m[1]+'\n        System.out.println("ATLAS_CASE '+name+'.'+m[2]+'");',text)
+    text=re.sub(r'(public void (\w+)\([^)]*\)[^{]*\{)',lambda m:m[1]+('\n        System.out.println("ATLAS_CASE '+name+'.'+m[2]+'");' if m[2] in selected else ''),text)
     p.write_text(text)
     (evidence/f'{name}.java').write_text(text)
 PY

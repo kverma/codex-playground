@@ -74,13 +74,12 @@ def main():
         for line in log.read_text(errors='replace').splitlines():
             if 'ATLAS_CASE ' in line:
                 key = line.split('ATLAS_CASE ',1)[1].strip()
-            if key and 'ATLAS_ROWS expected=' in line:
-                m = re.search(r'ATLAS_ROWS expected=(\S+) actual=(\S+)',line)
+            if key and ('ATLAS_ROWS expected=' in line or 'ATLAS_CHECK operation=' in line):
+                m = re.search(r'expected=(\S+) actual=(\S+)',line)
                 if m:
-                    upstream_events.setdefault(key,[]).append({'kind':'row comparison','expected':base64.b64decode(m[1]).decode(), 'actual':base64.b64decode(m[2]).decode()})
+                    upstream_events.setdefault(key,[]).append({'kind':'harness comparison','expected':base64.b64decode(m[1]).decode(), 'actual':base64.b64decode(m[2]).decode()})
             elif key and re.search(r'ATLAS_(SAMPLE|RETRY|PHASE|SPLIT_PRUNE|REPAIR)',line):
                 upstream_events.setdefault(key,[]).append({'kind':'harness observation','actual':line.strip()})
-    traces = {path.name: path for path in raw.rglob('*.jsonl.gz') if path.parent.name=='test-traces'}
     executions = []
     gaps = []
     for xml in sorted(raw.rglob('TEST-*.xml')):
@@ -129,7 +128,7 @@ def main():
             body = f'<p><a href="index.html">All cases</a> · <b>{status}</b> · {esc(row["job"])} · {esc(cls)}</p>'
             body += f'<h2>Objective</h2><p>{esc(objective)}</p><h2>Expected outcome</h2><p>{esc(expected)}</p>'
             body += '<h2>Sample data and operation</h2><p>The fixture below is the executed test source. Prices are integer cents: 500 = $5.00, 600 = $6.00. “churned=true” includes churned customers. UUIDs identify a subject, operation or concurrency guard; they are not prices or dates. Generated cases use seeds/loops shown here; actual operands appear below.</p>'
-            body += f'<pre>{esc(snippet)}</pre>'
+            body += f'<details><summary>Show executable sample data and operations</summary><pre>{esc(snippet)}</pre></details>'
             if source_link: body += f'<p><a href="{esc(source_link)}">Complete fixture source, including helpers</a></p>'
             body += '<h2>Change as DML / operation trace</h2><p>CQL request events show the actual statement template and positional parameters passed to Cassandra. Model cases execute Java operations above and have no executed DML. Child-JVM operations are in the preserved protocol histories; their CQL is not attributed to the parent test unless captured there.</p>'
             body += '<h2>Expected output and actual output</h2><p>Values below were evaluated during execution. PASS/FAIL on an assertion means the JUnit comparison returned/threw; a failed comparison can be intentionally caught by a negative-control test. The case outcome comes from JUnit XML. Boolean checks report the evaluated predicate; see the source location for its meaning.</p>'
