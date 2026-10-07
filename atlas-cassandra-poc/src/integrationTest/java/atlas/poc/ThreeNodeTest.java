@@ -1,0 +1,142 @@
+package atlas.poc;
+
+import org.junit.jupiter.api.*;
+import java.nio.file.*;
+import java.time.*;
+import java.util.*;
+import java.util.concurrent.*;
+import static atlas.poc.Protocol.*;
+import static atlas.poc.TraceAssertions.*;
+
+@Tag("three")
+class ThreeNodeTest {
+    private final Path history = Path.of("build","evidence","three-history.jsonl");
+    private synchronized void record(String event,Object detail) throws Exception {
+        Files.createDirectories(history.getParent());
+        String escaped = detail.toString().replace("\\","\\\\").replace("\"","\\\"").replace("\n","\\n").replace("\r","\\r");
+        Files.writeString(history,"{\"time\":\""+Instant.now()+"\",\"event\":\""+event+"\",\"detail\":\""+escaped+"\"}\n",StandardOpenOption.CREATE,StandardOpenOption.APPEND);
+    }
+    private Store connect(UUID subject,int dc) {
+        return new CassandraStore(subject,"127.0.0.1",9042+(dc-1)*100,"dc"+dc,"three",Duration.ofSeconds(20));
+    }
+    private Receipt edit(Store store,int cents) throws Exception {
+        Request request = new Request(UUID.randomUUID(),store.read().token(),new Intent(cents,true));
+        record("invoke",request);
+        for(int attempt=1;attempt<=3;attempt++) {
+            try {
+                Receipt receipt=store.commit(request);
+                assertEquals(request.operation(),receipt.operation());
+                assertEquals(request.hash(),receipt.requestHash());
+                record("ack",receipt); return receipt;
+            } catch(Indeterminate ambiguity) {
+                record("majority-indeterminate",request.operation()+" attempt="+attempt+" cause="+ambiguity.getMessage());
+                if(attempt==3) throw ambiguity;
+                // Recovery keeps the exact request: a timeout is not evidence of rollback.
+            }
+        }
+        throw new AssertionError("unreachable");
+    }
+    private String command(String... args) throws Exception {
+        record("fault-command",Arrays.toString(args));
+        Process p = new ProcessBuilder(args).redirectErrorStream(true).start();
+        try (var pool=Executors.newVirtualThreadPerTaskExecutor()) {
+            var output=pool.submit(() -> new String(p.getInputStream().readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));
+            if (!p.waitFor(330,TimeUnit.SECONDS)) { p.destroyForcibly(); fail("command timeout"); }
+            String text=output.get(10,TimeUnit.SECONDS);
+            record("command-output",text);
+            assertEquals(0,p.exitValue(),Arrays.toString(args));
+            return text;
+        }
+    }
+    private void compose(String... args) throws Exception {
+        var list=new ArrayList<>(List.of("docker","compose","-f","compose.three.yaml"));
+        list.addAll(List.of(args)); command(list.toArray(String[]::new));
+    }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Keep offer editing coherent during a DC partition
+     * Boundary: Isolate one of three logical DCs while clients continue to reach it
+     * Expected: The majority makes progress, the minority cannot claim acceptance, and state is coherent after healing.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-053 | Keep offer editing coherent during a DC partition")
+    // END ATLAS SCENARIO
+    @Test @Tag("Partition") void majorityProgressMinorityRejectionAndHeal() throws Exception {
+        UUID subject=UUID.randomUUID();
+        try (Store minority=connect(subject,1); Store majority=connect(subject,2)) {
+            Head before=minority.read();
+            Request rejected=new Request(UUID.randomUUID(),before.token(),new Intent(900,true));
+            try {
+                command("bash","scripts/three.sh","partition");
+                Receipt accepted=edit(majority,600);
+                record("minority-invoke",rejected);
+                assertThrows(Indeterminate.class,()->minority.commit(rejected));
+                record("minority-indeterminate",rejected.operation());
+                assertEquals(accepted.token(),majority.read().token());
+                command("bash","scripts/three.sh","counters");
+            } finally { command("bash","scripts/three.sh","heal"); }
+            assertEquals(new Intent(600,true),minority.read().intent());
+            assertThrows(Conflict.class,()->minority.commit(rejected));
+            record("partition-pass",subject);
+        }
+    }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Resolve an uncertain edit after its coordinator dies
+     * Boundary: Witness a batch send, kill that coordinator and recover through another DC
+     * Expected: Resolve the same operation and preserve its original receipt; the internal Paxos phase is not identified.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-054 | Resolve an uncertain edit after its coordinator dies")
+    // END ATLAS SCENARIO
+    @Test @Tag("CoordinatorCrash") void killAfterObservedBatchSendThenResolveOnOtherDc() throws Exception {
+        UUID subject=UUID.randomUUID();
+        try (Store survivor=connect(subject,2); FrameProxy proxy=new FrameProxy();
+             Store origin=new CassandraStore(subject,"127.0.0.1",proxy.port(),"dc1","three",Duration.ofSeconds(10));
+             var pool=Executors.newVirtualThreadPerTaskExecutor()) {
+            Request request=new Request(UUID.randomUUID(),origin.read().token(),new Intent(650,true));
+            record("crash-invoke",request);
+            proxy.arm(FrameProxy.Fault.AFTER_SEND);
+            var pending=pool.submit(()->assertThrows(Indeterminate.class,()->origin.commit(request)));
+            assertTrue(proxy.injected.await(20,TimeUnit.SECONDS),"must observe actual batch send");
+            try {
+                VerifiedKill.kill(List.of("docker","compose","-f","compose.three.yaml"),"dc1");
+                pending.get(30,TimeUnit.SECONDS);
+                Receipt resolved=survivor.commit(request); record("resolved",resolved);
+                edit(survivor,700);
+                assertEquals(resolved,survivor.commit(request));
+            } finally { compose("up","-d","--wait","--wait-timeout","300","dc1"); }
+            record("crash-pass",subject);
+        }
+    }
+    // BEGIN ATLAS SCENARIO
+    /**
+     * Goal: Bring a rejoined replica back to the accepted offer state
+     * Boundary: Keep a replica away during edits, rejoin it and run full repair alongside authoring activity
+     * Expected: The repaired local replica reaches the final token; exact server-phase overlap remains unproven.
+     */
+    @org.junit.jupiter.api.DisplayName("AT-055 | Bring a rejoined replica back to the accepted offer state")
+    // END ATLAS SCENARIO
+    @Test @Tag("Repair") void repairRejoinedReplicaWhileAuthoringContinues() throws Exception {
+        UUID subject=UUID.randomUUID();
+        try (Store writer=connect(subject,2)) {
+            Receipt finalReceipt;
+            try {
+                VerifiedKill.kill(List.of("docker","compose","-f","compose.three.yaml"),"dc1");
+                for(int i=0;i<5;i++) edit(writer,700+i);
+                compose("up","-d","--wait","--wait-timeout","300","dc1");
+                try(var pool=Executors.newVirtualThreadPerTaskExecutor()) {
+                    var repair=pool.submit(()->{ compose("exec","-T","dc1","nodetool","repair","-full","atlas_poc"); return true; });
+                    finalReceipt=edit(writer,800);
+                    for(int i=1;i<6;i++) finalReceipt=edit(writer,800+i);
+                    assertTrue(repair.get(300,TimeUnit.SECONDS));
+                }
+                // A final repair gives a definite convergence point after concurrent traffic.
+                compose("exec","-T","dc1","nodetool","repair","-full","atlas_poc");
+                String cql="SELECT commit_token,cents FROM atlas_poc.subject WHERE subject="+subject+" AND row='HEAD';";
+                String output=command("docker","compose","-f","compose.three.yaml","exec","-T","dc1","cqlsh","-e","CONSISTENCY LOCAL_ONE; "+cql);
+                record("repaired-local-read",output);
+                assertTrue(output.contains(finalReceipt.token().toString()),"LOCAL_ONE on RF1/DC verifies repaired replica itself");
+                record("repair-pass",subject);
+            } finally { compose("up","-d","--wait","--wait-timeout","300","dc1"); }
+        }
+    }
+}

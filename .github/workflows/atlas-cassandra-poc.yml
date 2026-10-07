@@ -1,0 +1,198 @@
+name: Atlas Cassandra POC
+on:
+  push:
+    paths: ['atlas-cassandra-poc/**', '.github/workflows/atlas-cassandra-poc.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  shallow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: atlas-cassandra-poc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+      - run: make check-test-descriptions
+      - run: make grade-model
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-shallow-evidence
+          path: |
+            atlas-cassandra-poc/build/reports/
+            atlas-cassandra-poc/build/test-results/
+            atlas-cassandra-poc/build/evidence/
+  maintainer:
+    needs: shallow
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: atlas-cassandra-poc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        id: upstream-java
+        with:
+          distribution: temurin
+          java-version: '11'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+      - name: Install upstream build tools
+        run: sudo apt-get update && sudo apt-get install -y ant ant-optional
+      - run: make grade-maintainer
+        env:
+          CASSANDRA_MAINTAINER_JAVA_HOME: ${{ steps.upstream-java.outputs.path }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-maintainer-evidence
+          path: atlas-cassandra-poc/build/evidence/maintainer/
+  grade:
+    needs: shallow
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: atlas-cassandra-poc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+      - run: make build
+      - run: make up
+      - run: make grade
+      - name: Cassandra diagnostics
+        if: always()
+        run: docker compose logs --no-color > build/cassandra.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-poc-evidence
+          path: |
+            atlas-cassandra-poc/build/reports/
+            atlas-cassandra-poc/build/test-results/
+            atlas-cassandra-poc/build/cassandra.log
+            atlas-cassandra-poc/build/evidence/
+      - run: make down
+        if: always()
+  three-node:
+    needs: shallow
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: atlas-cassandra-poc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+      - run: make three-up
+      - run: make grade-fault-witness
+      - run: make grade-partition
+      - run: make grade-coordinator-crash
+      - run: make grade-repair
+      - run: make grade-history
+      - run: make grade-retention
+      - run: make grade-archive
+      - run: python3 scripts/audit-archive-phases.py build/evidence/archive-phase-three
+      - name: Collect three-node evidence
+        if: always()
+        run: |
+          mkdir -p build/evidence
+          docker compose -f compose.three.yaml logs --no-color > build/evidence/three-cassandra.log
+          docker stats --no-stream > build/evidence/resources.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-three-node-evidence
+          path: |
+            atlas-cassandra-poc/build/reports/
+            atlas-cassandra-poc/build/test-results/
+            atlas-cassandra-poc/build/evidence/
+      - run: make three-down
+        if: always()
+
+  recovery-phase:
+    needs: shallow
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: atlas-cassandra-poc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.1.0'
+      - run: make up
+      - run: make grade-recovery-phase
+      - run: python3 scripts/audit-archive-phases.py build/evidence/archive-phase-single
+      - name: Recovery phase diagnostics
+        if: always()
+        run: |
+          mkdir -p build/evidence
+          docker compose logs --no-color > build/evidence/phase-cassandra.log
+          docker stats --no-stream > build/evidence/phase-resources.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-recovery-phase-evidence
+          path: |
+            atlas-cassandra-poc/build/reports/
+            atlas-cassandra-poc/build/test-results/
+            atlas-cassandra-poc/build/evidence/
+      - run: make down
+        if: always()
+
+  report:
+    if: always()
+    needs: [shallow, maintainer, grade, three-node, recovery-phase]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: atlas-*-evidence
+          path: collected-evidence
+      - name: Consolidate objectives, DML and expected/actual traces
+        env:
+          ATLAS_JOB_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 atlas-cassandra-poc/scripts/test-report.py collected-evidence final-report \
+            --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --commit "${{ github.sha }}" --job-results "$ATLAS_JOB_RESULTS" --require-traces
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-final-test-report
+          path: final-report/
