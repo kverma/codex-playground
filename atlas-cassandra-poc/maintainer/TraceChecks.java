@@ -8,8 +8,11 @@ import org.junit.Assert;
 public final class TraceChecks extends Assert {
     private static String encode(Object value) { return Base64.getEncoder().encodeToString(String.valueOf(value).getBytes(StandardCharsets.UTF_8)); }
     private static void check(String operation,Object expected,Object actual,Runnable compare) {
-        System.out.println("ATLAS_CHECK operation="+operation+" expected="+encode(expected)+" actual="+encode(actual));
+        observed(operation,expected,actual);
         compare.run();
+    }
+    public static void observed(String operation,Object expected,Object actual) {
+        System.out.println("ATLAS_CHECK operation="+operation+" expected="+encode(expected)+" actual="+encode(actual));
     }
     public static void assertEquals(Object expected,Object actual) { check("assertEquals",expected,actual,()->Assert.assertEquals(expected,actual)); }
     public static void assertEquals(String message,Object expected,Object actual) { check("assertEquals",expected,actual,()->Assert.assertEquals(message,expected,actual)); }

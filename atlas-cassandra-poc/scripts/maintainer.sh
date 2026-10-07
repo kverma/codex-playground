@@ -49,6 +49,10 @@ for name in ('CASTest','CasWriteTest','AtlasBatchPhaseTest'):
     text=p.read_text()
     text=text.replace('import static org.junit.Assert.', 'import static org.apache.cassandra.distributed.test.TraceChecks.')
     text=re.sub(r'(?<![.\w])Assert\.', 'TraceChecks.',text)
+    if name=='CasWriteTest':
+        before='return item.getClass().getCanonicalName().equals(CasWriteTimeoutException.class.getCanonicalName());'
+        assert text.count(before)==1
+        text=text.replace(before,'TraceChecks.observed("expected exception matcher", CasWriteTimeoutException.class.getCanonicalName(), item.getClass().getCanonicalName()+": "+item);\n                '+before)
     text=re.sub(r'(?<![.\w])assertRows\(', 'TraceRows.assertRows(',text)
     text=re.sub(r'(public void (\w+)\([^)]*\)[^{]*\{)',lambda m:m[1]+('\n        System.out.println("ATLAS_CASE '+name+'.'+m[2]+'");' if m[2] in selected else ''),text)
     p.write_text(text)

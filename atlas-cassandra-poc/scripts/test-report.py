@@ -80,6 +80,8 @@ def main():
                     upstream_events.setdefault(key,[]).append({'kind':'harness comparison','expected':base64.b64decode(m[1]).decode(), 'actual':base64.b64decode(m[2]).decode()})
             elif key and re.search(r'ATLAS_(SAMPLE|RETRY|PHASE|SPLIT_PRUNE|REPAIR)',line):
                 upstream_events.setdefault(key,[]).append({'kind':'harness observation','actual':line.strip()})
+            elif key and 'Generated query:' in line:
+                upstream_events.setdefault(key,[]).append({'kind':'generated CQL','actual':line.split('Generated query:',1)[1].strip()})
     executions = []
     gaps = []
     for xml in sorted(raw.rglob('TEST-*.xml')):
