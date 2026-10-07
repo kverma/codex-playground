@@ -3,7 +3,7 @@ import org.junit.jupiter.api.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import static atlas.poc.ArchiveRecovery.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 @Tag("fault")
 class ArchiveCassandraFaultTest {
     // BEGIN ATLAS SCENARIO

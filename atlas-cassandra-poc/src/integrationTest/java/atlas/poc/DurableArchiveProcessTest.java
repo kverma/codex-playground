@@ -9,7 +9,7 @@ import static atlas.poc.Retention.*;
 import static atlas.poc.DraftProcessClient.*;
 import static atlas.poc.DurableArchiveServer.*;
 import static atlas.poc.Transactions.Group.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 class DurableArchiveProcessTest {
     final class Harness implements AutoCloseable {

@@ -6,7 +6,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import static atlas.poc.Transactions.*;
 import atlas.poc.Transactions.Error;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 /** Seeds reproduce generated requests; saved invocation/response intervals reproduce the observed schedule. */
 public final class HistoryWorkload {

@@ -7,7 +7,7 @@ import java.util.*;
 import static atlas.poc.ArchiveRecovery.*;
 import static atlas.poc.ArchiveRecoveryChecker.Verdict.*;
 import static atlas.poc.Transactions.Group.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 class ArchiveRecoveryTest {
     static Command command(Kind kind,long n) { return new Command(kind,n,null,null,Mode.NORMAL,true); }

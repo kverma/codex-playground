@@ -2,7 +2,7 @@ package atlas.poc;
 import org.junit.jupiter.api.*;
 import java.nio.file.*;
 import java.util.concurrent.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 @Tag("three") @Tag("FaultWitness")
 class FaultWitnessTest {
     // BEGIN ATLAS SCENARIO

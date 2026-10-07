@@ -16,11 +16,20 @@ public final class PocPolicy {
     }
     public static ResultSet execute(CqlSession session,SimpleStatement statement,boolean mutation,String expectedDc) {
         validate(statement,mutation);
-        ResultSet result=session.execute(statement);
+        TestTrace.event("cql-request","query",statement.getQuery(),"parameters",statement.getPositionalValues(),
+            "regular",statement.getConsistencyLevel(),"serial",statement.getSerialConsistencyLevel(),"mutation",mutation);
+        ResultSet result;
+        try { result=session.execute(statement); }
+        catch(RuntimeException e) {
+            TestTrace.event("cql-exception","query",statement.getQuery(),"actual",e.toString(),
+                "interpretation","Exception observed; a timeout does not establish whether the mutation applied.");
+            throw e;
+        }
         var coordinator=result.getExecutionInfo().getCoordinator();
         String actual=coordinator==null?null:coordinator.getDatacenter();
         if(!expectedDc.equals(actual)) throw new IllegalStateException("Wrong coordinator DC: expected "+expectedDc+", actual "+actual);
         record(mutation,actual,statement);
+        TestTrace.event("cql-response","query",statement.getQuery(),"dc",actual,"actual","Driver returned; row/state values are recorded by the assertions and protocol histories.");
         return result;
     }
     private static synchronized void record(boolean mutation,String dc,SimpleStatement statement) {

@@ -52,6 +52,7 @@ public class AtlasBatchPhaseTest extends TestBaseImpl {
         try(Cluster c=cluster()) {
             for(int index=0;index<PHASES.length;index++) {
                 Batch batch=setup(c,prune,index+1);Verb phase=PHASES[index];boolean response=phase.name().endsWith("RSP");
+                System.out.println("ATLAS_SAMPLE before="+Arrays.deepToString(batch.before)+" DML="+batch.mutation+" expected="+Arrays.deepToString(batch.after));
                 AtomicInteger hits=new AtomicInteger();
                 var builder=c.filters().verbs(phase.id);
                 if(response)builder.from(2,3).to(1);else builder.from(1).to(2,3);
@@ -67,6 +68,7 @@ public class AtlasBatchPhaseTest extends TestBaseImpl {
                 assertTrue("no partial HEAD/receipt or floor/delete state: "+Arrays.deepToString(resolved),whole(batch,resolved));
                 for(int peer=1;peer<=3;peer++)assertTrue(Arrays.deepEquals(resolved,c.coordinator(peer).execute(batch.select,ConsistencyLevel.SERIAL)));
                 Object[][] retried=c.coordinator(3).execute(batch.mutation,ConsistencyLevel.QUORUM);
+                System.out.println("ATLAS_RETRY actual="+Arrays.deepToString(retried));
                 assertEquals(Arrays.deepEquals(resolved,batch.before),retried[0][0]);
                 for(int peer=1;peer<=3;peer++)assertTrue(Arrays.deepEquals(batch.after,c.coordinator(peer).execute(batch.select,ConsistencyLevel.SERIAL)));
                 System.out.println("ATLAS_PHASE kind="+(prune?"floor-delete":"head-receipt")+" phase="+phase+" hits="+hits.get()+" error="+failure+" resolved="+Arrays.deepToString(resolved)+" final="+Arrays.deepToString(batch.after));

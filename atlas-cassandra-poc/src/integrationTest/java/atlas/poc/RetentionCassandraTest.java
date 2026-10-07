@@ -3,7 +3,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import static atlas.poc.Transactions.*;
 import static atlas.poc.Retention.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 class RetentionCassandraTest extends RetentionContract {
     protected Retention.Store open(UUID subject,RetentionClock clock) {
         return new RetentionCassandraStore(subject,KEY,clock,"127.0.0.1",9042,"dc1","single");

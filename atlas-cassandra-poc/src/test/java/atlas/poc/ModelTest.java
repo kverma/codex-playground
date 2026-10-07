@@ -3,7 +3,7 @@ package atlas.poc;
 import org.junit.jupiter.api.Test;
 import java.util.*;
 import static atlas.poc.Protocol.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 class ModelTest extends Contract {
     protected Store open() { return new Model(); }

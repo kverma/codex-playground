@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
 import static atlas.poc.ArchiveFenceModel.*;
 import static atlas.poc.PersistentArchiveRecovery.*;
 import static atlas.poc.DraftProcessClient.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 @Tag("phase")
 class ArchivePhaseProcessTest {

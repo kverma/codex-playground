@@ -6,7 +6,7 @@ import java.nio.file.*;
 import java.util.*;
 import static atlas.poc.RecoveryFenceModel.*;
 import static atlas.poc.RecoveryFenceChecker.Verdict.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 class RecoveryFenceTest {
     record Evidence(int schedule,Broken broken,boolean triggered,List<Frame> frames,RecoveryFenceChecker.Result result) {}

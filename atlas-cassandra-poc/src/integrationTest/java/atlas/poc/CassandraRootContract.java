@@ -5,7 +5,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
 import static atlas.poc.DraftProcessClient.save;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 abstract class CassandraRootContract {
     abstract CassandraRootAuthority open(UUID subject,boolean peer);

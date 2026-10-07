@@ -2,7 +2,7 @@ package atlas.poc;
 import com.datastax.oss.driver.api.core.*;
 import com.datastax.oss.driver.api.core.cql.*;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 class PocPolicyTest {
     // BEGIN ATLAS SCENARIO
     /**

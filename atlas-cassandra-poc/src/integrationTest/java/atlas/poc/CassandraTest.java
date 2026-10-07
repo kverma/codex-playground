@@ -3,7 +3,7 @@ package atlas.poc;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import static atlas.poc.Protocol.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 class CassandraTest extends Contract {
     protected Store open() { return new CassandraStore(UUID.randomUUID()); }

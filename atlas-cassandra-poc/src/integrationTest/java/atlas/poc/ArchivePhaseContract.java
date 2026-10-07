@@ -8,7 +8,7 @@ import java.util.concurrent.*;
 import static atlas.poc.ArchiveFenceModel.*;
 import static atlas.poc.PersistentArchiveRecovery.*;
 import static atlas.poc.DraftProcessClient.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 abstract class ArchivePhaseContract {
     abstract boolean three();

@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import static atlas.poc.ArchiveFenceModel.*;
 import static atlas.poc.ArchiveFenceChecker.Verdict.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 class ArchiveFenceTest {
     static final List<Step> RECOVERY=List.of(Step.START,Step.FREEZE,Step.COPY,Step.VERIFY,Step.CERTIFY,Step.PRUNE,Step.INSTALL,Step.ACTIVATE);

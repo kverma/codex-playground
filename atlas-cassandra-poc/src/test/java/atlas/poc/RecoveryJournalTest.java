@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.*;
 import java.util.*;
 import static atlas.poc.RecoveryJournal.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 class RecoveryJournalTest {
     record Trace(State genesis,List<Event> events,Check result) {}

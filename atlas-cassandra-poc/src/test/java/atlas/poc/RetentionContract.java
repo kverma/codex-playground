@@ -6,7 +6,7 @@ import java.util.concurrent.*;
 import static atlas.poc.Retention.*;
 import atlas.poc.Retention.Store;
 import static atlas.poc.Transactions.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 public abstract class RetentionContract {
     // Synthetic fixture key only. Production secret provisioning/rotation is out of scope.

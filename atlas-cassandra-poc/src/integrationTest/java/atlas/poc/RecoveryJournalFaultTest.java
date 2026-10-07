@@ -10,7 +10,7 @@ import static atlas.poc.RecoveryJournal.*;
 import static atlas.poc.RecoveryJournalTest.*;
 import static atlas.poc.DraftProcessClient.JSON;
 import static atlas.poc.DraftProcessClient.save;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 @Tag("fault")
 class RecoveryJournalFaultTest {

@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.*;
 import java.util.*;
 import static atlas.poc.Transactions.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 class HistoryCheckerTest {
     // BEGIN ATLAS SCENARIO

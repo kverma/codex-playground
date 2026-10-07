@@ -3,7 +3,7 @@ import java.util.*;
 import java.nio.file.*;
 import java.util.concurrent.TimeUnit;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 final class VerifiedKill {
     private VerifiedKill() {}
     static void kill(List<String> compose,String service) throws Exception {

@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.*;
 import org.junit.jupiter.api.Test;
 import static atlas.poc.Retention.*;
 import static atlas.poc.Transactions.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 class RetentionModelTest extends RetentionContract {
     protected Retention.Store open(UUID subject,RetentionClock clock) { return new Retention.Model(subject,KEY,clock); }
     // BEGIN ATLAS SCENARIO

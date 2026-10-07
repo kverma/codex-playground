@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import static atlas.poc.Retention.*;
 import static atlas.poc.Transactions.*;
 import static atlas.poc.HistoryChecker.Verdict.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 /** Controlled-clock histories; each clock advance occurs after the preceding calls join and exact recovery completes. */
 public final class RetentionWorkload {

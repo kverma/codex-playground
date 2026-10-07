@@ -6,7 +6,7 @@ import java.nio.file.*;
 import java.util.*;
 import static atlas.poc.ArchiveRecovery.*;
 import static atlas.poc.Transactions.Group.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 /** Same archive scenarios run against one-node and cross-coordinator Cassandra fixtures. */
 abstract class ArchiveCassandraContract {

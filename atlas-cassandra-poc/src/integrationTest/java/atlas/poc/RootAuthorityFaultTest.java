@@ -7,7 +7,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import static atlas.poc.DraftProcessClient.*;
 import static atlas.poc.DurableArchiveServer.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 @Tag("fault")
 class RootAuthorityFaultTest {

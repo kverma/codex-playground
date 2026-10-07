@@ -6,7 +6,7 @@ import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
 import static atlas.poc.Protocol.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 @Tag("three")
 class ThreeNodeTest {

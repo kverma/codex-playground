@@ -5,7 +5,7 @@ import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.*;
 import static atlas.poc.Protocol.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 @Tag("fault")
 class FaultTest {

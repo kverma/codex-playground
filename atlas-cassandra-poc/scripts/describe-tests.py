@@ -57,14 +57,15 @@ business effective-date fields and downstream notifications are not implemented.
 | `make grade-cassandra` | Real Cassandra4.0.5, including the new archive fixture; shared contracts also run in the model | Multi-DC availability or a production archive service |
 | `make grade-faults` | Actual batch-frame faults and verified process kills; archive-before-prune process recovery | Power loss, disk fsync guarantees or all internal Paxos phases |
 | Three-node graders, including `make grade-archive` | Real coordinators in three logical DCs on one hosted runner | Independent-host/WAN failures, RF3/DC or global restoration fencing |
-| `make grade-maintainer` | Sixteen selected upstream Cassandra phase tests, with a separate JDK11/Ant build | Atlas-specific archive or commercial workflows |
+| `make grade-maintainer` | Sixteen upstream Cassandra phase tests and four Atlas batch/repair overlays, in a separate JDK11/Ant build | Production adapter or remote archive qualification |
+| `make grade-recovery-phase` | Persistent recovery phases, actor races, new-JVM and wire cuts | Independent-host durability or a production archive backend |
 | `make grade-full-ha` | Separate nine-node scaffold | No qualified execution evidence yet |
 
 The archive Cassandra fixture uses real HEAD and slot rows, a conditional batch,
 and stale-guard rejection. The signed-client extension adds persisted client
 identities; the durable-server extension adds a local filesystem checkpoint and
 real server-process exits. Other archive tests retain in-memory external facts.
-All orchestration remains serial. Restore replaces logical hot rows, not SSTables
+Persistent recovery tests also overlap actors and maintenance operations. Restore replaces logical hot rows, not SSTables
 or a whole database backup. Independent remote authority/archive services, arbitrary
 old deployments and a cross-DC recovery barrier remain open.
 

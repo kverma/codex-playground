@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import java.util.UUID;
 import java.util.concurrent.*;
 import static atlas.poc.Protocol.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 public abstract class Contract {
     protected abstract Store open();

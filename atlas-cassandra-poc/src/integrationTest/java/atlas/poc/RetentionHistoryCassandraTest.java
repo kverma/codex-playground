@@ -6,7 +6,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import static atlas.poc.Retention.*;
 import static atlas.poc.Transactions.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 @Tag("three") @Tag("Retention")
 class RetentionHistoryCassandraTest {

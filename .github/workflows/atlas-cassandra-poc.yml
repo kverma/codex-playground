@@ -172,3 +172,27 @@ jobs:
             atlas-cassandra-poc/build/evidence/
       - run: make down
         if: always()
+
+  report:
+    if: always()
+    needs: [shallow, maintainer, grade, three-node, recovery-phase]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: atlas-*-evidence
+          path: collected-evidence
+      - name: Consolidate objectives, DML and expected/actual traces
+        env:
+          ATLAS_JOB_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 atlas-cassandra-poc/scripts/test-report.py collected-evidence final-report \
+            --run-url "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --commit "${{ github.sha }}" --job-results "$ATLAS_JOB_RESULTS" --require-traces
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: atlas-final-test-report
+          path: final-report/

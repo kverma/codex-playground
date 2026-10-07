@@ -5,7 +5,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import static atlas.poc.Protocol.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 /** Linux Docker host with nine healthy nodes; never included in the single-node grade. */
 @Tag("fullHa")

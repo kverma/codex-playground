@@ -2,7 +2,7 @@ package atlas.poc;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import static atlas.poc.Transactions.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 /** Fixed spec vectors avoid a hash/codec implementation validating itself. */
 class CanonicalVectorsTest {
     // BEGIN ATLAS SCENARIO

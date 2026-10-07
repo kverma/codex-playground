@@ -6,6 +6,8 @@ RevealSwift is a separate project and is not a dependency.
 Start with the [plain-language test scenarios](docs/test-scenarios.md): each test
 explains its Atlas goal, simulated boundary and required outcome. Scenario IDs and
 readable descriptions also appear in test reports and source comments.
+The [consolidated evidence report](docs/test-evidence-report.md) adds sample data,
+executed DML, expected/actual values and all raw traces to each Actions run.
 The separate [maintainer-test guide](docs/upstream-test-scenarios.md) explains all
 16 pinned upstream checks and four Atlas-authored batch/repair overlay cases.
 

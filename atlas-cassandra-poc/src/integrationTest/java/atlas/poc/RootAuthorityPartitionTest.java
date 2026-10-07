@@ -7,7 +7,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
 import static atlas.poc.DraftProcessClient.save;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 @Tag("three") @Tag("Archive")
 class RootAuthorityPartitionTest {

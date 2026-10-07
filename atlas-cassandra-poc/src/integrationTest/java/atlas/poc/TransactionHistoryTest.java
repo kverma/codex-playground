@@ -5,7 +5,7 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
 import static atlas.poc.Transactions.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 @Tag("three") @Tag("History")
 class TransactionHistoryTest {

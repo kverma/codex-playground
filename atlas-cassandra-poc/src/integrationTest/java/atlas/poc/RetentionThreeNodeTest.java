@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import static atlas.poc.Retention.*;
 import static atlas.poc.Transactions.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 @Tag("three") @Tag("Retention")
 class RetentionThreeNodeTest {

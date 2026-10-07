@@ -8,7 +8,7 @@ import static atlas.poc.ArchiveRecovery.*;
 import static atlas.poc.DraftProcessClient.*;
 import static atlas.poc.Retention.*;
 import static atlas.poc.Transactions.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 class DraftProcessArchiveTest {
     private int invocation;

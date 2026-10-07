@@ -7,7 +7,7 @@ import java.util.concurrent.*;
 import static atlas.poc.RecoveryJournal.*;
 import static atlas.poc.RecoveryJournalTest.*;
 import static atlas.poc.DraftProcessClient.save;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 abstract class RecoveryJournalContract {
     record Attempt(Result result,String error) {}

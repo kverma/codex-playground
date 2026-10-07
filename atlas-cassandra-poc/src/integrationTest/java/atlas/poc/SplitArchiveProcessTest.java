@@ -7,7 +7,7 @@ import static atlas.poc.ArchiveRecovery.*;
 import static atlas.poc.Retention.*;
 import static atlas.poc.DraftProcessClient.*;
 import static atlas.poc.DurableArchiveServer.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 class SplitArchiveProcessTest {
     DurableArchiveProcessTest.Harness harness(String name) throws Exception { return new DurableArchiveProcessTest().new Harness(name,true); }

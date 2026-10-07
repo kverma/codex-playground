@@ -5,7 +5,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import static atlas.poc.Transactions.*;
 import atlas.poc.Transactions.Error;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 public abstract class TransactionContract {
     protected abstract Store open();

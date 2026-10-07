@@ -6,7 +6,7 @@ import java.util.*;
 import static atlas.poc.ArchiveRecovery.*;
 import static atlas.poc.Retention.*;
 import static atlas.poc.DraftProcessClient.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 
 class CassandraRootProcessTest {
     // BEGIN ATLAS SCENARIO

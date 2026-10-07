@@ -2,7 +2,7 @@ package atlas.poc;
 import org.junit.jupiter.api.Test;
 import java.util.*;
 import static atlas.poc.Retention.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static atlas.poc.TraceAssertions.*;
 class HealedReadsTest {
     // BEGIN ATLAS SCENARIO
     /**
