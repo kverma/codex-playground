@@ -1,0 +1,35 @@
+name: Oxigraph Agent Memory Bake-off
+on:
+  pull_request:
+    paths:
+      - 'agent-memory-bakeoff/**'
+      - '.github/workflows/agent-memory-bakeoff.yml'
+  push:
+    branches:
+      - 'poc/agent-memory-oxigraph-bakeoff'
+    paths:
+      - 'agent-memory-bakeoff/**'
+      - '.github/workflows/agent-memory-bakeoff.yml'
+  workflow_dispatch:
+jobs:
+  oxigraph-rdflib-parity:
+    name: RDF provenance, temporal and recovery tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install independently versioned engines
+        run: python -m pip install --disable-pip-version-check pyoxigraph==0.5.11 rdflib==7.5.0
+      - name: Execute same SPARQL workloads on real engines
+        working-directory: agent-memory-bakeoff
+        run: python ci_smoke.py
+      - name: Upload machine-readable observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: memory-bakeoff-results
+          path: agent-memory-bakeoff/results/ci-smoke.json
+          if-no-files-found: warn
