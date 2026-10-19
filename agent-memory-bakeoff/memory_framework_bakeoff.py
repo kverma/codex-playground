@@ -26,6 +26,16 @@ CASES=[
  ("failed-procedure","INC-101 increasing consumer concurrency failed","INC-101"),
  ("recurring-pattern","INC-103 backpressure throttle relief partitions","INC-103"),
 ]
+HARD_CASES=[
+ ("cause-paraphrase","Which dependency caused rate limiting and an accumulating Kafka backlog?","INC-101"),
+ ("remedy-paraphrase","Which outage was resolved by reducing throttle pressure without changing retries?","INC-102"),
+ ("playbook-paraphrase","What revised procedure checks the downstream p95 before adding consumer capacity?","OPS-002"),
+ ("historical-owner-no-id","Which engineering team operated this service before the ownership handoff?","OWN-001"),
+ ("current-owner-no-id","Which engineering team assumed responsibility after the mid-October transfer?","OWN-002"),
+ ("failed-action-no-id","Which episode proved increasing concurrency did not resolve the queue lag?","INC-101"),
+ ("last-incident-no-id","Which recent incident demonstrated that adding partitions was unhelpful?","INC-103"),
+ ("untrusted-claim","Which unverified statement contradicts the ownership transfer?","NOTE-001"),
+]
 ID_RE=re.compile(r'^(?:INC|OWN|OPS|NOTE|SEC)-\d{3}')
 def evaluate(case,texts,elapsed_ms):
     name,query,expected=case
@@ -38,8 +48,10 @@ def evaluate(case,texts,elapsed_ms):
                 first_hit_rank=rank,hit_at_5=rank is not None,elapsed_ms=round(elapsed_ms,3))
 def save(engine,results,ingest_ms,extra):
     hits=sum(c['hit_at_5'] for c in results)
+    hard=[c for c in results if c['case'] in {x[0] for x in HARD_CASES}]
     result=dict(engine=engine,mode='real_backend_no_llm',episode_count=len(EPISODES),
-      case_count=len(CASES),hit_at_5=hits,hit_at_5_rate=round(hits/len(CASES),3),
+      case_count=len(CASES)+len(HARD_CASES),hit_at_5=hits,hit_at_5_rate=round(hits/(len(CASES)+len(HARD_CASES)),3),
+      hard_hit_at_5=sum(c['hit_at_5'] for c in hard),hard_case_count=len(hard),
       ingest_ms=round(ingest_ms,3),median_query_ms=round(statistics.median(c['elapsed_ms'] for c in results),3),
       cases=results,**extra)
     Path('results').mkdir(exist_ok=True)
@@ -80,7 +92,7 @@ async def graphiti():
         async def query(text):
             return await agent.search_(text,config=config,group_ids=[group],query_vector=[0.0]*1024)
         results=[]
-        for case in CASES:
+        for case in CASES+HARD_CASES:
             st=time.perf_counter()
             retrieved=await query(case[1])
             results.append(evaluate(case,[e.name+' '+e.content for e in retrieved.episodes],
@@ -102,7 +114,7 @@ def hindsight():
             document_id=key,context='Synthetic incident event',timestamp=ts,retain_async=False)
     ingest=(time.perf_counter()-st)*1000
     results=[]
-    for case in CASES:
+    for case in CASES+HARD_CASES:
         st=time.perf_counter()
         recalled=api.recall(bank_id=bank,query=case[1],max_tokens=4096,budget='mid')
         results.append(evaluate(case,[r.text for r in recalled.results],(time.perf_counter()-st)*1000))
@@ -114,6 +126,6 @@ if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('backend',choices=['hindsight','graphiti'])
     a=p.parse_args()
     result=hindsight() if a.backend=='hindsight' else asyncio.run(graphiti())
-    assert result['case_count']==len(CASES)
+    assert result['case_count']==len(CASES)+len(HARD_CASES)
     assert result.get('restricted_bank_excluded',result.get('restricted_group_excluded'))
     assert result['hit_at_5'] > 0, 'No evidence retrieved: fail the job instead of reporting a false success'
