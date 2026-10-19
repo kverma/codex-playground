@@ -1,13 +1,12 @@
 name: Agent Memory Framework Bake-off (no LLM)
 on:
-  push:
-    branches: [poc/agent-memory-oxigraph-bakeoff]
-    paths: [agent-memory-bakeoff/**, .github/workflows/agent-memory-frameworks.yml]
   pull_request:
     paths: [agent-memory-bakeoff/**, .github/workflows/agent-memory-frameworks.yml]
   workflow_dispatch:
 jobs:
   graphiti:
+    env:
+      MEMORY_DISTRACTORS: '80'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
@@ -36,13 +35,15 @@ jobs:
           path: agent-memory-bakeoff/results/graphiti-no-llm.json
           if-no-files-found: warn
   hindsight:
+    env:
+      MEMORY_DISTRACTORS: '80'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
-      - run: python -m pip install hindsight-client
+      - run: python -m pip install hindsight-client==1.0.0
       - name: Start real Hindsight server, local embeddings, zero-LLM chunks mode
         run: |
           docker run -d --name hindsight -p 8888:8888 -p 9999:9999 \
@@ -52,7 +53,7 @@ jobs:
             -e HINDSIGHT_API_ENABLE_RERANKING=false \
             -e HINDSIGHT_API_EMBEDDINGS_PROVIDER=local \
             -e HINDSIGHT_API_EMBEDDINGS_LOCAL_MODEL=BAAI/bge-small-en-v1.5 \
-            ghcr.io/vectorize-io/hindsight:latest
+            ghcr.io/vectorize-io/hindsight@sha256:a88678c038b0e4340822b02a5efc566c56d8176b5bffa731bc433fd37f978e4c
       - name: Check readiness and report startup errors
         run: |
           ok=0
