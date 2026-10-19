@@ -58,7 +58,7 @@ Promote only after policy, safety and holdout quality gates.
 ## Execution ledger
 
 - Graphiti/Hindsight REAL service evidence-retrieval bake-off: see FRAMEWORK-RESULTS.md and CI artifacts.
-- Harness² deterministic offline smoke: see .github/workflows/agent-memory-harness2-demo.yml when run; tests its mechanics, not retrieval improvement.
+- Harness² deterministic offline smoke: PASSED on 2026-10-19 (official Harness² upstream SHA 1cfe254e8d25b15f37048c3730134686abe60335, both parallel and sequential modes, 2/2 demo tasks, 0 failed, output artifacts). CI: https://github.com/kverma/codex-playground/actions/runs/39297164222 . This validates the official local deterministic demo, not model-backed memory/retrieval improvement.
 - Prime Agent/RLM and full Harness² evaluation with LLMs: NOT YET RUN. No inferred numbers.
 
 ## Sources
