@@ -36,7 +36,16 @@ HARD_CASES=[
  ("last-incident-no-id","Which recent incident demonstrated that adding partitions was unhelpful?","INC-103"),
  ("untrusted-claim","Which unverified statement contradicts the ownership transfer?","NOTE-001"),
 ]
-ID_RE=re.compile(r'^(?:INC|OWN|OPS|NOTE|SEC)-\d{3}')
+for i in range(int(os.getenv('MEMORY_DISTRACTORS','0'))):
+    kind=i % 3
+    if kind == 0:
+        msg=f'SIM-{i:04d}: Kafka Consumer{i+1000} backlog resulted from Billing API HTTP 429 throttling; raising consumer concurrency did not fix it.'
+    elif kind == 1:
+        msg=f'SIM-{i:04d}: Team OtherPlatform{i} owns Consumer{i+1000}; transfer from LegacyService{i} occurred in October 2026.'
+    else:
+        msg=f'SIM-{i:04d}: Operations runbook for Consumer{i+1000} advises checking Billing API p95 and then reducing throttle pressure.'
+    EPISODES.append((f'SIM-{i:04d}','atlas','2026-10-13T10:00:00Z',msg))
+ID_RE=re.compile(r'^(?:(?:INC|OWN|OPS|NOTE|SEC)-\d{3}|SIM-\d{4})')
 def evaluate(case,texts,elapsed_ms):
     name,query,expected=case
     ids=[]
@@ -49,7 +58,7 @@ def evaluate(case,texts,elapsed_ms):
 def save(engine,results,ingest_ms,extra):
     hits=sum(c['hit_at_5'] for c in results)
     hard=[c for c in results if c['case'] in {x[0] for x in HARD_CASES}]
-    result=dict(engine=engine,mode='real_backend_no_llm',episode_count=len(EPISODES),
+    result=dict(engine=engine,mode='real_backend_no_llm',episode_count=len(EPISODES),distractor_count=int(os.getenv('MEMORY_DISTRACTORS','0')),
       case_count=len(CASES)+len(HARD_CASES),hit_at_5=hits,hit_at_5_rate=round(hits/(len(CASES)+len(HARD_CASES)),3),
       hard_hit_at_5=sum(c['hit_at_5'] for c in hard),hard_case_count=len(hard),
       ingest_ms=round(ingest_ms,3),median_query_ms=round(statistics.median(c['elapsed_ms'] for c in results),3),
