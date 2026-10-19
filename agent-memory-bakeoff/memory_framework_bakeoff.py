@@ -48,7 +48,7 @@ def save(engine,results,ingest_ms,extra):
     return result
 async def graphiti():
     from graphiti_core import Graphiti
-    from graphiti_core.driver.falkordb_driver import FalkorDriver
+    from graphiti_core.driver.neo4j_driver import Neo4jDriver
     from graphiti_core.nodes import EpisodicNode,EpisodeType
     from graphiti_core.embedder.client import EmbedderClient
     from graphiti_core.cross_encoder.client import CrossEncoderClient
@@ -60,7 +60,7 @@ async def graphiti():
         async def create_batch(self,input_data_list): return [[0.0]*1024 for _ in input_data_list]
     class OfflineCross(CrossEncoderClient):
         async def rank(self,query,passages): return [(p,0.0) for p in passages]
-    driver=FalkorDriver(host=os.getenv('FALKORDB_HOST','localhost'),port=os.getenv('FALKORDB_PORT','6379'))
+    driver=Neo4jDriver(uri=os.getenv('NEO4J_URI','bolt://localhost:7687'),user=os.getenv('NEO4J_USER','neo4j'),password=os.getenv('NEO4J_PASSWORD','graphiti-password'))
     agent=Graphiti(graph_driver=driver,
         llm_client=OpenAIGenericClient(config=LLMConfig(api_key='unused',model='unused',small_model='unused',base_url='http://127.0.0.1:1/v1')),
         embedder=OfflineEmbed(),cross_encoder=OfflineCross())
@@ -116,3 +116,4 @@ if __name__=='__main__':
     result=hindsight() if a.backend=='hindsight' else asyncio.run(graphiti())
     assert result['case_count']==len(CASES)
     assert result.get('restricted_bank_excluded',result.get('restricted_group_excluded'))
+    assert result['hit_at_5'] > 0, 'No evidence retrieved: fail the job instead of reporting a false success'
