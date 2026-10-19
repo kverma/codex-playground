@@ -34,7 +34,7 @@ async def graphiti_full():
                        password=os.getenv('NEO4J_PASSWORD','graphiti-password'))
     llm=OpenAIGenericClient(config=conf)
     from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
-    g=Graphiti(graph_driver=driver,llm_client=llm,cross_encoder=OpenAIRerankerClient(client=llm,config=conf),
+    g=Graphiti(graph_driver=driver,llm_client=llm,cross_encoder=OpenAIRerankerClient(client=llm.client,config=conf),
       embedder=OpenAIEmbedder(config=OpenAIEmbedderConfig(api_key=embed_key,
         embedding_model=embedding_model,embedding_dim=embed_dim,base_url=embed_base)),
       max_coroutines=2)
