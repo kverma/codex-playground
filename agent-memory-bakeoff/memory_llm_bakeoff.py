@@ -6,7 +6,7 @@ Outputs are NOT comparable to the no-LLM chunk/episode suite.
 """
 import argparse, asyncio, datetime, json, os, time, uuid
 from pathlib import Path
-from memory_framework_bakeoff import EPISODES, CASES, evaluate, save
+from memory_framework_bakeoff import EPISODES, CASES, HARD_CASES, evaluate, save
 
 def credential(name, alternative=None):
     value=os.getenv(name) or (os.getenv(alternative) if alternative else None)
@@ -23,16 +23,18 @@ async def graphiti_full():
     from graphiti_core.search.search_config_recipes import EDGE_HYBRID_SEARCH_RRF
     llm_model=credential('MEMORY_LLM_MODEL')
     key=credential('MEMORY_LLM_API_KEY','OPENAI_API_KEY')
-    base=os.getenv('MEMORY_LLM_BASE_URL','https://api.openai.com/v1')
+    base=os.getenv('MEMORY_LLM_BASE_URL') or 'https://api.openai.com/v1'
     embedding_model=credential('MEMORY_EMBEDDING_MODEL')
     embed_key=os.getenv('MEMORY_EMBEDDING_API_KEY',key)
-    embed_base=os.getenv('MEMORY_EMBEDDING_BASE_URL',base)
+    embed_base=os.getenv('MEMORY_EMBEDDING_BASE_URL') or base
     embed_dim=int(os.getenv('MEMORY_EMBEDDING_DIM','1536'))
     conf=LLMConfig(api_key=key,model=llm_model,small_model=llm_model,base_url=base)
     driver=Neo4jDriver(uri=os.getenv('NEO4J_URI','bolt://localhost:7687'),
                        user=os.getenv('NEO4J_USER','neo4j'),
                        password=os.getenv('NEO4J_PASSWORD','graphiti-password'))
-    g=Graphiti(graph_driver=driver,llm_client=OpenAIGenericClient(config=conf),
+    llm=OpenAIGenericClient(config=conf)
+    from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
+    g=Graphiti(graph_driver=driver,llm_client=llm,cross_encoder=OpenAIRerankerClient(client=llm,config=conf),
       embedder=OpenAIEmbedder(config=OpenAIEmbedderConfig(api_key=embed_key,
         embedding_model=embedding_model,embedding_dim=embed_dim,base_url=embed_base)),
       max_coroutines=2)
@@ -50,7 +52,7 @@ async def graphiti_full():
             source_map[e.episode.uuid]=key
         ingestion=(time.perf_counter()-st)*1000
         cases=[]
-        for case in CASES:
+        for case in CASES+HARD_CASES:
             st=time.perf_counter()
             # These are the ACTUAL LLM-extracted entity facts, not the raw episode BM25 layer.
             edges=await g.search(case[1],group_ids=[group],num_results=10)
@@ -81,7 +83,7 @@ def hindsight_full():
             retain_async=False)
     ingestion=(time.perf_counter()-st)*1000
     cases=[]
-    for case in CASES:
+    for case in CASES+HARD_CASES:
         st=time.perf_counter()
         result=api.recall(bank_id=bank,query=case[1],budget='mid',
                            max_tokens=4096,include_chunks=True,max_chunk_tokens=512)
@@ -106,4 +108,4 @@ if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('backend',choices=['hindsight','graphiti'])
     a=p.parse_args()
     result=hindsight_full() if a.backend=='hindsight' else asyncio.run(graphiti_full())
-    assert result['case_count']==len(CASES)
+    assert result['case_count']==len(CASES)+len(HARD_CASES)
