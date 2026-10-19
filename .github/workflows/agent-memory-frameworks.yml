@@ -50,7 +50,9 @@ jobs:
             -e HINDSIGHT_API_LLM_PROVIDER=openai \
             -e HINDSIGHT_API_LLM_API_KEY=not-used \
             -e HINDSIGHT_API_RETAIN_EXTRACTION_MODE=chunks \
-            -e HINDSIGHT_API_ENABLE_RERANKING=false \
+            -e HINDSIGHT_API_ENABLE_RERANKING=true \
+            -e HINDSIGHT_API_RERANKER_PROVIDER=local \
+            -e HINDSIGHT_API_RERANKER_LOCAL_MODEL=cross-encoder/ms-marco-MiniLM-L-6-v2 \
             -e HINDSIGHT_API_EMBEDDINGS_PROVIDER=local \
             -e HINDSIGHT_API_EMBEDDINGS_LOCAL_MODEL=BAAI/bge-small-en-v1.5 \
             ghcr.io/vectorize-io/hindsight@sha256:a88678c038b0e4340822b02a5efc566c56d8176b5bffa731bc433fd37f978e4c
