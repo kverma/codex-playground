@@ -1,0 +1,96 @@
+name: Agent Memory Full LLM Bake-off (opt-in)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Verify model access is explicitly configured
+        env:
+          MEMORY_LLM_API_KEY: ${{ secrets.MEMORY_LLM_API_KEY }}
+          MEMORY_LLM_MODEL: ${{ vars.MEMORY_LLM_MODEL }}
+          MEMORY_EMBEDDING_MODEL: ${{ vars.MEMORY_EMBEDDING_MODEL }}
+        run: |
+          test -n "$MEMORY_LLM_API_KEY" || { echo "BLOCKED: Set MEMORY_LLM_API_KEY secret"; exit 1; }
+          test -n "$MEMORY_LLM_MODEL" || { echo "BLOCKED: Set MEMORY_LLM_MODEL variable"; exit 1; }
+          test -n "$MEMORY_EMBEDDING_MODEL" || { echo "BLOCKED: Set MEMORY_EMBEDDING_MODEL variable"; exit 1; }
+  graphiti-llm:
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      neo4j:
+        image: neo4j:5.26
+        env:
+          NEO4J_AUTH: neo4j/graphiti-password
+        ports: [7687:7687, 7474:7474]
+        options: >-
+          --health-cmd "cypher-shell -u neo4j -p graphiti-password 'RETURN 1' || exit 1"
+          --health-interval 5s --health-timeout 15s --health-retries 36
+    env:
+      MEMORY_LLM_API_KEY: ${{ secrets.MEMORY_LLM_API_KEY }}
+      MEMORY_LLM_MODEL: ${{ vars.MEMORY_LLM_MODEL }}
+      MEMORY_LLM_BASE_URL: ${{ vars.MEMORY_LLM_BASE_URL }}
+      MEMORY_EMBEDDING_API_KEY: ${{ secrets.MEMORY_EMBEDDING_API_KEY }}
+      MEMORY_EMBEDDING_MODEL: ${{ vars.MEMORY_EMBEDDING_MODEL }}
+      MEMORY_EMBEDDING_BASE_URL: ${{ vars.MEMORY_EMBEDDING_BASE_URL }}
+      MEMORY_EMBEDDING_DIM: ${{ vars.MEMORY_EMBEDDING_DIM || '1536' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install 'graphiti-core==0.31.1' 'httpx>=0.27,<1'
+      - name: Real LLM entity extraction and hybrid edge retrieval
+        working-directory: agent-memory-bakeoff
+        run: python memory_llm_bakeoff.py graphiti
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: graphiti-llm-evidence
+          path: agent-memory-bakeoff/results/graphiti-llm.json
+          if-no-files-found: warn
+  hindsight-llm:
+    needs: preflight
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      MEMORY_LLM_API_KEY: ${{ secrets.MEMORY_LLM_API_KEY }}
+      MEMORY_LLM_MODEL: ${{ vars.MEMORY_LLM_MODEL }}
+      MEMORY_LLM_BASE_URL: ${{ vars.MEMORY_LLM_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install 'hindsight-client==1.0.0'
+      - name: Boot Hindsight with LLM fact extraction and local embedding
+        run: |
+          docker run -d --name hindsight -p 8888:8888 \
+            -e HINDSIGHT_API_LLM_PROVIDER=openai \
+            -e HINDSIGHT_API_LLM_API_KEY="$MEMORY_LLM_API_KEY" \
+            -e HINDSIGHT_API_LLM_MODEL="$MEMORY_LLM_MODEL" \
+            -e HINDSIGHT_API_LLM_BASE_URL="$MEMORY_LLM_BASE_URL" \
+            -e HINDSIGHT_API_RETAIN_EXTRACTION_MODE=concise \
+            -e HINDSIGHT_API_EMBEDDINGS_PROVIDER=local \
+            -e HINDSIGHT_API_EMBEDDINGS_LOCAL_MODEL=BAAI/bge-small-en-v1.5 \
+            ghcr.io/vectorize-io/hindsight@sha256:a88678c038b0e4340822b02a5efc566c56d8176b5bffa731bc433fd37f978e4c
+      - name: Check readiness
+        run: |
+          ok=0
+          for i in $(seq 1 120); do
+            if curl -fsS --max-time 4 http://127.0.0.1:8888/version > /dev/null; then ok=1; break; fi
+            sleep 5
+          done
+          if [ "$ok" != 1 ]; then docker logs --tail 100 hindsight; exit 1; fi
+      - name: Real LLM retain, recall and reflect
+        working-directory: agent-memory-bakeoff
+        run: python memory_llm_bakeoff.py hindsight
+      - if: failure()
+        run: docker logs --tail 100 hindsight || true
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hindsight-llm-reflection
+          path: agent-memory-bakeoff/results/hindsight-llm.json
+          if-no-files-found: warn

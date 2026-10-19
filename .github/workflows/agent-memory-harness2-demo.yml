@@ -1,0 +1,51 @@
+name: Memory Harness² Deterministic Smoke
+on:
+  pull_request:
+    paths:
+      - agent-memory-bakeoff/**
+      - .github/workflows/agent-memory-harness2-demo.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  harness2-no-model:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: google-research/harness2
+          ref: 1cfe254e8d25b15f37048c3730134686abe60335
+          path: upstream
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pin and inspect upstream tree
+        working-directory: upstream
+        run: |
+          git rev-parse HEAD
+          python --version
+      - name: Install published harness2 package in an isolated CI runner
+        working-directory: upstream
+        run: python -m pip install -e '.[render]'
+      - name: Run deterministic Propose Probe Compose demo without models
+        working-directory: upstream
+        run: harness2-demo --output runs/demo --k 2
+      - name: Assert demo recorded at least one artifact
+        working-directory: upstream
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("runs/demo")
+          artifacts=[x for x in p.rglob("*") if x.is_file()]
+          print("Harness2 deterministic demo artifacts:",len(artifacts))
+          for x in artifacts[:20]: print(x, x.stat().st_size)
+          assert artifacts, "No evidence emitted by deterministic harness2 demo"
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harness2-deterministic-demo
+          path: upstream/runs/demo
+          if-no-files-found: warn
