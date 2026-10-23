@@ -31,7 +31,7 @@ Do not run against an existing shared brain: all benchmark writes create synthet
 - A **72-case synthetic** trace: 48 known, 12 corrected/withdrawn, 12 unknown/abstain; p50/p95 recall latency and pass/fail per case.
 - An evaluation report that includes expected and observed facts, plus human-readable test intent.
 - No writes of raw tool output; basic secret guard; independent reviewer plus supporting evidence and regression required for candidate promotion.
-- Real GBrain smoke and full 72-case GBrain run are opt-in. The GitHub Actions fixture gate is always on; GBrain end-to-end smoke runs in an optional job.
+- Real GBrain smoke and full 72-case GBrain run are opt-in. The GitHub Actions fixture gate is always on; GBrain end-to-end smoke and the 72-case real-CLI benchmark run in a separate live job on PR/push (optional for manual dispatch).
 
 ## What it does NOT prove
 

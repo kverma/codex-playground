@@ -32,7 +32,8 @@ jobs:
           name: gbrain-fixture-report
           path: gbrain-poc/reports/fixture.json
   live:
-    name: Keyless GBrain integration smoke (opt-in)
+    name: Keyless GBrain integration + 72-case benchmark
+    timeout-minutes: 30
     if: github.event_name != 'workflow_dispatch' || inputs.run_gbrain
     runs-on: ubuntu-latest
     defaults:
@@ -52,9 +53,10 @@ jobs:
           mkdir -p "$GBRAIN_HOME"
           gbrain init --pglite --no-embedding
           npm run smoke:gbrain -- --out reports/live-smoke.json
+          npm run benchmark -- --gbrain --out reports/live-benchmark.json > /dev/null
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: gbrain-live-smoke-report
-          path: gbrain-poc/reports/live-smoke.json
+          path: gbrain-poc/reports/live-*.json
           if-no-files-found: ignore

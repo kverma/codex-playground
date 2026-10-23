@@ -13,7 +13,7 @@ Demonstrate a memory boundary around Pi Durable without conflating semantic know
 
 ## CI gates
 
-`gbrain-poc.yml` runs fixture tests/benchmark on PR and push. Optional `workflow_dispatch` with `run_gbrain=true` installs Bun + GBrain and executes keyless, isolated smoke. It must report both jobs distinctly: fixture is not evidence that GBrain worked. Workflow output is a fixture artifact; manually triggered live smoke produces a separate receipt.
+`gbrain-poc.yml` runs fixture tests/benchmark on PR and push. The live job installs Bun + GBrain, executes keyless, isolated smoke and the 72-case benchmark on push/PR; manual `workflow_dispatch` can skip it with `run_gbrain=false`. It must report both jobs distinctly: fixture is not evidence that GBrain worked. Workflow output is a fixture artifact; manually triggered live smoke produces a separate receipt.
 
 ## Integration checklist
 
