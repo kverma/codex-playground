@@ -45,7 +45,8 @@ export class OxigraphMemoryBackend implements MemoryBackend {
   private readonly store:RdfStore = new rdf.Store();
   private readonly events:LedgerEvent[]=[];
   private lastEventMs=Number.NEGATIVE_INFINITY;
-  constructor(private readonly clock:()=>string=()=>new Date().toISOString()) {}
+  private readonly clock:()=>string;
+  constructor(clock:()=>string=()=>new Date().toISOString()) { this.clock=clock; }
 
   private nextTime():string {
     const observed=Date.parse(stamp(this.clock()));
