@@ -1,0 +1,13 @@
+{
+  "name": "pi-durable-gbrain-poc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dependency-light, evidence-gated GBrain memory PoC for Pi Durable",
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "benchmark": "node --experimental-strip-types src/cli.ts benchmark",
+    "smoke:gbrain": "node --experimental-strip-types src/cli.ts smoke-gbrain"
+  },
+  "engines": { "node": ">=22.16" }
+}
