@@ -40,4 +40,4 @@ Do not run against an existing shared brain: all benchmark writes create synthet
 - Production tenancy isolation, temporal graph semantics, enterprise auth, robust secret-detection, or crash recovery.
 - Performance on real incidents: **this benchmark corpus is synthetic**.
 
-See `docs/ARCHITECTURE.md`, `docs/HANDOFF.md`, and project-specific `AGENTS.md` for the next integration steps. Never interpret fixture accuracy as GBrain accuracy.
+See `docs/RESULTS.md` (measured GitHub Actions outcomes), `docs/ARCHITECTURE.md`, `docs/HANDOFF.md`, and project-specific `AGENTS.md` for the next integration steps. Never interpret fixture accuracy as GBrain accuracy.
