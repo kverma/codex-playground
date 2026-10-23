@@ -41,3 +41,21 @@ Do not run against an existing shared brain: all benchmark writes create synthet
 - Performance on real incidents: **this benchmark corpus is synthetic**.
 
 See `docs/RESULTS.md` (measured GitHub Actions outcomes), `docs/ARCHITECTURE.md`, `docs/HANDOFF.md`, and project-specific `AGENTS.md` for the next integration steps. Never interpret fixture accuracy as GBrain accuracy.
+
+## FrontierMemory-style continual-learning test (new)
+
+FrontierMemory 1.0 evaluates whether a memory-generation harness improves outcomes on *held-out tasks*, not simple factual recall. This repository adds a separate, **synthetic deterministic transfer test**, not an official FrontierMemory run or proof that an LLM has learned.
+
+```sh
+cd gbrain-poc
+npm install --ignore-scripts  # installs pinned @letta-ai/trajectory 0.4.3
+npm test                     # includes Letta's real Pi JSONL normalizer
+npm run benchmark:transfer   # no-memory vs learned procedures vs oracle; emits report & MEMORY.md
+npm run benchmark:transfer -- --gbrain  # isolated initialized GBrain only
+```
+
+`@letta-ai/trajectory` consumes native Pi SessionManager JSONL, with verifier receipts retained as trusted separately labeled metadata; fake assistant statements of success cannot constitute evidence. The fixtures contain **18 training episodes** (12 verified PASS and 6 FAIL), and **42 held-out** diagnostic-selection probes (30 unseen services using learned procedures, 6 unknown, 6 ambiguous). Train and test resource IDs are disjoint, deterministic SHA-256 digests are included, and the task-solving routine cannot access the `expected` answer. A no-memory control contains two generic fallback rules. Accepted synthetic procedures also export as `reports/portable-memory/MEMORY.md`, adhering to FrontierMemory's plain-text memory format and 8 MiB cap. This export is only a format smoke, **not a FrontierMemory leaderboard submission**.
+
+Promotion here is a simulated evidence gate, not real independent human approval. These are deterministic rules operating on **already classified synthetic signals**; they do not evaluate signal recognition from raw logs, reasoning-model effectiveness, generalization to new systems, or actual Pi Durable execution. A proper next test would pin an approved model/harness, run its real task loop on withheld incidents, and report absolute gains plus cost and failure rates. Official FrontierMemory also requires the gated 674-trajectory corpus, Harbor, model inference, a 15-task suite and three independently verified runs for leaderboard submission; those are deliberately **not claimed** here.
+
+References: https://github.com/letta-ai/frontiermemory and https://github.com/letta-ai/trajectory.

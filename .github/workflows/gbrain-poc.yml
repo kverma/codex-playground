@@ -25,12 +25,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
+      - run: npm install --ignore-scripts
       - run: npm test
+      - run: npm run benchmark:transfer -- --out reports/transfer.json --memory-folder reports/portable-memory
       - run: npm run benchmark -- --out reports/fixture.json > /dev/null
       - uses: actions/upload-artifact@v4
         with:
           name: gbrain-fixture-report
-          path: gbrain-poc/reports/fixture.json
+          path: |
+            gbrain-poc/reports/fixture.json
+            gbrain-poc/reports/transfer.json
+            gbrain-poc/reports/portable-memory/MEMORY.md
   live:
     name: Keyless GBrain integration + 72-case benchmark
     timeout-minutes: 30
@@ -47,6 +52,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - name: Install actual GBrain (not unrelated npm package)
         run: bun install -g github:garrytan/gbrain#latest-stable
+      - run: npm install --ignore-scripts
       - name: Smoke with isolated brain, no provider keys
         run: |
           export GBRAIN_HOME="${RUNNER_TEMP}/gbrain-poc-${GITHUB_RUN_ID}"
@@ -54,6 +60,7 @@ jobs:
           gbrain init --pglite --no-embedding
           npm run smoke:gbrain -- --out reports/live-smoke.json
           npm run benchmark -- --gbrain --out reports/live-benchmark.json > /dev/null
+          npm run benchmark:transfer -- --gbrain --out reports/live-transfer.json --memory-folder reports/live-memory
       - uses: actions/upload-artifact@v4
         if: always()
         with:
