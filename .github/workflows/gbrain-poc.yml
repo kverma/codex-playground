@@ -27,12 +27,14 @@ jobs:
           node-version: '22.16.0'
       - run: npm install --ignore-scripts
       - run: npm test
+      - run: npm run benchmark:compare -- --out reports/graph-comparison.json > /dev/null
       - run: npm run benchmark:transfer -- --out reports/transfer.json --memory-folder reports/portable-memory
       - run: npm run benchmark -- --out reports/fixture.json > /dev/null
       - uses: actions/upload-artifact@v4
         with:
           name: gbrain-fixture-report
           path: |
+            gbrain-poc/reports/graph-comparison.json
             gbrain-poc/reports/fixture.json
             gbrain-poc/reports/transfer.json
             gbrain-poc/reports/portable-memory/MEMORY.md
@@ -59,8 +61,7 @@ jobs:
           mkdir -p "$GBRAIN_HOME"
           gbrain init --pglite --no-embedding
           npm run smoke:gbrain -- --out reports/live-smoke.json
-          npm run benchmark -- --gbrain --out reports/live-benchmark.json > /dev/null
-          npm run benchmark:transfer -- --gbrain --out reports/live-transfer.json --memory-folder reports/live-memory
+          npm run benchmark:compare -- --gbrain --out reports/live-backend-comparison.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

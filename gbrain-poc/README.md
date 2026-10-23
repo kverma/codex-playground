@@ -59,3 +59,17 @@ npm run benchmark:transfer -- --gbrain  # isolated initialized GBrain only
 Promotion here is a simulated evidence gate, not real independent human approval. These are deterministic rules operating on **already classified synthetic signals**; they do not evaluate signal recognition from raw logs, reasoning-model effectiveness, generalization to new systems, or actual Pi Durable execution. A proper next test would pin an approved model/harness, run its real task loop on withheld incidents, and report absolute gains plus cost and failure rates. Official FrontierMemory also requires the gated 674-trajectory corpus, Harbor, model inference, a 15-task suite and three independently verified runs for leaderboard submission; those are deliberately **not claimed** here.
 
 References: https://github.com/letta-ai/frontiermemory and https://github.com/letta-ai/trajectory.
+
+## Oxigraph KG versus GBrain: identical-evidence bake-off
+
+An additional `OxigraphMemoryBackend` uses the real **oxigraph@0.5.11 Rust/WASM RDF engine**, with typed relationship edges, independent valid/knowledge times, correction tombstones, and in-memory ledger export/replay. This is an experimental **in-memory** graph, not enterprise durable storage.
+
+```bash
+npm install --ignore-scripts
+npm test
+npm run benchmark:compare -- --out reports/graph-comparison.json
+# With an isolated initialized GBrain CLI and no provider keys:
+npm run benchmark:compare -- --gbrain --out reports/live-backend-comparison.json
+```
+
+Both backends receive identical 72 entity queries and identical 18 training / 42 held-out synthetic decision cases. The real paired runner enforces identical dataset fingerprints and per-task decisions. Do not compare absolute CLI-vs-WASM latencies or interpret 42/42 as model reasoning. See [docs/GRAPH_BAKEOFF.md](docs/GRAPH_BAKEOFF.md) for the evidence model, temporal tests, implementation limitations, and next-stage criteria.
