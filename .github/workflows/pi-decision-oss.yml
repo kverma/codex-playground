@@ -10,7 +10,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install open-source inference dependencies
-        run: pip install --disable-pip-version-check 'transformers==4.44.2' 'torch>=2.3,<3' 'numpy<2'
+        run: pip install --disable-pip-version-check 'transformers==4.44.2' 'torch>=2.3,<3' 'numpy<2' 'datasets==2.21.0'
       - name: Run real model inference
         run: python experiments/pi-decision-oss/infer.py
       - name: Optimize and evaluate on untouched test partition
