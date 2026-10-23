@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Install open-source inference dependencies
-        run: pip install --disable-pip-version-check 'transformers==4.44.2' 'torch>=2.3,<3' 'numpy<2' 'datasets==2.21.0'
+        run: pip install --disable-pip-version-check 'transformers==4.44.2' 'torch>=2.3,<3' 'numpy>=2,<3' 'datasets==2.21.0' 'pyarrow>=17,<23'
       - name: Run real model inference
         run: python experiments/pi-decision-oss/infer.py
       - name: Optimize and evaluate on untouched test partition
