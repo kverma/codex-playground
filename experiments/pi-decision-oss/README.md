@@ -1,12 +1,9 @@
-# Open-source decision optimizer verification
-This experiment downloads a real, open-source DistilBERT SST-2 classifier on a GitHub-hosted CPU runner, caches probability predictions in JSON, fits a threshold on the training partition, gates promotion on validation F1, and reports an untouched test partition.
+# OSS classifier optimization benchmark (600 real examples)
 
-## Reproduce
-```bash
-pip install 'transformers==4.44.2' 'torch>=2.3,<3' 'numpy<2'
-python experiments/pi-decision-oss/infer.py
-node experiments/pi-decision-oss/optimize.mjs
-```
+GitHub Actions downloads the public GLUE SST-2 validation split and runs 600 distinct sentences through a pretrained DistilBERT SST-2 model on CPU. A fixed seed selects 300 positive and 300 negative examples and divides them into 200 training, 200 validation, and 200 untouched test examples. The optimizer fits a threshold on training, promotes only if validation F1 improves, and reports the untouched test metrics.
 
-## Limitations
-This is an end-to-end **probability calibration smoke test** with a conventional binary classifier, **not** a Jev-compatible structured classifier or an actual Pi integration test. Its 32 manually written examples are small and may not improve from threshold fitting. Results are not evidence of generalization. Future work: real typed decision model, larger independent datasets, Pi adapter contract tests, ReAnchor parity, repeated seeds, uncertainty estimates, and latency.
+The model was trained on the separate SST-2 training split. This is a binary classification calibration experiment, **not** a Pi integration test or Jev-style typed decision model. Because the test is sampled from the same benchmark family used to train the classifier, it is not an out-of-distribution robustness test.
+
+Artifacts: `predictions.json`, `report.json`, `report.md`.
+
+Run via GitHub Actions workflow `Pi decision optimizer OSS verification`.
