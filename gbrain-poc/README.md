@@ -80,7 +80,7 @@ The [Chord integration](docs/CHORD_INTEGRATION.md) uses actual
 `@earendil-works/chord@1.4.0` contracts, RPC principal variants, observable
 routing state, hot-code-reload tests, and GBrain/Oxigraph backends. It deliberately
 switches **read routing only**; there is no transactional write-backend cutover,
-no durable route persistence, and no live Pi Durable checkpoint integration.
+no durable route persistence, and no agent-facing Pi Durable tool integration. A separate SQLite checkpoint close/reopen/resume test verifies task state is unaffected by routing.
 
 ```sh
 npm test

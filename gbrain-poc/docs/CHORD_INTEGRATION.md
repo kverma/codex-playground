@@ -38,7 +38,7 @@ Authoritative ingester writes to canonical knowledge; no write cutover here.
 3. A read already underway uses its originally selected engine even if a selector changes concurrently. Results include the pinned generation.
 4. Stale generation and divergent candidate facts reject cutover, keeping previous routing state.
 5. A viewer crossing a Chord in-memory RPC link lacks mutation/control methods; operator can switch.
-6. Checkpoint-like unrelated JSON state remains unchanged in an isolated test. **This is NOT a real Pi Durable checkpoint/resume test.**
+6. The original simulated checkpoint isolation test remains, AND a keyless integration test now uses **real Pi Durable 1.4.0 SQLite task checkpoints**, switches the Chord route, closes and reopens the harness, verifies the saved state is unchanged, and resumes the task. This is not a kill -9 crash or multi-process data-consistency test.
 7. A CLI smoke runs Chord with real Oxigraph WASM and, with `--gbrain`, the real isolated GBrain CLI/PGLite engine.
 
 ## Explicit limitations / safe rollout
@@ -48,7 +48,7 @@ Authoritative ingester writes to canonical knowledge; no write cutover here.
 - The `oxigraph` JS/WASM backend currently holds its graph in memory. Its exported evidence ledger is not an atomic write-ahead log. GBrain is out of process, and its CLI costs are not comparable with WASM process-local latency.
 - Principal arguments supplied by tests are trusted. Do not let an HTTP/WebSocket client choose `owner`: bind enterprise mTLS/SSO to verified Chord principals at the ingress and independently authorize reads at the entity/source level. `world`/`private` are metadata, **not** enforcement. Current tests use synthetic non-sensitive data only.
 - Parity checks compare facts and provenance. Conflicting memory models, semantic search scores, entity ACLs or temporal views are not included in this route contract.
-- There is no live Pi Durable harness wiring, no actual durable checkpoint restart test, no remote multi-process test (only in-memory link), and no official FrontierMemory agent outcome evaluation.
+- A real Pi Durable SQLite checkpoint isolation test now runs (close/reopen/resume), but the KnowledgeService is **not yet called by an agent tool or built-in Pi task**. No kill -9 crash, no remote multi-process test (only in-memory link), and no official FrontierMemory agent outcome evaluation.
 
 ## Commands
 
@@ -68,7 +68,7 @@ Node >=22.19 required by Chord 1.4.0; GitHub Actions uses Node 24.
 
 ## Next milestones
 
-1. **Real Pi Durable ingress** via an authorized tool/MCP adapter calling `KnowledgeService`. Resume a task after process crash with a persisted route generation, explicit pin for the work item, and a stable evidence snapshot.
+1. **Real Pi Durable ingress** via an authorized tool/MCP adapter calling `KnowledgeService`. The current real SQLite task isolation test is separate from the agent call path. Next, resume a task after process crash with a persisted route generation, explicit pin for the work item, and a stable evidence snapshot.
 2. Durable routing control (transactional generation + fencing), authoritative event journal, idempotent replay and cutover freeze; test crashes at each phase of promotion.
 3. Full corpus semantic/temporal/ACL bake-off for both engines, with no leakage of held-out incidents.
 4. FrontierMemory/agent evaluator against actual end-to-end incident diagnosis, same model/tool/effort budget.

@@ -20,6 +20,8 @@
   "dependencies": {
     "@letta-ai/trajectory": "0.4.3",
     "oxigraph": "0.5.11",
-    "@earendil-works/chord": "1.4.0"
+    "@earendil-works/chord": "1.4.0",
+    "@earendil-works/pi-durable": "1.4.0",
+    "@earendil-works/pi-ai": "1.4.0"
   }
 }

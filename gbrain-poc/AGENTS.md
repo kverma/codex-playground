@@ -21,6 +21,6 @@ Read `docs/GRAPH_BAKEOFF.md` before modifying Oxigraph or parity tests. Preserve
 - In-flight calls must pin a backend/generation *before* their first await.
 - Do not expose a write cutover, dynamic model-run privileges, or caller-selected
   `owner` role over a public endpoint.
-- Documented checkpoint isolation is simulated only; native Pi Durable crash/resume
-  remains untested and must not be claimed.
+- Native Pi Durable SQLite task checkpoint close/reopen/resume is tested separately;
+  true process crash recovery and agent tool/MCP wiring remain untested.
 - Run `npm test`, `npm run smoke:chord`, and CI's real GBrain smoke before merging.
