@@ -1,0 +1,23 @@
+name: Infinity Pi Chord PoC
+on:
+  push:
+    branches: [feat/infinity-pi-chord-rap-poc]
+    paths: ['infinity-pi-poc/**', '.github/workflows/infinity-pi-chord.yml']
+  pull_request:
+    paths: ['infinity-pi-poc/**', '.github/workflows/infinity-pi-chord.yml']
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: infinity-pi-poc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm run test:core
+      - run: npm run test:integration
+      - run: npm run typecheck
