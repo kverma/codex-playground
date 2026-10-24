@@ -24,6 +24,9 @@ try {
   const ref=await host.get(KnowledgeService,{space:'poc'},{principal:'owner'});
   try {
     const before=await ref.recall({entity});
+    const [graphFact,gbrainFact]=await Promise.all([graph.recall(entity),gb.recall(entity)]);
+    // Diagnostic only: all data below is synthetic and uses a unique isolated brain.
+    console.log(JSON.stringify({parityInspection:{graph:graphFact.facts.map(f=>({text:f.text,provenance:f.provenance})),gbrain:gbrainFact.facts.map(f=>({text:f.text,provenance:f.provenance}))}}));
     const changed=await ref.switchReadBackend({to:'gbrain',expectedGeneration:0,probeEntities:[entity]});
     const after=await ref.recall({entity});
     if (before.facts.length!==1||after.facts.length!==1||before.facts[0]?.text!==after.facts[0]?.text ||
