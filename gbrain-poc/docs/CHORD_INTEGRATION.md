@@ -25,9 +25,10 @@ Authoritative ingester writes to canonical knowledge; no write cutover here.
 ## API
 
 - `recall({entity}) -> {facts,backend,generation}`: returns results with the pinned engine/generation selected before any asynchronous retrieval, not whatever the route is when the call finishes. No silent fallbacks.
-- `routing`: observable readBackend and generation in a Chord state cell, shared across principal views.
-- `switchReadBackend({to,expectedGeneration,probeEntities})` (**operator only**): checks a bounded explicit entity sample for text + provenance parity in both engines, rejects mismatches / degraded retrieval, compares generation before and after async validation and then atomically increments routing generation.
+- `routing`: observable readBackend, generation and cutover proof mode in a Chord state cell, shared across principal views.
+- `switchReadBackend({to,expectedGeneration,probeEntities,parity?})` (**operator only**): defaults to text **and provenance** parity for a bounded explicit entity sample in both engines, rejects mismatches / degraded retrieval, compares generation before and after async validation and then atomically increments routing generation.
 - `implementation()` (**operator only**): exposes a tiny version tag to test code-version pinning during hot reload.
+- **CLI provenance gap detected:** The current GBrain CLI returned the fact text but an empty provenance on `recall`. Strict parity therefore correctly refused the real-engine switch. For an **isolated synthetic smoke only**, `allowContentOnlyParityForSyntheticTests: true` enables a separately labeled `parity:'content-only'` mode. The route state exposes `proof:'content-only'`, not a false claim of provenance equivalence. The safe default remains strict mode. Do NOT enable the escape hatch on production data. Use a provenance-complete GBrain protocol transport or independent authoritative evidence ledger before migration.
 - **No public write RPC**: `MemoryBackend.remember/forget` remain in the existing authoritatively controlled memory-ingest layer, not switched by the demo RPC. Switching read path cannot commit writes to divergent engines.
 
 ## Guarantees actually tested

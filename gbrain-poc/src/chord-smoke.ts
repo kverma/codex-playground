@@ -20,14 +20,19 @@ await Promise.all([graph.remember(fact),gb.remember(fact)]);
 const host=createKnowledgeHost();
 let result;
 try {
-  await host.load([knowledgeFacet({oxigraph:graph,gbrain:gb},'oxigraph')]);
+  await host.load([knowledgeFacet({oxigraph:graph,gbrain:gb},'oxigraph','v1',
+    {allowContentOnlyParityForSyntheticTests:real})]);
   const ref=await host.get(KnowledgeService,{space:'poc'},{principal:'owner'});
   try {
     const before=await ref.recall({entity});
-    const [graphFact,gbrainFact]=await Promise.all([graph.recall(entity),gb.recall(entity)]);
-    // Diagnostic only: all data below is synthetic and uses a unique isolated brain.
-    console.log(JSON.stringify({parityInspection:{graph:graphFact.facts.map(f=>({text:f.text,provenance:f.provenance})),gbrain:gbrainFact.facts.map(f=>({text:f.text,provenance:f.provenance}))}}));
-    const changed=await ref.switchReadBackend({to:'gbrain',expectedGeneration:0,probeEntities:[entity]});
+    let strictProvenanceParityRejected = false;
+    if (real) {
+      try {await ref.switchReadBackend({to:'gbrain',expectedGeneration:0,probeEntities:[entity]});}
+      catch(e) {if (/PARITY_MISMATCH/.test(String(e))) strictProvenanceParityRejected=true;else throw e;}
+      if (!strictProvenanceParityRejected) throw Error('EXPECTED_GBRAIN_CLI_PROVENANCE_GAP_NOT_OBSERVED');
+    }
+    const changed=await ref.switchReadBackend({to:'gbrain',expectedGeneration:0,probeEntities:[entity],
+      ...(real?{parity:'content-only' as const}:{})});
     const after=await ref.recall({entity});
     if (before.facts.length!==1||after.facts.length!==1||before.facts[0]?.text!==after.facts[0]?.text ||
       before.backend!=='oxigraph'||after.backend!=='gbrain'||changed.generation!==1) throw Error('CHORD_REAL_BACKEND_PARITY_FAILED');
@@ -35,7 +40,9 @@ try {
       assertions: ['read via first backend','parity gate','switch to second backend','read via second backend'],
       before:{backend:before.backend,generation:before.generation},after:{backend:after.backend,generation:after.generation},
       // Omit unique source marker and exact entity from published reports.
-      factParity:true,writeCutoverTested:false,checkpointIntegrationTested:false};
+      factParity:true,provenanceParity:!real,strictProvenanceParityRejected,
+      proof:changed.proof,contentOnlyModeExplicitlyEnabled:real,
+      writeCutoverTested:false,checkpointIntegrationTested:false};
   } finally {ref.release();}
 } finally {await host.close();}
 const body=JSON.stringify(result,null,2)+'\n';

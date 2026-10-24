@@ -11,7 +11,7 @@ export type Principal = 'owner' | 'viewer';
 export type Engines = Record<Engine, MemoryBackend>;
 
 const EngineSchema = Type.Union([Type.Literal('gbrain'), Type.Literal('oxigraph')]);
-const Routing = Type.Object({ readBackend: EngineSchema, generation: Type.Integer({ minimum: 0 }) });
+const Routing = Type.Object({ readBackend: EngineSchema, generation: Type.Integer({ minimum: 0 }), proof: Type.Union([Type.Literal('initial'), Type.Literal('provenance'), Type.Literal('content-only')]) });
 const Facts = Type.Array(Type.Object({ id: Type.String(), text: Type.String(), provenance: Type.String() }));
 const RecallArgs = Type.Object({ entity: Type.String({ minLength: 1, maxLength: 130 }) });
 const RecallResult = Type.Object({ facts: Facts, backend: EngineSchema, generation: Type.Integer({ minimum: 0 }) });
@@ -19,6 +19,7 @@ const SwitchArgs = Type.Object({
   to: EngineSchema,
   expectedGeneration: Type.Integer({ minimum: 0 }),
   probeEntities: Type.Array(Type.String({ minLength: 1, maxLength: 130 }), { minItems: 1, maxItems: 64 }),
+  parity: Type.Optional(Type.Union([Type.Literal('provenance'), Type.Literal('content-only')])),
 });
 
 /** An internal common object: shared by all principals for a given space. */
@@ -54,18 +55,20 @@ const ENTITY = /^(?:projects|services|incidents|runbooks)\/[a-z0-9][a-z0-9/_-]{0
 function checkEntity(entity: string) {
   if (!ENTITY.test(entity)) throw invalid('args', 'ENTITY_SCOPE_INVALID');
 }
-function factFingerprint(facts: Array<{ text: string; provenance: string }>): string {
-  return JSON.stringify(facts.map(f => [f.text, f.provenance]).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))));
+function factFingerprint(facts: Array<{ text: string; provenance: string }>, mode: 'provenance'|'content-only'): string {
+  return JSON.stringify(facts.map(f => mode === 'provenance' ? [f.text, f.provenance] : [f.text])
+    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))));
 }
 
 /** Create a named, reloadable Chord facet. `engines` live OUTSIDE the Chord
  * state cell: Chord is not their persistence or transactional coordinator.
  */
-export function knowledgeFacet(engines: Engines, initially: Engine = 'oxigraph', versionTag = 'v1') {
+export function knowledgeFacet(engines: Engines, initially: Engine = 'oxigraph', versionTag = 'v1',
+  options: { allowContentOnlyParityForSyntheticTests?: boolean } = {}) {
   return { name: 'knowledge-service', setup: (api: any) => {
     api.serve(Router, ({ space }: { space: string }, _principal: unknown, self: any) => {
       if (!/^[a-z][a-z0-9-]{0,40}$/.test(space)) throw invalid('args', 'SPACE_INVALID');
-      const routing = self.state('routing', Routing, { readBackend: initially, generation: 0 });
+      const routing = self.state('routing', Routing, { readBackend: initially, generation: 0, proof: 'initial' });
       const recall = async ({ entity }: {entity: string}) => {
         checkEntity(entity);
         // Pin selection BEFORE I/O; a concurrent switch doesn't retarget this call.
@@ -73,23 +76,25 @@ export function knowledgeFacet(engines: Engines, initially: Engine = 'oxigraph',
         const response = await engines[readBackend].recall(entity);
         return { facts: response.facts.map(f => ({ id: f.id, text: f.text, provenance: f.provenance })), backend: readBackend, generation };
       };
-      const switchReadBackend = async ({ to, expectedGeneration, probeEntities }: {
-        to: Engine; expectedGeneration: number; probeEntities: string[];
+      const switchReadBackend = async ({ to, expectedGeneration, probeEntities, parity = 'provenance' }: {
+        to: Engine; expectedGeneration: number; probeEntities: string[]; parity?: 'provenance'|'content-only';
       }, ctx: any) => {
         const previous = routing.value;
         if (expectedGeneration !== previous.generation) throw invalid('args', 'STALE_ROUTING_GENERATION');
         if (to === previous.readBackend) return previous;
+        if (parity === 'content-only' && !options.allowContentOnlyParityForSyntheticTests)
+          throw invalid('args', 'CONTENT_ONLY_PARITY_DISABLED');
         for (const entity of probeEntities) {
           checkEntity(entity);
           const [oldData, candidate] = await Promise.all([
             engines[previous.readBackend].recall(entity), engines[to].recall(entity),
           ]);
           if (oldData.degraded || candidate.degraded) throw invalid('args', 'DEGRADED_RETRIEVAL');
-          if (factFingerprint(oldData.facts) !== factFingerprint(candidate.facts))
+          if (factFingerprint(oldData.facts, parity) !== factFingerprint(candidate.facts, parity))
             throw invalid('args', `PARITY_MISMATCH_FOR_${entity}`);
         }
         if (routing.value.generation !== expectedGeneration) throw invalid('args', 'STALE_ROUTING_GENERATION');
-        const next = { readBackend: to, generation: expectedGeneration + 1 };
+        const next = { readBackend: to, generation: expectedGeneration + 1, proof: parity };
         routing.replace(ctx, next);
         return next;
       };

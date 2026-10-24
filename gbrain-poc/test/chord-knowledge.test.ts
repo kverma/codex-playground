@@ -26,13 +26,13 @@ test('Chord contract, operator routing and retained state survive code reload', 
       assert.equal((await operator.recall({entity:'incidents/001'})).backend,'oxigraph');
       assert.equal(await operator.implementation(),'v1');
       const switched=await operator.switchReadBackend({to:'gbrain',expectedGeneration:0,probeEntities:['incidents/001']});
-      assert.deepEqual(switched,{readBackend:'gbrain',generation:1});
+      assert.deepEqual(switched,{readBackend:'gbrain',generation:1,proof:'provenance'});
       assert.equal((await operator.recall({entity:'incidents/001'})).backend,'gbrain');
       await assert.rejects(operator.switchReadBackend({to:'oxigraph',expectedGeneration:0,probeEntities:['incidents/001']}),
         /STALE_ROUTING_GENERATION/);
       await host.reload([knowledgeFacet(engines,'oxigraph','v2')]);
       assert.equal(await operator.implementation(),'v2');
-      assert.deepEqual(operator.routing.value,{readBackend:'gbrain',generation:1});
+      assert.deepEqual(operator.routing.value,{readBackend:'gbrain',generation:1,proof:'provenance'});
       assert.equal((await operator.recall({entity:'incidents/001'})).backend,'gbrain');
     } finally { operator.release(); }
   } finally { await host.close(); }
@@ -48,7 +48,7 @@ test('read routing cutover rejects divergent candidate facts and preserves activ
     try {
       await assert.rejects(op.switchReadBackend({to:'gbrain',expectedGeneration:0,probeEntities:['incidents/001']}),
         /PARITY_MISMATCH/);
-      assert.deepEqual(op.routing.value,{readBackend:'oxigraph',generation:0});
+      assert.deepEqual(op.routing.value,{readBackend:'oxigraph',generation:0,proof:'initial'});
       assert.equal((await op.recall({entity:'incidents/001'})).facts.length,1);
       await assert.rejects(op.recall({entity:'../escape'}), /ENTITY_SCOPE_INVALID/);
     } finally {op.release();}
@@ -93,7 +93,7 @@ test('viewer has no operator methods across actual Chord link and state replicat
       assert.equal((await user.recall({entity:'incidents/001'})).facts.length,1);
       await assert.rejects((user as any).switchReadBackend({to:'gbrain',expectedGeneration:0,probeEntities:['incidents/001']}),
         (e:unknown)=>isChordError(e,'not_in_variant'));
-      assert.deepEqual(user.routing.value,{readBackend:'oxigraph',generation:0});
+      assert.deepEqual(user.routing.value,{readBackend:'oxigraph',generation:0,proof:'initial'});
     }finally {user.release();}
   }finally {await client.close();await server.close();}
 });
@@ -130,7 +130,28 @@ test('Chord code hot reload retains cell and pins in-flight root to previous cod
       assert.equal(await op.implementation(),'after');
       proceed.resolve();
       assert.deepEqual(await oldRoot,['before','before']);
-      assert.deepEqual(op.routing.value,{readBackend:'gbrain',generation:1});
+      assert.deepEqual(op.routing.value,{readBackend:'gbrain',generation:1,proof:'provenance'});
     }finally {op.release();}
   }finally {await host.close();}
+});
+
+test('content-only cutover is opt-in and the assurance mode is visible',async()=>{
+  const engines=await seededBackends();
+  // Model the real GBrain CLI recall that omits stored provenance.
+  const original=engines.gbrain;
+  const lossy:MemoryBackend={
+    remember: f=>original.remember(f), forget:(id,why)=>original.forget(id,why),
+    recall:async entity=>({ facts:(await original.recall(entity)).facts.map(f=>({...f,provenance:''})) }),
+  };
+  const host=createKnowledgeHost();
+  try {
+    await host.load([knowledgeFacet({...engines,gbrain:lossy},'oxigraph','v1',{allowContentOnlyParityForSyntheticTests:true})]);
+    const op=await host.get(KnowledgeService,space,{principal:'owner'});
+    try {
+      await assert.rejects(op.switchReadBackend({to:'gbrain',expectedGeneration:0,probeEntities:['incidents/001']}),/PARITY_MISMATCH/);
+      const route=await op.switchReadBackend({to:'gbrain',expectedGeneration:0,probeEntities:['incidents/001'],parity:'content-only'});
+      assert.deepEqual(route,{readBackend:'gbrain',generation:1,proof:'content-only'});
+      assert.equal((await op.recall({entity:'incidents/001'})).backend,'gbrain');
+    } finally {op.release();}
+  } finally {await host.close();}
 });

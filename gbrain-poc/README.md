@@ -89,3 +89,9 @@ npm run smoke:chord -- --gbrain      # requires isolated, initialized GBrain
 ```
 
 Node >=22.19 (GitHub Actions Node 24) is required for the pinned Chord package.
+
+**Real-engine compatibility finding:** The GBrain CLI in CI returned empty
+`provenance` on recall despite retaining the correct synthetic fact text. The
+strict Chord backend switch refuses that mismatch. A narrowly named,
+opt-in **content-only synthetic smoke mode** proves routing behavior without
+claiming provenance or full-corpus parity; see `docs/CHORD_INTEGRATION.md`.
