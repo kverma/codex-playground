@@ -34,7 +34,7 @@ async function body(req) {
   return JSON.parse(s);
 }
 function reply(res,status,data) { res.writeHead(status,{'content-type':'application/json','cache-control':'no-store'}); res.end(JSON.stringify(data)); }
-export function makeGateway({store, callbackOrigins = new Set(['http://127.0.0.1:4002']), token, endpoint}) {
+export function makeGateway({store, callbackOrigins = new Set(['http://127.0.0.1:4002']), token=undefined, endpoint}) {
   const server=createServer(async(req,res)=>{
     try {
       const url = new URL(req.url,'http://localhost');

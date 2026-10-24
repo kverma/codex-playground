@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { openPiExecutor } from '../src/pi-executor.ts';
 import { openChordControl } from '../src/chord-control.ts';
 import { JobStore, jobKey } from '../src/store.mjs';
@@ -46,10 +45,10 @@ test('Chord: live projection reads SQLite state without claiming durability owne
       callback_url:'http://127.0.0.1:4002/callback',arguments:{failures:[]}};
     const accepted=store.accept(invocation);
     assert.ok(accepted.created);
-    const value=await chord.reference.getJob({jobId:jobKey('thread-chord','tool-chord')},BACKGROUND_CONTEXT);
+    const value=await chord.host.root(ctx=>chord.reference.getJob({jobId:jobKey('thread-chord','tool-chord')},ctx));
     assert.equal(value?.status,'accepted');
     await until(()=>chord.reference.jobs.value[jobKey('thread-chord','tool-chord')]?.status==='accepted');
-    const cancelled=await chord.reference.cancelJob({groupId:'thread-chord',toolId:'tool-chord'},BACKGROUND_CONTEXT);
+    const cancelled=await chord.host.root(ctx=>chord.reference.cancelJob({groupId:'thread-chord',toolId:'tool-chord'},ctx));
     assert.equal(cancelled,true);
     await until(()=>chord.reference.jobs.value[jobKey('thread-chord','tool-chord')]?.status==='cancelled');
     assert.ok(seen.includes('accepted'));
@@ -85,7 +84,7 @@ test('End-to-end RAP callback using REAL Pi Durable worker and Chord status proj
     assert.equal(callbacks.length,1);
     assert.equal(callbacks[0].type,'tool_result');
     assert.deepEqual(JSON.parse(callbacks[0].text),{total:2,groups:{network:1,timeout:1}});
-    const view=await chord.reference.getJob({jobId:jobKey('thread-e2e','e2e-1')},BACKGROUND_CONTEXT);
+    const view=await chord.host.root(ctx=>chord.reference.getJob({jobId:jobKey('thread-e2e','e2e-1')},ctx));
     assert.equal(view?.status,'completed');
   } finally {
     await pump.stop();

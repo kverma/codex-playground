@@ -3,12 +3,12 @@
  */
 import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import { createModels } from '@earendil-works/pi-ai/models';
-import { createRegistry, defineDoc, defineTask, defineExtension, Harness } from '@earendil-works/pi-durable';
+import { createRegistry, defineDoc, defineTask, defineExtension, Harness, type TaskId } from '@earendil-works/pi-durable';
 import { openNodeSqliteStorage } from '@earendil-works/pi-durable/storage/sqlite/node';
 import { analyzeFailures } from './analysis.mjs';
 
 const ctx = BACKGROUND_CONTEXT;
-const JobLedger = defineDoc<{ tasks: Record<string,string> }>({
+const JobLedger = defineDoc<{ tasks: Record<string,TaskId<string>> }>({
   kind:'rap.job-ledger', version:1, scope:'conversation', history:'latest', fork:'initial',
   initial:()=>({tasks:{}}), checkpointWhen:()=>false,
 });
