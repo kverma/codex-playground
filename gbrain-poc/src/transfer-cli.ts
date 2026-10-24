@@ -1,0 +1,16 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { extractVerifiedProcedures, exportMemoryFolder, loadPiNormalizer, makeTrainingEpisodes, runTransferProbe } from './continual.ts';
+import { FixtureBackend, GBrainCliBackend } from './backends.ts';
+const option = (name:string, fallback:string) => { const i=process.argv.indexOf(name); return i<0 ? fallback : (process.argv[i+1]||fallback); };
+const out=resolve(option('--out','reports/transfer.json'));
+const folder=resolve(option('--memory-folder','reports/portable-memory'));
+const backend=process.argv.includes('--gbrain') ? new GBrainCliBackend() : new FixtureBackend();
+const normalize=await loadPiNormalizer();
+const result=await runTransferProbe(normalize,backend);
+const procedures=extractVerifiedProcedures(makeTrainingEpisodes(),normalize);
+const portable=await exportMemoryFolder(procedures,folder);
+await mkdir(dirname(out),{recursive:true});
+await writeFile(out,JSON.stringify({...result,portableMemory:portable},null,2)+'\n');
+process.stdout.write(JSON.stringify({report:out,metrics:result.metrics,promotion:result.promotion,portableMemory:portable},null,2)+'\n');
+if(result.metrics.unsafeUnknownOrAmbiguous || result.metrics.memoryPassed<result.metrics.baselinePassed || result.promotion.accepted!==6) process.exitCode=1;

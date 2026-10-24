@@ -1,0 +1,73 @@
+name: GBrain Pi Durable PoC
+on:
+  push:
+    paths: ['gbrain-poc/**', '.github/workflows/gbrain-poc.yml']
+  pull_request:
+    paths: ['gbrain-poc/**', '.github/workflows/gbrain-poc.yml']
+  workflow_dispatch:
+    inputs:
+      run_gbrain:
+        description: 'Run isolated keyless real GBrain smoke'
+        required: false
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  fixture:
+    name: Synthetic contract / replay tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gbrain-poc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --ignore-scripts
+      - run: npm test
+      - run: npm run smoke:chord -- --out reports/chord-smoke.json
+      - run: npm run benchmark:compare -- --out reports/graph-comparison.json > /dev/null
+      - run: npm run benchmark:transfer -- --out reports/transfer.json --memory-folder reports/portable-memory
+      - run: npm run benchmark -- --out reports/fixture.json > /dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gbrain-fixture-report
+          path: |
+            gbrain-poc/reports/graph-comparison.json
+            gbrain-poc/reports/fixture.json
+            gbrain-poc/reports/chord-smoke.json
+            gbrain-poc/reports/transfer.json
+            gbrain-poc/reports/portable-memory/MEMORY.md
+  live:
+    name: Keyless GBrain integration + 72-case benchmark
+    timeout-minutes: 30
+    if: github.event_name != 'workflow_dispatch' || inputs.run_gbrain
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gbrain-poc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: oven-sh/setup-bun@v2
+      - name: Install actual GBrain (not unrelated npm package)
+        run: bun install -g github:garrytan/gbrain#latest-stable
+      - run: npm install --ignore-scripts
+      - name: Smoke with isolated brain, no provider keys
+        run: |
+          export GBRAIN_HOME="${RUNNER_TEMP}/gbrain-poc-${GITHUB_RUN_ID}"
+          mkdir -p "$GBRAIN_HOME"
+          gbrain init --pglite --no-embedding
+          npm run smoke:gbrain -- --out reports/live-smoke.json
+          npm run smoke:chord -- --gbrain --out reports/live-chord-smoke.json
+          npm run benchmark:compare -- --gbrain --out reports/live-backend-comparison.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gbrain-live-smoke-report
+          path: gbrain-poc/reports/live-*.json
+          if-no-files-found: ignore
