@@ -1,6 +1,5 @@
 import { Type } from 'typebox';
 import { createHost, hostNamed, method, remote } from '@earendil-works/chord';
-import { BACKGROUND_CONTEXT } from '@earendil-works/chord/context';
 import type { JobStore } from './store.mjs';
 
 const JobView = Type.Object({ jobId:Type.String(), groupId:Type.String(), operation:Type.String(),
@@ -20,7 +19,11 @@ export async function openChordControl(store:JobStore) {
   const host=createHost({name:'control',self:{kind:'control'}});
   host.serve(JobsControl,(_input,_principal,self)=>{
     const jobs=self.state('jobs',Views,Object.fromEntries(store.list().map(j=>[j.job_id,view(j)])));
-    const onChanged=(j:any)=>jobs.change(BACKGROUND_CONTEXT,draft=>{draft[j.job_id]=view(j);});
+    const onChanged=(j:any)=>{
+      // Chord cells need a live host Ctx. BACKGROUND_CONTEXT is not a host Ctx.
+      // This is a best-effort projection: the SQLite journal remains authoritative.
+      void host.root(ctx=>jobs.change(ctx,draft=>{draft[j.job_id]=view(j);})).catch(console.error);
+    };
     store.on('changed',onChanged);
     return {variant:'default' as const,jobs,
       getJob:({jobId}:{jobId:string})=>{const j=store.get(jobId);return j?view(j):null;},

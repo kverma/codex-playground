@@ -19,5 +19,5 @@ jobs:
           node-version: '24'
       - run: npm install --no-audit --no-fund
       - run: npm run test:core
-      - run: npm run test:integration
       - run: npm run typecheck
+      - run: npm run test:integration

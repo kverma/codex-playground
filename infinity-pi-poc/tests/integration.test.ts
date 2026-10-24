@@ -27,6 +27,12 @@ test('Pi Durable: custom task persists and same job ID reuses the ledger on rest
   } finally {await rm(folder,{recursive:true,force:true});}
 });
 
+async function until(fn:()=>boolean, timeout=1000) {
+  const end=Date.now()+timeout;
+  while(!fn() && Date.now()<end) await new Promise(r=>setTimeout(r,10));
+  assert.ok(fn(),'timed out waiting for Chord projection');
+}
+
 test('Chord: live projection reads SQLite state without claiming durability ownership', async()=>{
   const folder=await mkdtemp(join(tmpdir(),'rap-chord-'));
   const store=new JobStore(join(folder,'gateway.sqlite'));
@@ -42,10 +48,10 @@ test('Chord: live projection reads SQLite state without claiming durability owne
     assert.ok(accepted.created);
     const value=await chord.reference.getJob({jobId:jobKey('thread-chord','tool-chord')},BACKGROUND_CONTEXT);
     assert.equal(value?.status,'accepted');
-    assert.equal(chord.reference.jobs.value[jobKey('thread-chord','tool-chord')].status,'accepted');
+    await until(()=>chord.reference.jobs.value[jobKey('thread-chord','tool-chord')]?.status==='accepted');
     const cancelled=await chord.reference.cancelJob({groupId:'thread-chord',toolId:'tool-chord'},BACKGROUND_CONTEXT);
     assert.equal(cancelled,true);
-    assert.equal(chord.reference.jobs.value[jobKey('thread-chord','tool-chord')].status,'cancelled');
+    await until(()=>chord.reference.jobs.value[jobKey('thread-chord','tool-chord')]?.status==='cancelled');
     assert.ok(seen.includes('accepted'));
     unsubscribe();
   } finally {await chord.close();store.close();await rm(folder,{recursive:true,force:true});}
