@@ -10,13 +10,16 @@
     "smoke:gbrain": "node --experimental-strip-types src/cli.ts smoke-gbrain",
     "test:transfer": "node --experimental-strip-types --test test/continual.test.ts",
     "benchmark:transfer": "node --experimental-strip-types src/transfer-cli.ts",
-    "benchmark:compare": "node --experimental-strip-types src/compare.ts"
+    "benchmark:compare": "node --experimental-strip-types src/compare.ts",
+    "test:chord": "node --experimental-strip-types --test test/chord-knowledge.test.ts",
+    "smoke:chord": "node --experimental-strip-types src/chord-smoke.ts"
   },
   "engines": {
-    "node": ">=22.16"
+    "node": ">=22.19"
   },
   "dependencies": {
     "@letta-ai/trajectory": "0.4.3",
-    "oxigraph": "0.5.11"
+    "oxigraph": "0.5.11",
+    "@earendil-works/chord": "1.4.0"
   }
 }

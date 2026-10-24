@@ -73,3 +73,19 @@ npm run benchmark:compare -- --gbrain --out reports/live-backend-comparison.json
 ```
 
 Both backends receive identical 72 entity queries and identical 18 training / 42 held-out synthetic decision cases. The real paired runner enforces identical dataset fingerprints and per-task decisions. Do not compare absolute CLI-vs-WASM latencies or interpret 42/42 as model reasoning. See [docs/GRAPH_BAKEOFF.md](docs/GRAPH_BAKEOFF.md) for the evidence model, temporal tests, implementation limitations, and next-stage criteria.
+
+## Chord KnowledgeService (read-only cutover experiment)
+
+The [Chord integration](docs/CHORD_INTEGRATION.md) uses actual
+`@earendil-works/chord@1.4.0` contracts, RPC principal variants, observable
+routing state, hot-code-reload tests, and GBrain/Oxigraph backends. It deliberately
+switches **read routing only**; there is no transactional write-backend cutover,
+no durable route persistence, and no live Pi Durable checkpoint integration.
+
+```sh
+npm test
+npm run smoke:chord                  # Oxigraph WASM + fixture backend
+npm run smoke:chord -- --gbrain      # requires isolated, initialized GBrain
+```
+
+Node >=22.19 (GitHub Actions Node 24) is required for the pinned Chord package.

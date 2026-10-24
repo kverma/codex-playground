@@ -11,3 +11,16 @@ Read `docs/FRONTIERMEMORY.md`. Keep training and evaluation identifiers separate
 ## Graph bake-off additions
 
 Read `docs/GRAPH_BAKEOFF.md` before modifying Oxigraph or parity tests. Preserve the existing `MemoryBackend` surface and GBrain reference adapter. Never claim a result from in-memory Oxigraph is a durable or enterprise-isolated guarantee. Keep training corpus and held-out split identical for both engines; reject silent fallback or decision divergence. Temporal corrections preserve immutable historical assertions. Require explicit provenance for relationships. SPARQL input to `queryTrusted` is internal/trusted only; never expose it verbatim to agent prompt or end users. Do not treat 42/42 synthetic deterministic choices as LLM task success.
+
+## Chord service integration
+
+- Read `docs/CHORD_INTEGRATION.md` before touching `src/chord-knowledge.ts`.
+- Keep the Chord `Router` as shared state across principals; a state cell in each
+  remote principal object would silently produce divergent routing selections.
+- Never interpret the 64-entity probe parity as full-dataset equivalence.
+- In-flight calls must pin a backend/generation *before* their first await.
+- Do not expose a write cutover, dynamic model-run privileges, or caller-selected
+  `owner` role over a public endpoint.
+- Documented checkpoint isolation is simulated only; native Pi Durable crash/resume
+  remains untested and must not be claimed.
+- Run `npm test`, `npm run smoke:chord`, and CI's real GBrain smoke before merging.
