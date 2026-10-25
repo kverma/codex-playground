@@ -29,6 +29,8 @@ jobs:
         run: npm run catalog:sync
       - name: Deterministic runtime tests
         run: npm test
+      - name: Strict typecheck of generic registry resolver and runtime
+        run: npm run typecheck:runtime
       - name: Type-check real React/OpenUI integration
         run: npm run typecheck:web
       - name: Build OpenUI browser application
