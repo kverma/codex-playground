@@ -7,8 +7,8 @@
     "node": ">=22.19.0"
   },
   "scripts": {
-    "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "api": "node --experimental-strip-types src/server.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "api": "node --import tsx src/server.ts",
     "catalog:sync": "tsx web/src/export-catalog.ts",
     "typecheck:web": "tsc -p tsconfig.web.json --noEmit",
     "build:web": "vite build --config web/vite.config.ts",
