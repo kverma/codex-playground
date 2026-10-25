@@ -1,16 +1,17 @@
+import {normalizeToolResponse,mergeRecoveredFields,type NormalizationRule} from './tool-normalizer.ts';
 import {parseIntent} from './intent-parsers.ts';
 import {resolveView,validateRegistry,type Recipe,type UIIntent} from './registry-resolver.ts';
 import {readFile} from 'node:fs/promises';
 export type Json=null|boolean|number|string|Json[]|{[key:string]:Json};
 export type Props=Record<string,unknown>;
 export type Node={component:string;props:Props};
-export type Op={id:string;capability:string;args:Record<string,Json>;dependsOn?:string[];required?:boolean;fallback?:Json};
+export type Op={id:string;capability:string;args:Record<string,Json>;dependsOn?:string[];required?:boolean;fallback?:Json;recovery?:{capability:string;args:Record<string,Json>;fields:string[]}};
 export type Plan={version:1;operations:Op[];view:Node;statePatch?:Record<string,Json>;stateCapture?:Record<string,string>};
 export type Context={threadId:string;turnId:string;permissions:string[]};
 export type Component={description:string;args:string[];requiredBindings?:string[];propTypes?:Record<string,OutputType>};
 export type OutputType='string'|'number'|'boolean'|'array'|'object'|'nullable-object';
 export type Capability={permissions:string[];readOnly:boolean;args:string[];outputs?:Record<string,OutputType>};
-export type Catalog={components:Record<string,Component>;capabilities:Record<string,Capability>;views?:Recipe[]};
+export type Catalog={components:Record<string,Component>;capabilities:Record<string,Capability>;views?:Recipe[];normalization?:Record<string,NormalizationRule>};
 export type Invoke=(name:string,args:Record<string,Json>,ctx:Context)=>Promise<unknown>;
 export type Planner=(text:string,context:Record<string,Json>,catalog:Catalog)=>Promise<unknown>;
 export type Durable={run<T>(id:string,fn:()=>Promise<T>):Promise<T>};
@@ -40,6 +41,13 @@ export function validate(raw:unknown,catalog:Catalog,ctx:Context):Plan{
   checkJson(op.args);
   if(op.dependsOn!==undefined&&(!Array.isArray(op.dependsOn)||op.dependsOn.some(dep=>typeof dep!=='string'||!ids.has(dep)||dep===op.id)))throw Error('Invalid dataflow dependency');
   if(op.required===false){if(op.fallback===undefined)throw Error('Optional dataflow node requires declared unavailable fallback');checkJson(op.fallback);}
+  if(op.recovery){
+   const recover=op.recovery,rule=catalog.normalization?.[op.capability],cap=catalog.capabilities[recover.capability];
+   if(!cap||!cap.readOnly||!cap.permissions.every(p=>ctx.permissions.includes(p)))throw Error('Unauthorized recovery capability');
+   if(!rule||!Array.isArray(recover.fields)||!recover.fields.length||recover.fields.length>8||recover.fields.some(x=>!rule.fields[x]?.recoverable))throw Error('Unapproved field recovery policy');
+   if(!isObj(recover.args)||Object.keys(recover.args).some(k=>!cap.args.includes(k))||!cap.args.includes('fields'))throw Error('Invalid recovery arguments');
+   checkJson(recover.args);
+  }
   const checkRefs=(v:unknown):void=>{if(Array.isArray(v)){v.forEach(checkRefs);return;}if(!isObj(v))return;
    if(own(v,'$ref')){const ref=v.$ref;if(Object.keys(v).length!==1||typeof ref!=='string'||!pathPattern.test(ref)||ref.split('.').some(k=>forbidden.has(k))||!(Array.isArray(op.dependsOn)&&op.dependsOn.includes(ref.split('.')[1]!)))throw Error('Undeclared or unsafe operation dependency');return;}
    Object.values(v).forEach(checkRefs);
@@ -140,8 +148,8 @@ export class Store{
 }
 export async function loadCatalog():Promise<Catalog>{
  const root=new URL('../corpus/',import.meta.url);
- const [base,custom,caps,views]=await Promise.all(['base.json','custom.json','capabilities.json','view-registrations.json'].map(f=>readFile(new URL(f,root),'utf8').then(JSON.parse)));
- const catalog:Catalog={components:{...base.components,...custom.components},capabilities:caps.capabilities,views:views.views};
+ const [base,custom,caps,views,normalizers]=await Promise.all(['base.json','custom.json','capabilities.json','view-registrations.json','normalization.json'].map(f=>readFile(new URL(f,root),'utf8').then(JSON.parse)));
+ const catalog:Catalog={components:{...base.components,...custom.components},capabilities:caps.capabilities,views:views.views,normalization:normalizers.capabilities};
  validateRegistry(catalog);
  return catalog;
 }
@@ -193,12 +201,32 @@ export class Engine{
      try{
       const args=resolveToolArgs(op.args,results);
       const exec=()=>this.invoke(op.capability,args,ctx);
-      const output=this.durable?await this.durable.run(ctx.threadId+'/'+ctx.turnId+'/'+op.id,exec):await exec();
+      let output=this.durable?await this.durable.run(ctx.threadId+'/'+ctx.turnId+'/'+op.id,exec):await exec();
+      const rule=this.catalog.normalization?.[op.capability];
+      if(rule){
+       let normalized=normalizeToolResponse(output,rule);
+       if(op.recovery&&normalized.missingRecoverable.length){
+        const fields=normalized.missingRecoverable.filter(path=>op.recovery!.fields.includes(path));
+        if(fields.length){
+         try{
+          const recoveryArgs={...resolveToolArgs(op.recovery.args,results),fields};
+          const execRecovery=()=>this.invoke(op.recovery!.capability,recoveryArgs,ctx);
+          const recovered=this.durable?await this.durable.run(ctx.threadId+'/'+ctx.turnId+'/'+op.id+'/field-recovery',execRecovery):await execRecovery();
+          validateResult(op.recovery.capability,recovered,this.catalog);
+          const merged=mergeRecoveredFields(output,recovered,fields,rule);
+          normalized=normalizeToolResponse(merged.data,rule,{recovered:merged.recovered});
+         }catch(error){failures[op.id+':recovery']=error instanceof Error?error.message:'Recovery failed';}
+        }
+       }
+       output=normalized.value;
+      }
       validateResult(op.capability,output,this.catalog);
       return {op,output};
      }catch(error){
       if(op.required!==false)throw error;
-      const output=structuredClone(op.fallback);
+      const rawFallback=structuredClone(op.fallback);
+      const rule=this.catalog.normalization?.[op.capability];
+      const output=rule?normalizeToolResponse(rawFallback,rule,{unavailable:true}).value:rawFallback;
       validateResult(op.capability,output,this.catalog);
       failures[op.id]=error instanceof Error?error.message:'Tool unavailable';
       return {op,output};
