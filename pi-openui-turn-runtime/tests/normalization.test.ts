@@ -29,7 +29,7 @@ test('deterministic extraction parses fenced JSON or allowlisted key/value pairs
  assert.equal((a.value.offer as any).price,'$9.99');
  const b=normalizeToolResponse('price: $9.99\ncurrency: USD\npurchaseType: One-time',pricing);
  assert.equal((b.value.offer as any).price,'$9.99');
- assert.equal(b.quality.fields['offer.price'].status,'coerced');
+ assert.equal(b.quality.fields['offer.price'].status,'extracted');
  const c=normalizeToolResponse('The product is probably free but no official price was supplied.',pricing);
  assert.equal((c.value.offer as any).price,'Unavailable');
  assert.equal(c.quality.fields['offer.price'].status,'missing');
