@@ -89,3 +89,22 @@ registry format, trust boundaries, selection scoring, and limits.
 `GET /api/views?domain=appstore` filters them. Arbitrary new natural-language
 intents still require a configured semantic planner, and this is not an
 unrestricted automatic layout generator.
+
+
+## Multi-MCP rich detail and non-UI conversation
+
+The new `appstore.rich-detail.v1` JSON view recipe fans out to five separate
+MCP clients: App Store, Reviews, Privacy, Pricing, and Device Compatibility.
+The DAG executor runs independent calls concurrently (max four per batch),
+resolves typed `$ref` dependencies, and uses explicitly authored *unavailable*
+payloads when an optional source fails. A required source failure rejects the
+rich-detail view rather than fabricating data.
+
+For unmatched turns, the API returns either **plain conversational text** when
+`CHAT_REPLY_URL`, `CHAT_REPLY_TOKEN` and optionally `CHAT_REPLY_MODEL`
+configure an approved HTTPS LLM, or an **unavailable** response otherwise.
+It never maps a random question to a fabricated UI or executes unregistered
+MCP tools. Existing UI turns remain unchanged.
+
+See [docs/MULTISOURCE_AND_CHAT.md](docs/MULTISOURCE_AND_CHAT.md) for the
+complete DAG contract, fallback behavior and test coverage.
