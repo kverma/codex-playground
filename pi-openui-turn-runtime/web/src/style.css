@@ -2,3 +2,44 @@
 /* Keep chat controls clear of the OpenUI development inspector's bottom-right overlay. */
 form{padding-right:110px}
 @media(max-width:700px){form{padding-right:85px}}
+
+/* App Store-inspired, original demo components; no Apple marks or external imagery. */
+.app-store{padding:12px;color:#182336;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.app-store-head{display:flex;justify-content:space-between;align-items:start;gap:14px;margin-bottom:22px}
+.app-store-head h2{font-size:26px;letter-spacing:-.8px;margin:5px 0}
+.app-store-head p,.app-detail-title p{color:#697586;margin:0}
+.app-eyebrow{font-size:11px;letter-spacing:1.2px;color:#5577b7;font-weight:750}
+.mock-ribbon{background:#eef3ff;color:#325eaa;padding:6px 10px;border-radius:50px;font-size:10px;letter-spacing:.6px;font-weight:800;white-space:nowrap}
+.app-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
+.app-tile{border:1px solid #e6eaf1;border-radius:18px;padding:15px;background:#fff;display:flex;align-items:center;gap:12px;min-width:0;box-shadow:0 3px 8px #1e35550a}
+.app-icon{width:62px;height:62px;border-radius:16px;display:grid;place-items:center;color:white;font-size:31px;flex-shrink:0;box-shadow:inset 0 1px 1px #ffffff58}
+.app-icon.large{width:102px;height:102px;border-radius:23px;font-size:48px}
+.app-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.app-copy strong{font-size:14px;line-height:1.25}
+.app-copy small{font-size:11px;color:#687689;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app-stars{font-size:11px;color:#db8d0d;font-weight:700}
+.app-stars span{color:#738195;font-weight:400}
+.app-controls{display:flex;flex-direction:column;align-items:center;gap:9px;flex-shrink:0}
+.app-price{color:#2457a4;font-size:12px;font-weight:700}
+.app-controls button,.app-get button,.app-comparison-col button{border:0;border-radius:999px;background:#1264d7;color:white;font-size:12px;font-weight:650;padding:8px 14px;cursor:pointer}
+.app-controls button:hover,.app-get button:hover,.app-comparison-col button:hover{background:#0750b9}
+.app-detail-hero{display:flex;align-items:center;gap:22px;margin-bottom:24px}
+.app-detail-title{flex:1}
+.app-detail-title h2{font-size:32px;letter-spacing:-1.1px;margin:5px 0}
+.app-detail-title small{color:#718094}
+.app-get{display:flex;flex-direction:column;align-items:center;gap:10px;color:#1d569b}
+.app-stats{display:flex;justify-content:space-around;border-top:1px solid #e4eaf1;border-bottom:1px solid #e4eaf1;padding:17px 2px;gap:8px}
+.app-stats>div{display:flex;flex-direction:column;align-items:center;gap:5px}
+.app-stats strong{font-size:17px}.app-stats small{font-size:11px;color:#7d8694}
+.app-shots{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin:23px 0}
+.app-shot{aspect-ratio:9/14;border-radius:16px;display:flex;align-items:center;justify-content:center;flex-direction:column;color:white;padding:10px;box-shadow:0 10px 20px #19254b1d;text-align:center}
+.app-screen-symbol{font-size:80px;line-height:1.5;color:#ffffffe0}.app-shot span{font-weight:650;font-size:13px}
+.app-detail h3{margin:22px 0 6px;font-size:16px}.app-description{font-size:14px;color:#536173;line-height:1.7}
+.app-features{display:flex;flex-wrap:wrap;gap:9px}.app-features span{background:#edf4ff;padding:8px 12px;border-radius:999px;color:#2364a8;font-size:12px}
+.app-footer{font-size:11px;color:#758397;border-top:1px solid #e4eaf1;padding-top:15px}
+.app-comparison-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.app-comparison-col{padding:18px;border:1px solid #e4e9f1;border-radius:15px;display:flex;flex-direction:column;gap:10px}
+.app-comparison-col h3{margin:0}.app-comparison-col p{margin:0;color:#697689;font-size:12px}
+.app-comparison-col dl{margin:0}.app-comparison-col dt{color:#798596;font-size:11px}.app-comparison-col dd{margin:3px 0 13px;font-weight:650;font-size:13px}
+.app-empty{padding:24px;background:#f1f5fb;border-radius:14px}
+@media(max-width:750px){.app-grid{grid-template-columns:1fr}.app-tile{gap:9px;padding:11px}.app-icon{width:52px;height:52px}.app-detail-hero{gap:11px}.app-icon.large{width:73px;height:73px}.app-detail-title h2{font-size:21px}.app-shots{gap:5px}.app-screen-symbol{font-size:45px}}
