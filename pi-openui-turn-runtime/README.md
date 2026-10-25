@@ -32,3 +32,38 @@ The root workflow `.github/workflows/pi-openui-integration.yml` installs depende
 ## Security and scope
 
 This is **not** a production-ready Pi Durable integration: storage is in-memory, demo permissions are fixed, Pi Code Mode's real journaled nested calls are intentionally not simulated, and live API/MCP access requires enterprise approval. The typed `fromPiHarness` / `fromPiDurable` seams let your existing trusted harness provide those features.
+
+## Mock Apple App Store MCP + OpenUI multi-turn demo
+
+This module contains a genuine MCP v2 server backed by **synthetic** App Store-like app listings. It is not an Apple API integration and its apps, prices, reviews, release notes, and screenshot placeholders are invented demo data.
+
+MCP tools are discoverable via `tools/list` and validated via Zod input/output schemas:
+
+| MCP tool | Data output | UI binding |
+| --- | --- | --- |
+| `search_apps(query,price,limit)` | summary list + stable IDs | `AppSearchGrid`, `AppSummaryCard` |
+| `get_app(id)` | full detail, screenshots, privacy and features | `AppDetailView` |
+| `compare_apps(ids)` | typed comparison list | `AppComparisonView` |
+
+You can also run the MCP server independently over standard **stdio**:
+
+```bash
+npm run mcp:appstore
+```
+
+The integrated chat demo uses a real MCP client and in-memory transport. This allows fast no-network tests of the full MCP protocol, without claiming the production Pi Durable host has been wired up.
+
+**Try this multi-turn conversation in the browser:**
+
+1. `Find drawing apps`
+2. `Show details for the first one` (or press *View details* on a search card, then Send)
+3. `Tell me more about the second app`
+4. `Compare the first two apps`
+5. `Only free ones`
+6. `Open the first one`
+
+The engine stores returned stable IDs and names in turn state via **validated** `stateCapture` bindings. Follow-up turns resolve ordinals and comparison sets without using an LLM. All app prop values are bound from validated MCP `structuredContent`, never supplied as factual constants by the planner.
+
+Tests: `npm test` includes MCP discovery, invalid arguments, stdio interoperability, unauthorized capability rejection, and a six-turn state-machine test. Chromium tests exercise the actual OpenUI React renderer and upload screenshots for search/detail/compare/free-filter states.
+
+**Scope:** This is a mock App Store capability for deterministic UI development. Real App Store service integration would require a separate authorized provider, data contract, rate-limit and credential handling, and verified rights to use imagery/branding.
