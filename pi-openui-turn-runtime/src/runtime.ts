@@ -1,9 +1,10 @@
+import {appStorePlan} from './app-plans.ts';
 import {readFile} from 'node:fs/promises';
 export type Json=null|boolean|number|string|Json[]|{[key:string]:Json};
 export type Props=Record<string,unknown>;
 export type Node={component:string;props:Props};
 export type Op={id:string;capability:string;args:Record<string,Json>};
-export type Plan={version:1;operations:Op[];view:Node;statePatch?:Record<string,Json>};
+export type Plan={version:1;operations:Op[];view:Node;statePatch?:Record<string,Json>;stateCapture?:Record<string,string>};
 export type Context={threadId:string;turnId:string;permissions:string[]};
 export type Component={description:string;args:string[];requiredBindings?:string[]};
 export type Capability={permissions:string[];readOnly:boolean;args:string[]};
@@ -60,6 +61,12 @@ export function validate(raw:unknown,catalog:Catalog,ctx:Context):Plan{
  };
  visit(raw.view,0);
  if(raw.statePatch!==undefined){if(!isObj(raw.statePatch))throw Error('Invalid state patch');checkJson(raw.statePatch);}
+ if(raw.stateCapture!==undefined){
+  if(!isObj(raw.stateCapture)||Object.keys(raw.stateCapture).length>12)throw Error('Invalid state capture');
+  for(const [key,path] of Object.entries(raw.stateCapture)){
+   if(!/^[a-zA-Z][a-zA-Z0-9]{0,63}$/.test(key)||typeof path!=='string'||!pathPattern.test(path)||!ids.has(path.split('.')[1]!))throw Error('Unsafe state capture');
+  }
+ }
  return raw as unknown as Plan;
 }
 function resolve(path:string,results:Record<string,unknown>):unknown{
@@ -117,7 +124,7 @@ export class Engine{
  async handle(text:string,ctx:Context){
   const old=this.store.get(ctx.threadId),retry=old.turns.find(x=>x.turnId===ctx.turnId);
   if(retry)return {...retry,revision:old.revision};
-  const raw=defaultPlan(text,old.slots)??(this.planner?await this.planner(text,old.slots,this.catalog):null);
+  const raw=appStorePlan(text,old.slots)??defaultPlan(text,old.slots)??(this.planner?await this.planner(text,old.slots,this.catalog):null);
   if(!raw)throw Error('Arbitrary request requires configured planner');
   const plan=validate(raw,this.catalog,ctx);
   const results:Record<string,unknown>={};
@@ -126,7 +133,11 @@ export class Engine{
    results[op.id]=this.durable?await this.durable.run(ctx.threadId+'/'+ctx.turnId+'/'+op.id,exec):await exec();
   }
   const openui=compile(plan,this.catalog,results);
-  this.store.save({threadId:ctx.threadId,revision:old.revision+1,slots:{...old.slots,...(plan.statePatch??{})},turns:[...old.turns,{turnId:ctx.turnId,plan,openui}].slice(-30)},old.revision);
+  const captured:Record<string,Json>={};
+  for(const [key,path] of Object.entries(plan.stateCapture??{})){
+   const data=resolve(path,results);checkJson(data);captured[key]=data as Json;
+  }
+  this.store.save({threadId:ctx.threadId,revision:old.revision+1,slots:{...old.slots,...(plan.statePatch??{}),...captured},turns:[...old.turns,{turnId:ctx.turnId,plan,openui}].slice(-30)},old.revision);
   return {turnId:ctx.turnId,revision:old.revision+1,plan,openui};
  }
 }
