@@ -220,6 +220,145 @@
           ]
         }
       }
+    },
+    {
+      "id": "appstore.rich-detail.v1",
+      "domain": "appstore",
+      "action": "inspect",
+      "entity": "app",
+      "cardinality": "one",
+      "priority": 5,
+      "description": "Rich detail composed from independent App Store, Reviews, Privacy, Pricing and Compatibility MCP services",
+      "dataContract": "RichAppDetails.v1",
+      "tags": [
+        "rich",
+        "reviews",
+        "privacy",
+        "pricing",
+        "devices"
+      ],
+      "operations": [
+        {
+          "id": "app",
+          "capability": "appstore.details",
+          "args": {
+            "id": {
+              "$param": "id"
+            }
+          },
+          "required": true
+        },
+        {
+          "id": "reviews",
+          "capability": "reviews.get",
+          "args": {
+            "appId": {
+              "$param": "id"
+            }
+          },
+          "required": false,
+          "fallback": {
+            "items": [],
+            "status": "unavailable",
+            "source": "mock-reviews"
+          }
+        },
+        {
+          "id": "privacy",
+          "capability": "privacy.get",
+          "args": {
+            "appId": {
+              "$param": "id"
+            }
+          },
+          "required": false,
+          "fallback": {
+            "report": {
+              "collects": "Unavailable",
+              "tracking": "Unavailable",
+              "notes": "Privacy MCP unavailable"
+            },
+            "status": "unavailable",
+            "source": "mock-privacy"
+          }
+        },
+        {
+          "id": "pricing",
+          "capability": "pricing.get",
+          "args": {
+            "appId": {
+              "$param": "id"
+            },
+            "storefront": {
+              "$param": "storefront"
+            }
+          },
+          "required": false,
+          "fallback": {
+            "offer": {
+              "price": "Unavailable",
+              "currency": "USD",
+              "purchaseType": "Unknown"
+            },
+            "status": "unavailable",
+            "source": "mock-pricing"
+          }
+        },
+        {
+          "id": "devices",
+          "capability": "compatibility.check",
+          "dependsOn": [
+            "app"
+          ],
+          "args": {
+            "appId": {
+              "$ref": "results.app.app.id"
+            },
+            "devices": {
+              "$param": "devices"
+            }
+          },
+          "required": false,
+          "fallback": {
+            "devices": [],
+            "status": "unavailable",
+            "source": "mock-compatibility"
+          }
+        }
+      ],
+      "view": {
+        "component": "Stack",
+        "props": {
+          "children": [
+            {
+              "component": "TextContent",
+              "props": {
+                "text": "Rich App Store details · multi-MCP (MOCK)"
+              }
+            },
+            {
+              "component": "AppRichDetailView",
+              "props": {
+                "app": {
+                  "$bind": "results.app.app"
+                },
+                "reviews": {
+                  "$bind": "results.reviews"
+                },
+                "privacy": {
+                  "$bind": "results.privacy"
+                },
+                "pricing": {
+                  "$bind": "results.pricing"
+                },
+                "compatibility": {
+                  "$bind": "results.devices"
+                }
+              }
+            }
+          ]
+        }
+      }
     }
   ]
 }
