@@ -128,7 +128,11 @@ function resolveToolArgs(value:Record<string,Json>,results:Record<string,unknown
  return walk(value) as Record<string,Json>;
 }
 
-export type History={threadId:string;revision:number;slots:Record<string,Json>;turns:Array<{turnId:string;openui:string;plan:Plan}>};
+export type ConversationTurn=
+ |{turnId:string;kind:'ui';openui:string;plan:Plan;userText:string}
+ |{turnId:string;kind:'text'|'unavailable';text:string;userText:string};
+export type History={threadId:string;revision:number;slots:Record<string,Json>;turns:ConversationTurn[]};
+export type ReplyGenerator=(message:string,history:Array<{role:'user'|'assistant';content:string}>)=>Promise<string>;
 export class Store{
  private readonly histories=new Map<string,History>();
  get(id:string):History{return this.histories.get(id)??{threadId:id,revision:0,slots:{},turns:[]};}
@@ -142,7 +146,7 @@ export async function loadCatalog():Promise<Catalog>{
  return catalog;
 }
 export class Engine{
- constructor(public catalog:Catalog,public store:Store,public invoke:Invoke,public planner?:Planner,public durable?:Durable){}
+ constructor(public catalog:Catalog,public store:Store,public invoke:Invoke,public planner?:Planner,public durable?:Durable,public reply?:ReplyGenerator){}
  async handle(text:string,ctx:Context){
   const old=this.store.get(ctx.threadId),retry=old.turns.find(x=>x.turnId===ctx.turnId);
   if(retry)return {...retry,revision:old.revision};
@@ -151,8 +155,29 @@ export class Engine{
   const intent=parseIntent(text,old.slots);
   const fallback=intent?null:(this.planner?await this.planner(text,old.slots,this.catalog):null);
   const isIntent=(v:unknown):v is UIIntent=>isObj(v)&&typeof v.domain==='string'&&typeof v.action==='string'&&typeof v.entity==='string'&&isObj(v.params);
-  const raw=intent?resolveView(intent,this.catalog,ctx).plan:isIntent(fallback)?resolveView(fallback,this.catalog,ctx).plan:fallback;
-  if(!raw)throw Error('Arbitrary request requires configured planner');
+  let raw:unknown=null;
+  if(intent)raw=resolveView(intent,this.catalog,ctx).plan;
+  else if(isIntent(fallback)){
+   try{raw=resolveView(fallback,this.catalog,ctx).plan;}
+   catch(error){
+    // Unknown semantic intent is ordinary conversation, not authorization bypass.
+    if(!(error instanceof Error)||!error.message.startsWith('No compatible registered UI recipe'))throw error;
+   }
+  }else raw=fallback;
+  if(!raw){
+   let kind:'text'|'unavailable'='unavailable';
+   let answer='No registered UI handles this request and no conversational model is configured. You can still search apps or inspect existing results.';
+   if(/^\s*(hello|hi|hey)([!.\s]|$)/i.test(text)){kind='text';answer='Hello! I can explore mock App Store apps, show rich detail pages, and discuss other topics when a conversational model is connected.';}
+   else if(this.reply){
+    const history=old.turns.slice(-12).flatMap(turn=>[{role:'user' as const,content:turn.userText},{role:'assistant' as const,content:turn.kind==='ui'?'Displayed a registered OpenUI view.':turn.text}]);
+    answer=await this.reply(text,history);
+    if(typeof answer!=='string'||!answer.trim()||answer.length>16000)throw Error('Invalid conversational reply');
+    kind='text';
+   }
+   const next={threadId:ctx.threadId,revision:old.revision+1,slots:old.slots,turns:[...old.turns,{turnId:ctx.turnId,kind,text:answer,userText:text}].slice(-30)} satisfies History;
+   this.store.save(next,old.revision);
+   return {kind,turnId:ctx.turnId,revision:next.revision,text:answer};
+  }
   const plan=validate(raw,this.catalog,ctx);
   const results:Record<string,unknown>={};
   const failures:Record<string,string>={};
@@ -187,7 +212,7 @@ export class Engine{
   for(const [key,path] of Object.entries(plan.stateCapture??{})){
    const data=resolve(path,results);checkJson(data);captured[key]=data as Json;
   }
-  this.store.save({threadId:ctx.threadId,revision:old.revision+1,slots:{...old.slots,...(plan.statePatch??{}),...captured},turns:[...old.turns,{turnId:ctx.turnId,plan,openui}].slice(-30)},old.revision);
+  this.store.save({threadId:ctx.threadId,revision:old.revision+1,slots:{...old.slots,...(plan.statePatch??{}),...captured},turns:[...old.turns,{turnId:ctx.turnId,kind:'ui' as const,plan,openui,userText:text}].slice(-30)},old.revision);
   return {kind:'ui' as const,turnId:ctx.turnId,revision:old.revision+1,plan,openui,failures};
  }
 }
