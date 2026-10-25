@@ -72,8 +72,7 @@ appear verbatim in the original response. Invalid proposals fail verification.
 
 This is **evidence presence checking**, not full semantic verification:
 a malicious or false underlying MCP response is not made trustworthy just
-because it contains a matching quote. The optional extractor callback is
-not automatically connected to an external LLM in the demo server.
+because it contains a matching quote. The optional extractor callback can be connected to an organization-approved HTTPS LLM gateway using \`FIELD_EXTRACT_URL\`, \`FIELD_EXTRACT_TOKEN\`, and \`FIELD_EXTRACT_MODEL\`. It remains disabled by default and the CI suite uses a deterministic mock extractor; **no hosted model has been tested**.
 
 ## Recovery policy
 
