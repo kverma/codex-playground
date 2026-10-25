@@ -17,7 +17,7 @@ export type UIIntent={
 export type Recipe={
  id:string;domain:string;action:string;entity:string;cardinality:Cardinality;
  priority:number;description:string;dataContract:string;tags:string[];
- operations:Array<{id:string;capability:string;args:Record<string,unknown>;dependsOn?:string[];required?:boolean;fallback?:Json}>;
+ operations:Array<{id:string;capability:string;args:Record<string,unknown>;dependsOn?:string[];required?:boolean;fallback?:Json;recovery?:{capability:string;args:Record<string,unknown>;fields:string[]}}>;
  view:Node;stateCapture?:Record<string,string>;
 };
 const own=(o:object,k:string)=>Object.prototype.hasOwnProperty.call(o,k);
@@ -105,6 +105,13 @@ export function validateRegistry(catalog:Catalog):void{
    if(!cap.readOnly)fail('view registry cannot execute mutating capabilities');
    if(!isObj(op.args)||Object.keys(op.args).some(k=>!cap.args.includes(k)))fail('incompatible capability arguments');
    if(op.required===false&&op.fallback===undefined)fail('optional tool requires fallback');
+   if(op.recovery){
+    const cap=catalog.capabilities[op.recovery.capability];
+    const normal=catalog.normalization?.[op.capability];
+    if(!cap?.readOnly||!normal||!Array.isArray(op.recovery.fields)||!op.recovery.fields.length||op.recovery.fields.some(path=>!normal.fields[path]?.recoverable))fail('invalid field recovery registration');
+    if(!isObj(op.recovery.args)||Object.keys(op.recovery.args).some(k=>!cap.args.includes(k))||!cap.args.includes('fields'))fail('invalid recovery args');
+    visit(op.recovery.args,(kind,ref)=>{if(kind==='dependency'&&!op.dependsOn?.includes(ref.split('.')[1]!))fail('unregistered recovery dependency');});
+   }
    if(op.dependsOn?.some(dep=>!operations.has(dep)||dep===op.id))fail('invalid dataflow dependsOn');
    visit(op.args,(kind,ref)=>{if(kind==='dependency'&&(!op.dependsOn?.includes(ref.split('.')[1]!)||!operations.has(ref.split('.')[1]!)))fail('unregistered DAG dependency');});
   }
@@ -119,7 +126,7 @@ export function validateRegistry(catalog:Catalog):void{
 export function discover(intent:UIIntent,catalog:Catalog,ctx:Context){
  const candidates=(catalog.views??[]).filter(v=>v.domain===intent.domain&&v.action===intent.action&&v.entity===intent.entity&&v.cardinality===intent.cardinality);
  if(!candidates.length)throw Error('No compatible registered UI recipe for '+[intent.domain,intent.action,intent.entity,intent.cardinality].join('/'));
- const authorized=candidates.filter(v=>v.operations.every(op=>(catalog.capabilities[op.capability]?.permissions??[]).every(p=>ctx.permissions.includes(p))));
+ const authorized=candidates.filter(v=>v.operations.every(op=>(catalog.capabilities[op.capability]?.permissions??[]).every(p=>ctx.permissions.includes(p))&&(!op.recovery||(catalog.capabilities[op.recovery.capability]?.permissions??[]).every(p=>ctx.permissions.includes(p)))));
  if(!authorized.length)throw Error('No authorized UI recipe for requested data capabilities');
  const eligible=authorized.filter(v=>{
   try{
@@ -149,7 +156,7 @@ export function resolveView(intent:UIIntent,catalog:Catalog,ctx:Context):{plan:P
  };
  const plan:Plan={
   version:1,
-  operations:recipe.operations.map(op=>({id:op.id,capability:op.capability,args:substitute(op.args) as Record<string,Json>,...(op.dependsOn?{dependsOn:[...op.dependsOn]}:{}),...(op.required===false?{required:false,fallback:structuredClone(op.fallback)}:{})})),
+  operations:recipe.operations.map(op=>({id:op.id,capability:op.capability,args:substitute(op.args) as Record<string,Json>,...(op.dependsOn?{dependsOn:[...op.dependsOn]}:{}),...(op.required===false?{required:false,fallback:structuredClone(op.fallback)}:{}),...(op.recovery?{recovery:{capability:op.recovery.capability,args:substitute(op.recovery.args) as Record<string,Json>,fields:[...op.recovery.fields]}}:{})})),
   view:substitute(recipe.view) as Node,
   ...(intent.statePatch?{statePatch:structuredClone(intent.statePatch)}:{}),
   ...(recipe.stateCapture?{stateCapture:{...recipe.stateCapture}}:{})
