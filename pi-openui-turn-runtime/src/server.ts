@@ -8,7 +8,10 @@ const fixture=[{name:'Unit tests #421',repository:'atlas',service:'atlas',branch
 const invoke:Invoke=async(cap,args)=>{
  const tools={'appstore.search':'search_apps','appstore.details':'get_app','appstore.compare':'compare_apps'} as const;
  if(cap in tools)return callAppStoreTool(mockAppStore.client,tools[cap as keyof typeof tools],args);
- if(['reviews.get','privacy.get','pricing.get','compatibility.check'].includes(cap)){
+ if(cap==='privacy.get'&&process.env.MOCK_PARTIAL_PRIVACY==='1')return {report:{collects:'Diagnostics (optional)',notes:'Mock partial report'},source:'mock-privacy'};
+ if(cap==='pricing.get'&&process.env.MOCK_PARTIAL_PRICING==='1')return {offer:{currency:'USD',purchaseType:'One-time'},source:'mock-pricing'};
+ if(cap==='pricing.get'&&process.env.MOCK_TEXT_PRICING==='1')return 'price: $9.99\\ncurrency: USD\\npurchaseType: One-time';
+  if(['reviews.get','privacy.get','pricing.get','pricing.recover','compatibility.check'].includes(cap)){
   if(process.env.MOCK_FAIL_REVIEWS==='1'&&cap==='reviews.get')throw Error('Injected reviews MCP failure');
   return richServices.invoke(cap,args);
  }
