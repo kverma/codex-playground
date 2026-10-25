@@ -22,7 +22,23 @@ const planner:Planner|undefined=process.env.PLANNER_URL&&process.env.PLANNER_TOK
  const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+process.env.PLANNER_TOKEN},body:JSON.stringify({model:process.env.PLANNER_MODEL??'approved-model',messages:[{role:'system',content:'Return JSON semantic intent only: {domain,action,entity,cardinality,params,presentation?}, selecting only compatible entries from the authorized view registry: '+JSON.stringify(registered.views?.map(v=>({domain:v.domain,action:v.action,entity:v.entity,cardinality:v.cardinality,tags:v.tags,description:v.description})))+'. Never output UI component names, tool identifiers, executable code, or claimed data values. Never add permissions. The server decides tools and rendering.'},{role:'user',content:JSON.stringify({text,context})}],response_format:{type:'json_object'}}),signal:AbortSignal.timeout(20000)});
  if(!response.ok)throw Error('Planner HTTP '+response.status);const value=await response.json();return JSON.parse(value.choices?.[0]?.message?.content??'{}');
 }:undefined;
-const engine=new Engine(catalog,store,invoke,planner);
+// Ordinary chat is intentionally separate from the registry's tool/UI planner.
+// No MCP tool calls are authorized here, and model output is displayed as TEXT.
+const conversationalReply=process.env.CHAT_REPLY_URL&&process.env.CHAT_REPLY_TOKEN?
+ async(message:string,history:Array<{role:'user'|'assistant';content:string}>):Promise<string>=>{
+  const endpoint=new URL(process.env.CHAT_REPLY_URL!);
+  if(endpoint.protocol!=='https:')throw Error('Conversational LLM requires HTTPS');
+  const response=await fetch(endpoint,{method:'POST',signal:AbortSignal.timeout(20000),
+   headers:{'content-type':'application/json',authorization:'Bearer '+process.env.CHAT_REPLY_TOKEN},
+   body:JSON.stringify({model:process.env.CHAT_REPLY_MODEL??'approved-model',messages:[
+    {role:'system',content:'You are a helpful conversational assistant. Speak in plain text. You have NOT accessed tools or live App Store data in this conversation. Never invent tool results or impersonate a verified UI. Be transparent about missing information.'},
+    ...history.slice(-16),{role:'user',content:message}
+   ]})});
+  if(!response.ok)throw Error('Conversational model HTTP '+response.status);
+  const value=await response.json();
+  return String(value.choices?.[0]?.message?.content??'');
+ }:undefined;
+const engine=new Engine(catalog,store,invoke,planner,undefined,conversationalReply);
 const server=createServer(async(req,res)=>{
  const reply=(status:number,obj:unknown)=>{res.writeHead(status,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(obj));};
  try{
