@@ -23,5 +23,5 @@ const OfferCard=defineComponent({name:'OfferCard',description:'Commercial offer'
 const SubscriptionDealCard=defineComponent({name:'SubscriptionDealCard',description:'B2B subscription pricing',props:z.object({customer:z.string(),sku:z.string(),price:z.string(),cohort:z.string()}),component:({props})=><article style={panel}><strong>{props.customer}</strong><p>{props.sku}: {props.price}</p><small>{props.cohort}</small></article>});
 const AtlasSkuCard=defineComponent({name:'AtlasSkuCard',description:'Per-country SKU commercial state',props:z.object({sku:z.string(),country:z.string(),availability:z.string(),offerCount:z.string()}),component:({props})=><article style={panel}><strong>{props.sku}</strong><p>{props.country} · {props.availability}</p><small>{props.offerCount} offers</small></article>});
 export const customComponents=[MetricCard,StatusPill,IncidentCard,BuildRunCard,EvidenceCard,ServiceHealth,TimelineEvent,KeyValue,JsonInspector,EmptyState,SongCard,AlbumCard,BookCard,OfferCard,SubscriptionDealCard,AtlasSkuCard];
-export const library=openuiLibrary.extend!({components:{add:customComponents.map(component=>({component,slots:['Stack.children','Card.children']}))}});
+export const library=openuiLibrary.extend!({components:{add:customComponents}});
 export { openuiLibrary };
