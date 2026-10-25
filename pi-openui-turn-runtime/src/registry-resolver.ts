@@ -25,6 +25,7 @@ const safe=/^[a-zA-Z][a-zA-Z0-9_-]*$/;
 const isObj=(v:unknown):v is Record<string,unknown>=>!!v&&typeof v==='object'&&!Array.isArray(v);
 const fail=(why:string):never=>{throw Error('Component registry: '+why);};
 const components=(value:unknown,catalog:Catalog):void=>{
+ if(Array.isArray(value)){for(const x of value)components(x,catalog);return;}
  if(!isObj(value))return;
  if(typeof value.component==='string'){
   if(!own(catalog.components,value.component))fail('unknown component '+value.component);
@@ -35,8 +36,7 @@ const components=(value:unknown,catalog:Catalog):void=>{
    if(own(value.props,key)&&(!isObj(value.props[key])||typeof (value.props[key] as Record<string,unknown>).$bind!=='string'))fail('factual prop must bind '+value.component+'.'+key);
   }
   for(const x of Object.values(value.props))components(x,catalog);
- }else if(Array.isArray(value)){for(const x of value)components(x,catalog);}
- else for(const x of Object.values(value))components(x,catalog);
+ }else for(const x of Object.values(value))components(x,catalog);
 };
 const visit=(v:unknown,cb:(key:string,ref:string)=>void)=>{
  if(Array.isArray(v)){v.forEach(x=>visit(x,cb));return;}
