@@ -12,7 +12,9 @@
     "catalog:sync": "tsx web/src/export-catalog.ts",
     "typecheck:web": "tsc -p tsconfig.web.json --noEmit",
     "build:web": "vite build --config web/vite.config.ts",
-    "dev:web": "vite --config web/vite.config.ts"
+    "dev:web": "vite --config web/vite.config.ts",
+    "mcp:appstore": "node --import tsx src/app-store-stdio.ts",
+    "test:browser": "node --import tsx tests/browser.ts"
   },
   "dependencies": {
     "@earendil-works/pi-codemode": "1.4.0",
@@ -22,7 +24,9 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^4.0.0",
-    "zustand": "^4.5.5"
+    "zustand": "^4.5.5",
+    "@modelcontextprotocol/client": "^2.3.1",
+    "@modelcontextprotocol/server": "^2.3.1"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
