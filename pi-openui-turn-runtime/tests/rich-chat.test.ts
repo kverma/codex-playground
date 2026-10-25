@@ -148,13 +148,13 @@ test('unstructured MCP text is parsed conservatively and does not trigger unnece
   const engine=new Engine(c,new Store(),async(cap,args)=>{
    if(cap==='appstore.search')return callAppStoreTool(a.client,'search_apps',args);
    if(cap==='appstore.details')return callAppStoreTool(a.client,'get_app',args);
-   if(cap==='pricing.get')return 'price: $9.99\\ncurrency: USD\\npurchaseType: One-time';
+   if(cap==='pricing.get')return 'price: $9.99\ncurrency: USD\npurchaseType: One-time';
    if(cap==='pricing.recover'){repairs++;return s.invoke(cap,args);}
    return s.invoke(cap,args);
   });
   await engine.handle('Find drawing apps',{threadId:'plain-text-pricing',turnId:'1',permissions:['appstore:read']});
   const r=await engine.handle('Show rich details for first one',{threadId:'plain-text-pricing',turnId:'2',permissions:['appstore:read']});
-  assert.equal(r.kind,'ui');if(r.kind==='ui'){assert.match(r.openui,/\$9\.99/);assert.match(r.openui,/coerced/);}
+  assert.equal(r.kind,'ui');if(r.kind==='ui'){assert.match(r.openui,/\$9\.99/);assert.match(r.openui,/extracted/);}
   assert.equal(repairs,0);
  }finally{await a.close();await s.close();}
 });
