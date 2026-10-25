@@ -33,6 +33,13 @@ function privacyServer(){
 }
 function pricingServer(){
  const server=new McpServer({name:'mock-pricing-service',version:'1.0.0'});
+ server.registerTool('recover_pricing_fields',{description:'Retrieve only requested missing pricing fields (synthetic)',annotations:{readOnlyHint:true},inputSchema:z.object({appId:z.string(),storefront:z.string(),fields:z.array(z.enum(['offer.price','offer.currency','offer.purchaseType'])).min(1).max(3)}),outputSchema:z.object({offer:z.object({price:z.string().optional(),currency:z.string().optional(),purchaseType:z.string().optional()})})},async({appId,storefront,fields})=>{
+  const app=get(appId);
+  const all:{[key:string]:string}={'offer.price':app?.price??'Not found','offer.currency':storefront==='US'?'USD':'Unknown','offer.purchaseType':app?.price==='Free'?'Free':'One-time'};
+  const offer:Record<string,string>={};
+  for(const field of fields)offer[field.split('.')[1]!]=all[field]!;
+  return result({offer});
+ });
  server.registerTool('get_pricing',{description:'Synthetic app price by storefront',annotations:{readOnlyHint:true},inputSchema:z.object({appId:z.string(),storefront:z.string().default('US')}),outputSchema:z.object({offer:z.object({price:z.string(),currency:z.string(),purchaseType:z.string()}),status:z.string(),source:z.string()})},async({appId,storefront})=>{
   const app=get(appId);
   return result({offer:{price:app?.price??'Not found',currency:storefront==='US'?'USD':'Unknown',purchaseType:app?.price==='Free'?'Free':'One-time'},status:app?'ok':'not_found',source:'mock-pricing'});
@@ -60,6 +67,7 @@ export async function connectRichMockServices(){
   'reviews.get':'reviews:get_reviews',
   'privacy.get':'privacy:get_privacy',
   'pricing.get':'pricing:get_pricing',
+  'pricing.recover':'pricing:recover_pricing_fields',
   'compatibility.check':'compatibility:check_devices'
  } as const;
  async function invoke(capability:string,args:Record<string,unknown>){
