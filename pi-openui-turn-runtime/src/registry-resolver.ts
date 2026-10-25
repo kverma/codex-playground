@@ -30,20 +30,23 @@ const components=(value:unknown,catalog:Catalog):void=>{
  if(typeof value.component==='string'){
   if(!own(catalog.components,value.component))fail('unknown component '+value.component);
   const def=catalog.components[value.component]!;
-  if(!isObj(value.props))fail('props object required');
-  for(const key of Object.keys(value.props))if(!def.args.includes(key))fail('unknown '+value.component+'.'+key);
+  const props=value.props;
+  if(!isObj(props))fail('props object required');
+  for(const key of Object.keys(props))if(!def.args.includes(key))fail('unknown '+value.component+'.'+key);
   for(const key of def.requiredBindings??[]){
-   if(own(value.props,key)&&(!isObj(value.props[key])||typeof (value.props[key] as Record<string,unknown>).$bind!=='string'))fail('factual prop must bind '+value.component+'.'+key);
+   const bound=props[key];
+   if(!own(props,key)||!isObj(bound)||typeof bound.$bind!=='string')fail('factual prop must bind '+value.component+'.'+key);
   }
-  for(const x of Object.values(value.props))components(x,catalog);
+  for(const x of Object.values(props))components(x,catalog);
  }else for(const x of Object.values(value))components(x,catalog);
 };
 const visit=(v:unknown,cb:(key:string,ref:string)=>void)=>{
  if(Array.isArray(v)){v.forEach(x=>visit(x,cb));return;}
  if(!isObj(v))return;
  if(own(v,'$param')){
-  if(Object.keys(v).length!==1||typeof v.$param!=='string'||!safe.test(v.$param))fail('invalid parameter reference');
-  cb('param',v.$param);
+  const param=v.$param;
+  if(Object.keys(v).length!==1||typeof param!=='string'||!safe.test(param))fail('invalid parameter reference');
+  cb('param',param as string);
   return;
  }
  if(own(v,'$bind')){
@@ -55,9 +58,10 @@ const visit=(v:unknown,cb:(key:string,ref:string)=>void)=>{
  for(const x of Object.values(v))visit(x,cb);
 };
 export function validateRegistry(catalog:Catalog):void{
- if(!Array.isArray(catalog.views))fail('views.json missing');
+ const views=catalog.views;
+ if(!Array.isArray(views))fail('views.json missing');
  const ids=new Set<string>();
- for(const v of catalog.views){
+ for(const v of views!){
   if(!isObj(v)||typeof v.id!=='string'||ids.has(v.id)||!safe.test(v.id.replace(/\./g,'-')))fail('duplicate/invalid view ID');
   ids.add(v.id);
   if(!['one','many','comparison'].includes(v.cardinality)||!safe.test(v.domain)||!safe.test(v.action)||!safe.test(v.entity))fail('invalid semantic contract');
@@ -103,8 +107,9 @@ export function resolveView(intent:UIIntent,catalog:Catalog,ctx:Context):{plan:P
   if(Array.isArray(v))return v.map(substitute);
   if(!isObj(v))return v;
   if(own(v,'$param')){
-   if(typeof v.$param!=='string'||!own(intent.params,v.$param))fail('unbound intent parameter');
-   return structuredClone(intent.params[v.$param]);
+   const key=v.$param;
+   if(typeof key!=='string'||!own(intent.params,key))fail('unbound intent parameter');
+   return structuredClone(intent.params[key as string]);
   }
   if(own(v,'$bind'))return {'$bind':v.$bind};
   return Object.fromEntries(Object.entries(v).map(([k,x])=>[k,substitute(x)]));
