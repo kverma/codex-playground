@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 export type Json=null|boolean|number|string|Json[]|{[key:string]:Json};
 export type Props=Record<string,unknown>;
 export type Node={component:string;props:Props};
-export type Op={id:string;capability:string;args:Record<string,Json>};
+export type Op={id:string;capability:string;args:Record<string,Json>;dependsOn?:string[];required?:boolean;fallback?:Json};
 export type Plan={version:1;operations:Op[];view:Node;statePatch?:Record<string,Json>;stateCapture?:Record<string,string>};
 export type Context={threadId:string;turnId:string;permissions:string[]};
 export type Component={description:string;args:string[];requiredBindings?:string[];propTypes?:Record<string,OutputType>};
@@ -38,6 +38,12 @@ export function validate(raw:unknown,catalog:Catalog,ctx:Context):Plan{
   if(!cap.readOnly||!cap.permissions.every(p=>ctx.permissions.includes(p)))throw Error('Tool not authorized');
   if(!isObj(op.args)||Object.keys(op.args).some(k=>!cap.args.includes(k)))throw Error('Unrecognized tool arguments');
   checkJson(op.args);
+  if(op.dependsOn!==undefined&&(!Array.isArray(op.dependsOn)||op.dependsOn.some(dep=>typeof dep!=='string'||!ids.has(dep)||dep===op.id)))throw Error('Invalid dataflow dependency');
+  if(op.required===false){if(op.fallback===undefined)throw Error('Optional dataflow node requires declared unavailable fallback');checkJson(op.fallback);}
+  const checkRefs=(v:unknown):void=>{if(Array.isArray(v)){v.forEach(checkRefs);return;}if(!isObj(v))return;
+   if(own(v,'$ref')){const ref=v.$ref;if(Object.keys(v).length!==1||typeof ref!=='string'||!pathPattern.test(ref)||ref.split('.').some(k=>forbidden.has(k))||!op.dependsOn?.includes(ref.split('.')[1]!))throw Error('Undeclared or unsafe operation dependency');return;}
+   Object.values(v).forEach(checkRefs);
+  };checkRefs(op.args);
  }
  let count=0;
  const visit=(v:unknown,depth:number):void=>{
@@ -109,6 +115,19 @@ export function compile(plan:Plan,catalog:Catalog,results:Record<string,unknown>
  component(plan.view,'root');
  return lines.join('\n');
 }
+/** Resolve only declared result paths, never arbitrary code or JS expressions. */
+function resolveToolArgs(value:Record<string,Json>,results:Record<string,unknown>):Record<string,Json>{
+ const walk=(v:unknown):Json=>{
+  if(Array.isArray(v))return v.map(walk);
+  if(isObj(v)){
+   if(own(v,'$ref')){const resolved=resolve(String(v.$ref),results);checkJson(resolved);return structuredClone(resolved) as Json;}
+   return Object.fromEntries(Object.entries(v).map(([k,x])=>[k,walk(x)]));
+  }
+  return v as Json;
+ };
+ return walk(value) as Record<string,Json>;
+}
+
 export type History={threadId:string;revision:number;slots:Record<string,Json>;turns:Array<{turnId:string;openui:string;plan:Plan}>};
 export class Store{
  private readonly histories=new Map<string,History>();
@@ -136,11 +155,32 @@ export class Engine{
   if(!raw)throw Error('Arbitrary request requires configured planner');
   const plan=validate(raw,this.catalog,ctx);
   const results:Record<string,unknown>={};
-  for(const op of plan.operations){
-   const exec=()=>this.invoke(op.capability,op.args,ctx);
-   const output=this.durable?await this.durable.run(ctx.threadId+'/'+ctx.turnId+'/'+op.id,exec):await exec();
-   validateResult(op.capability,output,this.catalog);
-   results[op.id]=output;
+  const failures:Record<string,string>={};
+  const pending=new Map(plan.operations.map(op=>[op.id,op]));
+  // Topological waves. Independent MCP calls in each wave run concurrently.
+  // Waves and maximum fan-out are bounded; never execute model-authored scripts.
+  while(pending.size){
+   const ready=[...pending.values()].filter(op=>(op.dependsOn??[]).every(dep=>Object.prototype.hasOwnProperty.call(results,dep)));
+   if(!ready.length)throw Error('Dataflow deadlock or undeclared dependency');
+   for(let i=0;i<ready.length;i+=4){
+    const batch=ready.slice(i,i+4);
+    const settled=await Promise.all(batch.map(async op=>{
+     try{
+      const args=resolveToolArgs(op.args,results);
+      const exec=()=>this.invoke(op.capability,args,ctx);
+      const output=this.durable?await this.durable.run(ctx.threadId+'/'+ctx.turnId+'/'+op.id,exec):await exec();
+      validateResult(op.capability,output,this.catalog);
+      return {op,output};
+     }catch(error){
+      if(op.required!==false)throw error;
+      const output=structuredClone(op.fallback);
+      validateResult(op.capability,output,this.catalog);
+      failures[op.id]=error instanceof Error?error.message:'Tool unavailable';
+      return {op,output};
+     }
+    }));
+    for(const x of settled){results[x.op.id]=x.output;pending.delete(x.op.id);}
+   }
   }
   const openui=compile(plan,this.catalog,results);
   const captured:Record<string,Json>={};
@@ -148,6 +188,6 @@ export class Engine{
    const data=resolve(path,results);checkJson(data);captured[key]=data as Json;
   }
   this.store.save({threadId:ctx.threadId,revision:old.revision+1,slots:{...old.slots,...(plan.statePatch??{}),...captured},turns:[...old.turns,{turnId:ctx.turnId,plan,openui}].slice(-30)},old.revision);
-  return {turnId:ctx.turnId,revision:old.revision+1,plan,openui};
+  return {kind:'ui' as const,turnId:ctx.turnId,revision:old.revision+1,plan,openui,failures};
  }
 }
