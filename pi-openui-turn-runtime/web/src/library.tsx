@@ -22,6 +22,57 @@ const BookCard=defineComponent({name:'BookCard',description:'Book details',props
 const OfferCard=defineComponent({name:'OfferCard',description:'Commercial offer',props:z.object({name:z.string(),price:z.string(),eligibility:z.string()}),component:({props})=><article style={panel}><b>{props.name}</b><h3>{props.price}</h3><p>{props.eligibility}</p></article>});
 const SubscriptionDealCard=defineComponent({name:'SubscriptionDealCard',description:'B2B subscription pricing',props:z.object({customer:z.string(),sku:z.string(),price:z.string(),cohort:z.string()}),component:({props})=><article style={panel}><strong>{props.customer}</strong><p>{props.sku}: {props.price}</p><small>{props.cohort}</small></article>});
 const AtlasSkuCard=defineComponent({name:'AtlasSkuCard',description:'Per-country SKU commercial state',props:z.object({sku:z.string(),country:z.string(),availability:z.string(),offerCount:z.string()}),component:({props})=><article style={panel}><strong>{props.sku}</strong><p>{props.country} · {props.availability}</p><small>{props.offerCount} offers</small></article>});
-export const customComponents=[MetricCard,StatusPill,IncidentCard,BuildRunCard,EvidenceCard,ServiceHealth,TimelineEvent,KeyValue,JsonInspector,EmptyState,SongCard,AlbumCard,BookCard,OfferCard,SubscriptionDealCard,AtlasSkuCard];
+
+/* App Store-style components are explicitly MOCK and use Zod-typed structured props. */
+const appSummary=z.object({
+ id:z.string(),name:z.string(),developer:z.string(),subtitle:z.string(),
+ category:z.string(),icon:z.string(),color:z.string(),price:z.string(),
+ rating:z.number(),ratingCount:z.number(),platforms:z.array(z.string())
+});
+const appDetails=appSummary.extend({
+ description:z.string(),features:z.array(z.string()),whatsNew:z.string(),
+ ageRating:z.string(),size:z.string(),version:z.string(),privacy:z.array(z.string()),
+ screenshots:z.array(z.object({caption:z.string(),color:z.string(),symbol:z.string()}))
+});
+type Summary=z.infer<typeof appSummary>;
+const appMessage=(text:string)=>window.dispatchEvent(new CustomEvent('appstore:chat',{detail:text}));
+const AppTile=({app}:{app:Summary})=><article data-testid={'app-summary-'+app.id} className="app-tile">
+ <div className="app-icon" style={{background:app.color}}>{app.icon}</div>
+ <div className="app-copy"><strong>{app.name}</strong><small>{app.subtitle}</small><small>{app.developer}</small>
+ <span className="app-stars">★ {app.rating.toFixed(1)} <span>({app.ratingCount.toLocaleString()} ratings)</span></span></div>
+ <div className="app-controls"><span className="app-price">{app.price}</span><button type="button" onClick={()=>appMessage('Show details for '+app.name)}>View details</button></div>
+ </article>;
+const AppSummaryCard=defineComponent({name:'AppSummaryCard',description:'Single App Store-like search result (mock data)',props:z.object({app:appSummary}),component:({props})=><AppTile app={props.app}/>});
+const AppSearchGrid=defineComponent({name:'AppSearchGrid',description:'Responsive gallery of mock App Store app summary cards',props:z.object({query:z.string(),apps:z.array(appSummary)}),component:({props})=><section data-testid="app-search-grid" className="app-store">
+ <div className="app-store-head"><div><span className="app-eyebrow">DISCOVER APPS</span><h2>{props.query?('Results for “'+props.query+'”'):'Explore apps'}</h2><p>{props.apps.length} matching apps · Illustrative catalog</p></div><span className="mock-ribbon">MOCK DATA</span></div>
+ <div className="app-grid">{props.apps.map(app=><AppTile key={app.id} app={app}/>)}</div>
+ {props.apps.length===0&&<p className="app-empty">No mock apps match those filters. Try “drawing”, “productivity”, or “travel”.</p>}
+ </section>});
+const AppDetailView=defineComponent({name:'AppDetailView',description:'Detailed Apple App Store-style app page with screenshot previews',props:z.object({app:appDetails.nullable()}),component:({props})=>{
+ const app=props.app;if(!app)return <article data-testid="app-details-missing" className="app-store">This mock app was not found.</article>;
+ return <section className="app-store app-detail" data-testid={'app-detail-'+app.id}>
+  <div className="app-detail-hero"><div className="app-icon large" style={{background:app.color}}>{app.icon}</div>
+   <div className="app-detail-title"><span className="app-eyebrow">APP STORE PREVIEW · MOCK</span><h2>{app.name}</h2><p>{app.subtitle}</p><small>{app.developer}</small></div>
+   <div className="app-get"><strong>{app.price}</strong><button type="button" onClick={()=>appMessage('Compare the first two apps')}>Compare</button></div>
+  </div>
+  <div className="app-stats"><div><strong>{app.rating.toFixed(1)} ★</strong><small>{app.ratingCount.toLocaleString()} Ratings</small></div><div><strong>{app.ageRating}</strong><small>Age Rating</small></div><div><strong>{app.size}</strong><small>Size</small></div><div><strong>{app.version}</strong><small>Version</small></div></div>
+  <div className="app-shots">{app.screenshots.map((shot,i)=><div key={i} className="app-shot" style={{background:shot.color}}><div className="app-screen-symbol">{shot.symbol}</div><span>{shot.caption}</span></div>)}</div>
+  <h3>About this app</h3><p className="app-description">{app.description}</p>
+  <h3>Features</h3><div className="app-features">{app.features.map(feature=><span key={feature}>✓ {feature}</span>)}</div>
+  <h3>What's New</h3><p className="app-description">{app.whatsNew}</p>
+  <h3>App Privacy</h3><p className="app-description">{app.privacy.join(' · ')}</p>
+  <p className="app-footer">Supported: {app.platforms.join(', ')} · All listing details are fictional test data.</p>
+ </section>;
+}});
+const AppComparisonView=defineComponent({name:'AppComparisonView',description:'Deterministic cross-app comparison',props:z.object({apps:z.array(appSummary)}),component:({props})=><section className="app-store" data-testid="app-comparison">
+ <div className="app-store-head"><div><span className="app-eyebrow">SIDE BY SIDE</span><h2>Compare apps</h2><p>All values come from the mock MCP response</p></div><span className="mock-ribbon">MOCK DATA</span></div>
+ <div className="app-comparison-grid">{props.apps.map(app=><div key={app.id} className="app-comparison-col" data-testid={'app-compare-'+app.id}>
+ <div className="app-icon" style={{background:app.color}}>{app.icon}</div><h3>{app.name}</h3><p>{app.subtitle}</p>
+ <dl><dt>Price</dt><dd>{app.price}</dd><dt>Rating</dt><dd>★ {app.rating.toFixed(1)}</dd><dt>Category</dt><dd>{app.category}</dd><dt>Platforms</dt><dd>{app.platforms.join(', ')}</dd></dl>
+ <button type="button" onClick={()=>appMessage('Show details for '+app.name)}>View details</button>
+ </div>)}</div>
+ </section>});
+
+export const customComponents=[MetricCard,StatusPill,IncidentCard,BuildRunCard,EvidenceCard,ServiceHealth,TimelineEvent,KeyValue,JsonInspector,EmptyState,SongCard,AlbumCard,BookCard,OfferCard,SubscriptionDealCard,AtlasSkuCard,AppSummaryCard,AppSearchGrid,AppDetailView,AppComparisonView];
 export const library=openuiLibrary.extend!({components:{add:customComponents}});
 export { openuiLibrary };
