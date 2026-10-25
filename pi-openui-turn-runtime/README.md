@@ -108,3 +108,21 @@ MCP tools. Existing UI turns remain unchanged.
 
 See [docs/MULTISOURCE_AND_CHAT.md](docs/MULTISOURCE_AND_CHAT.md) for the
 complete DAG contract, fallback behavior and test coverage.
+
+
+## Partially structured MCP responses and targeted recovery
+
+`src/tool-normalizer.ts` and `corpus/normalization.json` normalize missing,
+incorrectly typed, and plain-text MCP responses before typed OpenUI binding.
+Each field carries provenance/availability (`present`, `missing`, `invalid`,
+`extracted`, `recovered`), so the app detail UI never mistakes missing
+pricing for *Free* or a missing privacy declaration for *no tracking*.
+
+Only the allowlisted missing price field may be recovered using
+`pricing.recover`. A failed recovery leaves the other MCP data intact.
+An evidence-checked model extractor can be enabled through
+`FIELD_EXTRACT_URL`, `FIELD_EXTRACT_TOKEN`, and optionally
+`FIELD_EXTRACT_MODEL`; it is disabled by default.
+
+See [docs/TOOL_RESPONSE_NORMALIZATION.md](docs/TOOL_RESPONSE_NORMALIZATION.md)
+for contracts, trust boundaries, failure policies, and GitHub Actions tests.
