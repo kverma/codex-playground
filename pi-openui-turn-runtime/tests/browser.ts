@@ -52,6 +52,27 @@ try{
  assert.equal(await freeGrid.locator('[data-testid^="app-summary-"]').count(),1);
  assert.match(await freeGrid.innerText(),/PixelCraft Pro/);
  await page.screenshot({path:'artifacts/app-free-filter.png',fullPage:true});
+
+ // Five real mock MCP services feed one composable rich view.
+ await input.fill('Show full details with reviews, pricing, privacy and device compatibility for the first one');await send.click();
+ const rich=page.getByTestId('rich-app-pixelcraft').last();
+ await rich.waitFor({timeout:20000});
+ assert.match(await rich.getByTestId('rich-reviews').innerText(),/Great for my workflow/);
+ assert.match(await rich.getByTestId('rich-privacy').innerText(),/Diagnostics/);
+ assert.match(await rich.getByTestId('rich-pricing').innerText(),/Free/);
+ assert.match(await rich.getByTestId('rich-devices').innerText(),/Mac/);
+ await page.screenshot({path:'artifacts/app-rich-multi-mcp.png',fullPage:true});
+
+ // Ordinary turns MUST NOT be interpreted as OpenUI or arbitrary tool invocations.
+ await input.fill('Hello');await send.click();
+ const greeting=page.locator('.message.plain').last();
+ await greeting.waitFor({timeout:20000});
+ assert.match(await greeting.innerText(),/Hello!/);
+ await input.fill('Explain the origin of neutron stars');await send.click();
+ const unavailable=page.locator('.message.unavailable').last();
+ await unavailable.waitFor({timeout:20000});
+ assert.match(await unavailable.innerText(),/no conversational model is configured/i);
+ await page.screenshot({path:'artifacts/ordinary-chat-fallback.png',fullPage:true});
  assert.deepEqual(errors,[],'Real browser must not emit runtime errors');
- console.log('PASS: Real OpenUI React + MCP: CI follow-up and App Store search → detail → detail → compare → filter');
+ console.log('PASS: Real OpenUI React + MCP: CI follow-up, rich multi-MCP detail and plain/unavailable chat turns');
 }finally{await browser.close();}
