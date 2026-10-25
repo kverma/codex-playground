@@ -57,6 +57,29 @@ const visit=(v:unknown,cb:(key:string,ref:string)=>void)=>{
  if(Object.keys(v).some(k=>['__proto__','constructor','prototype'].includes(k)))fail('unsafe object key');
  for(const x of Object.values(v))visit(x,cb);
 };
+/** Statically check that tool output types satisfy component prop contracts. */
+const checkBindingTypes=(node:unknown,recipe:Recipe,catalog:Catalog):void=>{
+ if(Array.isArray(node)){node.forEach(x=>checkBindingTypes(x,recipe,catalog));return;}
+ if(!isObj(node))return;
+ if(typeof node.component==='string'&&isObj(node.props)){
+  const def=catalog.components[node.component]!;
+  for(const [prop,value] of Object.entries(node.props)){
+   if(isObj(value)&&typeof value.$bind==='string'){
+    const [,operation,field,...nested]=value.$bind.split('.');
+    const op=recipe.operations.find(x=>x.id===operation);
+    if(!op)fail('binding operation not registered');
+    const declared=catalog.capabilities[op.capability]!.outputs;
+    if(declared&&field&&!own(declared,field))fail('undeclared capability output: '+op.capability+'.'+field);
+    const actual=field?declared?.[field]:undefined;
+    const expected=def.propTypes?.[prop];
+    if(actual&&expected&&nested.length===0&&actual!==expected&&!(expected==='nullable-object'&&actual==='object'))fail('component prop type mismatch: '+node.component+'.'+prop+' expects '+expected+' but '+op.capability+'.'+field+' provides '+actual);
+   }
+   checkBindingTypes(value,recipe,catalog);
+  }
+  return;
+ }
+ for(const x of Object.values(node))checkBindingTypes(x,recipe,catalog);
+};
 export function validateRegistry(catalog:Catalog):void{
  const views=catalog.views;
  if(!Array.isArray(views))fail('views.json missing');
@@ -78,6 +101,7 @@ export function validateRegistry(catalog:Catalog):void{
    visit(op.args,(kind,ref)=>{if(kind==='result'&&!operations.has(ref.split('.')[1]!))fail('future operation dependency');});
   }
   components(v.view,catalog);
+  checkBindingTypes(v.view,v,catalog);
   visit(v.view,(kind,ref)=>{if(kind==='result'&&!operations.has(ref.split('.')[1]!))fail('view depends on unavailable result');});
   for(const [k,path] of Object.entries(v.stateCapture??{})){
    if(!safe.test(k)||typeof path!=='string'||!/^results\.[a-zA-Z][\w-]*(?:\.[a-zA-Z][\w-]*)*$/.test(path)||!operations.has(path.split('.')[1]!))fail('invalid state capture');
