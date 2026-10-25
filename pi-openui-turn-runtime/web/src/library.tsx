@@ -74,27 +74,34 @@ const AppComparisonView=defineComponent({name:'AppComparisonView',description:'D
  </section>});
 
 
+const qualitySchema=z.object({
+ status:z.enum(['ok','partial','unavailable']),source:z.string(),
+ fields:z.record(z.string(),z.object({status:z.enum(['present','coerced','extracted','missing','invalid','recovered','unavailable']),source:z.string(),reason:z.string().optional(),evidence:z.string().optional()}))
+});
 const AppRichDetailView=defineComponent({
  name:'AppRichDetailView',
  description:'Multi-source rich app detail: independently retrieved reviews, pricing, privacy and device compatibility',
  props:z.object({
   app:appDetails.nullable(),
-  reviews:z.object({items:z.array(z.object({author:z.string(),rating:z.number(),title:z.string(),body:z.string()})),status:z.string(),source:z.string()}),
-  privacy:z.object({report:z.object({collects:z.string(),tracking:z.string(),notes:z.string()}),status:z.string(),source:z.string()}),
-  pricing:z.object({offer:z.object({price:z.string(),currency:z.string(),purchaseType:z.string()}),status:z.string(),source:z.string()}),
-  compatibility:z.object({devices:z.array(z.object({name:z.string(),supported:z.boolean()})),status:z.string(),source:z.string()})
+  reviews:z.object({items:z.array(z.object({author:z.string(),rating:z.number(),title:z.string(),body:z.string()})),status:z.string(),source:z.string(),quality:qualitySchema.optional()}),
+  privacy:z.object({report:z.object({collects:z.string(),tracking:z.string(),notes:z.string()}),status:z.string(),source:z.string(),quality:qualitySchema.optional()}),
+  pricing:z.object({offer:z.object({price:z.string(),currency:z.string(),purchaseType:z.string()}),status:z.string(),source:z.string(),quality:qualitySchema.optional()}),
+  compatibility:z.object({devices:z.array(z.object({name:z.string(),supported:z.boolean()})),status:z.string(),source:z.string(),quality:qualitySchema.optional()})
  }),
  component:({props})=>{
   const app=props.app;
   if(!app)return <section data-testid="rich-app-missing" className="app-store">App not found in the mock catalog.</section>;
-  const status=(v:string)=><span className={'rich-source '+(v==='ok'?'ok':'missing')}>{v==='ok'?'Available':'Unavailable'}</span>;
+  const status=(v:string)=><span className={'rich-source '+(v==='ok'?'ok':'missing')}>{v==='ok'?'Available':v==='partial'?'Partial data':'Unavailable'}</span>;
   return <section className="app-store rich-detail" data-testid={'rich-app-'+app.id}>
     <div className="app-detail-hero"><div className="app-icon large" style={{background:app.color}}>{app.icon}</div><div className="app-detail-title"><span className="app-eyebrow">MULTI-SOURCE MCP · MOCK DATA</span><h2>{app.name}</h2><p>{app.subtitle}</p><small>{app.developer}</small></div></div>
     <p className="app-description">{app.description}</p>
     <div className="rich-sections">
-      <article className="rich-section" data-testid="rich-pricing"><header><b>Price & purchase</b>{status(props.pricing.status)}</header><h3>{props.pricing.offer.price}</h3><p>{props.pricing.offer.purchaseType} · {props.pricing.offer.currency}</p><small>Source: {props.pricing.source}</small></article>
+      <article className="rich-section" data-testid="rich-pricing"><header><b>Price & purchase</b>{status(props.pricing.status)}</header><h3>{props.pricing.offer.price}</h3><p>{props.pricing.offer.purchaseType} · {props.pricing.offer.currency}</p>
+      {props.pricing.quality?.fields['offer.price']&&<small data-testid="price-field-quality">Price field: {props.pricing.quality.fields['offer.price'].status}</small>}<small>Source: {props.pricing.source}</small></article>
       <article className="rich-section" data-testid="rich-reviews"><header><b>Reviews</b>{status(props.reviews.status)}</header>{props.reviews.items.map((review,i)=><div key={i} className="rich-review"><b>★ {review.rating} · {review.title}</b><p>{review.body}</p><small>{review.author}</small></div>)}{!props.reviews.items.length&&<p>Review data unavailable; app details are still shown.</p>}<small>Source: {props.reviews.source}</small></article>
-      <article className="rich-section" data-testid="rich-privacy"><header><b>App privacy</b>{status(props.privacy.status)}</header><p>Collection: {props.privacy.report.collects}</p><p>Tracking: {props.privacy.report.tracking}</p><small>{props.privacy.report.notes}</small></article>
+      <article className="rich-section" data-testid="rich-privacy"><header><b>App privacy</b>{status(props.privacy.status)}</header><p>Collection: {props.privacy.report.collects}</p><p>Tracking: {props.privacy.report.tracking}</p>
+      {props.privacy.quality?.fields['report.tracking']&&<small data-testid="privacy-tracking-quality">Tracking field: {props.privacy.quality.fields['report.tracking'].status}</small>}
+      <small>{props.privacy.report.notes}</small></article>
       <article className="rich-section" data-testid="rich-devices"><header><b>Device compatibility</b>{status(props.compatibility.status)}</header>{props.compatibility.devices.map(d=><p key={d.name}>{d.supported?'✓':'×'} {d.name}</p>)}{!props.compatibility.devices.length&&<p>Compatibility information unavailable.</p>}<small>Source: {props.compatibility.source}</small></article>
     </div>
     <p className="app-footer">All information is fictional test data from separate mock MCP servers.</p>
