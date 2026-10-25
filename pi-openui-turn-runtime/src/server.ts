@@ -13,14 +13,18 @@ const invoke:Invoke=async(cap,args)=>{
 };
 const planner:Planner|undefined=process.env.PLANNER_URL&&process.env.PLANNER_TOKEN?async(text,context,registered)=>{
  const endpoint=new URL(process.env.PLANNER_URL!);if(endpoint.protocol!=='https:')throw Error('Planner requires HTTPS');
- const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+process.env.PLANNER_TOKEN},body:JSON.stringify({model:process.env.PLANNER_MODEL??'approved-model',messages:[{role:'system',content:'You produce a JSON plan ONLY, version 1. Allowed components and capabilities follow: '+JSON.stringify(registered)+'. You may never invent tool data or generate executable code. Operations are {id,capability,args}; view is {component,props} and props may contain {$bind:"results.operation.field"}. Constraints apply server-side.'},{role:'user',content:JSON.stringify({text,context})}],response_format:{type:'json_object'}}),signal:AbortSignal.timeout(20000)});
+ const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer '+process.env.PLANNER_TOKEN},body:JSON.stringify({model:process.env.PLANNER_MODEL??'approved-model',messages:[{role:'system',content:'Return JSON semantic intent only: {domain,action,entity,cardinality,params,presentation?}, selecting only compatible entries from the authorized view registry: '+JSON.stringify(registered.views?.map(v=>({domain:v.domain,action:v.action,entity:v.entity,cardinality:v.cardinality,tags:v.tags,description:v.description})))+'. Never output UI component names, tool identifiers, executable code, or claimed data values. Never add permissions. The server decides tools and rendering.'},{role:'user',content:JSON.stringify({text,context})}],response_format:{type:'json_object'}}),signal:AbortSignal.timeout(20000)});
  if(!response.ok)throw Error('Planner HTTP '+response.status);const value=await response.json();return JSON.parse(value.choices?.[0]?.message?.content??'{}');
 }:undefined;
 const engine=new Engine(catalog,store,invoke,planner);
 const server=createServer(async(req,res)=>{
  const reply=(status:number,obj:unknown)=>{res.writeHead(status,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify(obj));};
  try{
- if(req.method==='GET'&&req.url==='/api/catalog')return reply(200,{components:Object.keys(catalog.components),capabilities:Object.keys(catalog.capabilities)});
+ if(req.method==='GET'&&req.url==='/api/catalog')return reply(200,{components:Object.keys(catalog.components),capabilities:Object.keys(catalog.capabilities),viewCount:catalog.views?.length??0});
+ if(req.method==='GET'&&req.url?.startsWith('/api/views')){
+  const u=new URL(req.url,'http://127.0.0.1');
+  return reply(200,{views:(catalog.views??[]).filter(v=>(!u.searchParams.has('domain')||u.searchParams.get('domain')===v.domain)&&(!u.searchParams.has('action')||u.searchParams.get('action')===v.action)).map(v=>({id:v.id,domain:v.domain,action:v.action,entity:v.entity,cardinality:v.cardinality,description:v.description,tags:v.tags,priority:v.priority,dataContract:v.dataContract,components:[...new Set(JSON.stringify(v.view).match(/\"component\":\"[^\"]+\"/g)??[])]}))});
+ }
  if(req.method==='POST'&&req.url==='/api/chat'){
   let raw='';for await(const piece of req){raw+=String(piece);if(raw.length>20000)throw Error('Request too long');}
   const {threadId,turnId,text}=JSON.parse(raw);if(typeof threadId!=='string'||!/^[\w-]{1,100}$/.test(threadId)||typeof turnId!=='string'||!/^[\w-]{1,100}$/.test(turnId)||typeof text!=='string'||text.length>5000)throw Error('Invalid request');
