@@ -101,7 +101,7 @@ export function normalizeToolResponse(raw:unknown,rule:NormalizationRule,options
     original=Number(original.trim());status='coerced';
    }else status='invalid';
   }
-  if(status==='present'&&(aliasUsed||proposal))status=proposal?'extracted':'coerced';
+  if(status==='present'&&(aliasUsed||proposal||!decoded.parsed))status=proposal||!decoded.parsed?'extracted':'coerced';
   if(options?.unavailable)status='unavailable';
   if(status==='missing'||status==='invalid'||status==='unavailable'){
    fields[path]={status,source:rule.source,reason:status==='unavailable'?'Source unavailable':status==='missing'?'Field not supplied':'Invalid type'};
