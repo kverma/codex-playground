@@ -14,7 +14,8 @@
     "build:web": "vite build --config web/vite.config.ts",
     "dev:web": "vite --config web/vite.config.ts",
     "mcp:appstore": "node --import tsx src/app-store-stdio.ts",
-    "test:browser": "node --import tsx tests/browser.ts"
+    "test:browser": "node --import tsx tests/browser.ts",
+    "typecheck:runtime": "tsc -p tsconfig.runtime.json --noEmit"
   },
   "dependencies": {
     "@earendil-works/pi-codemode": "1.4.0",
