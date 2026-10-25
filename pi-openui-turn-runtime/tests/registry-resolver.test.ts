@@ -84,3 +84,19 @@ test('unrecognized semantic intent cannot silently choose an unrelated component
  const catalog=await loadCatalog();
  assert.throws(()=>resolveView({domain:'unknown',action:'predict',entity:'everything',cardinality:'many',params:{}},catalog,ctx),/No compatible registered UI recipe/);
 });
+
+
+test('schema-based resolver rejects mismatched UI prop types and missing backend outputs',async()=>{
+ const catalog=await loadCatalog();
+ const broken=structuredClone(catalog);
+ broken.capabilities['appstore.search']!.outputs!.apps='string';
+ assert.throws(()=>validateRegistry(broken),/component prop type mismatch/);
+ const missing=structuredClone(catalog);
+ (missing.views![0]!.view.props.children as any[])[1].props.apps={$bind:'results.search.nonexistent'};
+ assert.throws(()=>validateRegistry(missing),/undeclared capability output/);
+});
+test('runtime rejects malformed MCP result before it reaches bound UI properties',async()=>{
+ const catalog=await loadCatalog();
+ const engine=new Engine(catalog,new Store(),async()=>({query:'drawing',apps:'not-an-array',ids:[],names:[],total:0,mock:true,source:'mock-app-store',price:'all'}));
+ await assert.rejects(()=>engine.handle('Find drawing apps',ctx),/Capability result type mismatch.*apps/);
+});
