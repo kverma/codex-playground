@@ -10,7 +10,12 @@
       ],
       "requiredBindings": [
         "value"
-      ]
+      ],
+      "propTypes": {
+        "label": "string",
+        "value": "string",
+        "detail": "string"
+      }
     },
     "StatusPill": {
       "description": "StatusPill custom component",
@@ -91,7 +96,11 @@
       ],
       "requiredBindings": [
         "json"
-      ]
+      ],
+      "propTypes": {
+        "title": "string",
+        "json": "string"
+      }
     },
     "EmptyState": {
       "description": "EmptyState custom component",
@@ -157,7 +166,10 @@
       ],
       "requiredBindings": [
         "app"
-      ]
+      ],
+      "propTypes": {
+        "app": "object"
+      }
     },
     "AppSearchGrid": {
       "description": "AppSearchGrid Apple App Store mock component; only bound MCP data",
@@ -168,7 +180,11 @@
       "requiredBindings": [
         "query",
         "apps"
-      ]
+      ],
+      "propTypes": {
+        "query": "string",
+        "apps": "array"
+      }
     },
     "AppDetailView": {
       "description": "AppDetailView Apple App Store mock component; only bound MCP data",
@@ -177,7 +193,10 @@
       ],
       "requiredBindings": [
         "app"
-      ]
+      ],
+      "propTypes": {
+        "app": "nullable-object"
+      }
     },
     "AppComparisonView": {
       "description": "AppComparisonView Apple App Store mock component; only bound MCP data",
@@ -186,7 +205,10 @@
       ],
       "requiredBindings": [
         "apps"
-      ]
+      ],
+      "propTypes": {
+        "apps": "array"
+      }
     }
   }
 }
