@@ -10,7 +10,13 @@
         "repository",
         "branch",
         "hours"
-      ]
+      ],
+      "outputs": {
+        "count": "string",
+        "window": "string",
+        "prettyRuns": "string",
+        "runs": "array"
+      }
     },
     "api.get": {
       "permissions": [
@@ -41,7 +47,17 @@
         "query",
         "price",
         "limit"
-      ]
+      ],
+      "outputs": {
+        "query": "string",
+        "price": "string",
+        "apps": "array",
+        "ids": "array",
+        "names": "array",
+        "total": "number",
+        "mock": "boolean",
+        "source": "string"
+      }
     },
     "appstore.details": {
       "permissions": [
@@ -50,7 +66,12 @@
       "readOnly": true,
       "args": [
         "id"
-      ]
+      ],
+      "outputs": {
+        "app": "nullable-object",
+        "mock": "boolean",
+        "source": "string"
+      }
     },
     "appstore.compare": {
       "permissions": [
@@ -59,7 +80,13 @@
       "readOnly": true,
       "args": [
         "ids"
-      ]
+      ],
+      "outputs": {
+        "apps": "array",
+        "ids": "array",
+        "mock": "boolean",
+        "source": "string"
+      }
     }
   }
 }
