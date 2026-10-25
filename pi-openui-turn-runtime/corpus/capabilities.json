@@ -145,6 +145,20 @@
         "appstore:read"
       ],
       "readOnly": true
+    },
+    "pricing.recover": {
+      "args": [
+        "appId",
+        "storefront",
+        "fields"
+      ],
+      "permissions": [
+        "appstore:read"
+      ],
+      "readOnly": true,
+      "outputs": {
+        "offer": "object"
+      }
     }
   }
 }
