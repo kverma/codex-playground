@@ -17,7 +17,7 @@ try{
  await page.screenshot({path:'artifacts/first-turn.png',fullPage:true});
  await page.getByRole('textbox',{name:'Chat'}).fill('Only for main branch');
  await page.getByRole('button',{name:'Send',exact:true}).click();
- const second=page.locator('.message.assistant').last().locator('article h2').first();
+ const second=page.locator('.message.assistant').nth(1).locator('article h2').first();
  await second.waitFor({timeout:20000});
  assert.equal((await second.innerText()).trim(),'2','Follow-up should preserve repository and filter to main');
  await page.screenshot({path:'artifacts/follow-up.png',fullPage:true});
