@@ -41,12 +41,16 @@ export function validate(raw:unknown,catalog:Catalog,ctx:Context):Plan{
   checkJson(op.args);
   if(op.dependsOn!==undefined&&(!Array.isArray(op.dependsOn)||op.dependsOn.some(dep=>typeof dep!=='string'||!ids.has(dep)||dep===op.id)))throw Error('Invalid dataflow dependency');
   if(op.required===false){if(op.fallback===undefined)throw Error('Optional dataflow node requires declared unavailable fallback');checkJson(op.fallback);}
-  if(op.recovery){
-   const recover=op.recovery,rule=catalog.normalization?.[op.capability],cap=catalog.capabilities[recover.capability];
+  if(op.recovery!==undefined){
+   const recover=op.recovery;
+   if(!isObj(recover)||typeof recover.capability!=='string')throw Error('Invalid recovery registration');
+   const rule=catalog.normalization?.[op.capability],cap=catalog.capabilities[recover.capability];
    if(!cap||!cap.readOnly||!cap.permissions.every(p=>ctx.permissions.includes(p)))throw Error('Unauthorized recovery capability');
-   if(!rule||!Array.isArray(recover.fields)||!recover.fields.length||recover.fields.length>8||recover.fields.some(x=>!rule.fields[x]?.recoverable))throw Error('Unapproved field recovery policy');
-   if(!isObj(recover.args)||Object.keys(recover.args).some(k=>!cap.args.includes(k))||!cap.args.includes('fields'))throw Error('Invalid recovery arguments');
-   checkJson(recover.args);
+   const fields=recover.fields;
+   if(!rule||!Array.isArray(fields)||!fields.length||fields.length>8||fields.some((x:unknown)=>typeof x!=='string'||!rule.fields[x]?.recoverable))throw Error('Unapproved field recovery policy');
+   const args=recover.args;
+   if(!isObj(args)||Object.keys(args).some(k=>!cap.args.includes(k))||!cap.args.includes('fields'))throw Error('Invalid recovery arguments');
+   checkJson(args);
   }
   const checkRefs=(v:unknown):void=>{if(Array.isArray(v)){v.forEach(checkRefs);return;}if(!isObj(v))return;
    if(own(v,'$ref')){const ref=v.$ref;if(Object.keys(v).length!==1||typeof ref!=='string'||!pathPattern.test(ref)||ref.split('.').some(k=>forbidden.has(k))||!(Array.isArray(op.dependsOn)&&op.dependsOn.includes(ref.split('.')[1]!)))throw Error('Undeclared or unsafe operation dependency');return;}
