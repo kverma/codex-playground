@@ -8,7 +8,8 @@ export type Op={id:string;capability:string;args:Record<string,Json>};
 export type Plan={version:1;operations:Op[];view:Node;statePatch?:Record<string,Json>;stateCapture?:Record<string,string>};
 export type Context={threadId:string;turnId:string;permissions:string[]};
 export type Component={description:string;args:string[];requiredBindings?:string[]};
-export type Capability={permissions:string[];readOnly:boolean;args:string[]};
+export type OutputType='string'|'number'|'boolean'|'array'|'object'|'nullable-object';
+export type Capability={permissions:string[];readOnly:boolean;args:string[];outputs?:Record<string,OutputType>};
 export type Catalog={components:Record<string,Component>;capabilities:Record<string,Capability>;views?:Recipe[]};
 export type Invoke=(name:string,args:Record<string,Json>,ctx:Context)=>Promise<unknown>;
 export type Planner=(text:string,context:Record<string,Json>,catalog:Catalog)=>Promise<unknown>;
@@ -76,6 +77,19 @@ function resolve(path:string,results:Record<string,unknown>):unknown{
  for(const k of path.split('.')){if(!isObj(cur)||!own(cur,k))throw Error('Missing result: '+path);cur=cur[k];}
  return cur;
 }
+/** Reject malformed typed tool responses before they reach component props. */
+export function validateResult(name:string,value:unknown,catalog:Catalog):void{
+ const fields=catalog.capabilities[name]?.outputs;
+ if(!fields)return;
+ if(!isObj(value))throw Error('Invalid capability result: expected object from '+name);
+ for(const [field,type] of Object.entries(fields)){
+  if(!own(value,field))throw Error('Missing capability result field: '+name+'.'+field);
+  const got=value[field];
+  const valid=type==='array'?Array.isArray(got):type==='nullable-object'?got===null||isObj(got):type==='object'?isObj(got):typeof got===type;
+  if(!valid)throw Error('Capability result type mismatch: '+name+'.'+field+' expected '+type);
+ }
+}
+
 export function compile(plan:Plan,catalog:Catalog,results:Record<string,unknown>):string{
  const lines:string[]=[];let next=0;
  const val=(v:unknown):string=>{
@@ -124,7 +138,9 @@ export class Engine{
   const results:Record<string,unknown>={};
   for(const op of plan.operations){
    const exec=()=>this.invoke(op.capability,op.args,ctx);
-   results[op.id]=this.durable?await this.durable.run(ctx.threadId+'/'+ctx.turnId+'/'+op.id,exec):await exec();
+   const output=this.durable?await this.durable.run(ctx.threadId+'/'+ctx.turnId+'/'+op.id,exec):await exec();
+   validateResult(op.capability,output,this.catalog);
+   results[op.id]=output;
   }
   const openui=compile(plan,this.catalog,results);
   const captured:Record<string,Json>={};
