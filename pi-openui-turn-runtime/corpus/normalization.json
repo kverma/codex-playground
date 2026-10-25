@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "capabilities": {
+    "reviews.get": {
+      "source": "mock-reviews",
+      "fields": {
+        "items": {
+          "type": "array",
+          "missing": "unavailable",
+          "placeholder": [],
+          "recoverable": false
+        }
+      }
+    },
+    "privacy.get": {
+      "source": "mock-privacy",
+      "fields": {
+        "report.collects": {
+          "type": "string",
+          "aliases": [
+            "collects"
+          ],
+          "missing": "unavailable",
+          "placeholder": "Unavailable"
+        },
+        "report.tracking": {
+          "type": "string",
+          "aliases": [
+            "tracking"
+          ],
+          "missing": "unavailable",
+          "placeholder": "Unavailable"
+        },
+        "report.notes": {
+          "type": "string",
+          "aliases": [
+            "notes"
+          ],
+          "missing": "unavailable",
+          "placeholder": "Not provided"
+        }
+      }
+    },
+    "pricing.get": {
+      "source": "mock-pricing",
+      "fields": {
+        "offer.price": {
+          "type": "string",
+          "aliases": [
+            "price",
+            "cost"
+          ],
+          "missing": "unavailable",
+          "placeholder": "Unavailable",
+          "recoverable": true
+        },
+        "offer.currency": {
+          "type": "string",
+          "aliases": [
+            "currency"
+          ],
+          "missing": "unavailable",
+          "placeholder": "Unknown"
+        },
+        "offer.purchaseType": {
+          "type": "string",
+          "aliases": [
+            "purchaseType",
+            "purchase_type"
+          ],
+          "missing": "unavailable",
+          "placeholder": "Unknown"
+        }
+      }
+    },
+    "compatibility.check": {
+      "source": "mock-compatibility",
+      "fields": {
+        "devices": {
+          "type": "array",
+          "missing": "unavailable",
+          "placeholder": []
+        }
+      }
+    }
+  }
+}
