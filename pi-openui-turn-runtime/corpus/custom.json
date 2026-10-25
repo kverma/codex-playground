@@ -209,6 +209,30 @@
       "propTypes": {
         "apps": "array"
       }
+    },
+    "AppRichDetailView": {
+      "description": "App page composed from five independent MCP data sources",
+      "args": [
+        "app",
+        "reviews",
+        "privacy",
+        "pricing",
+        "compatibility"
+      ],
+      "requiredBindings": [
+        "app",
+        "reviews",
+        "privacy",
+        "pricing",
+        "compatibility"
+      ],
+      "propTypes": {
+        "app": "nullable-object",
+        "reviews": "object",
+        "privacy": "object",
+        "pricing": "object",
+        "compatibility": "object"
+      }
     }
   }
 }
