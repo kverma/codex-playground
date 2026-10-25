@@ -6,7 +6,7 @@ import {validateRegistry,discover,resolveView} from '../src/registry-resolver.ts
 import {connectMockAppStore,callAppStoreTool} from '../src/mock-app-store.ts';
 const ctx={threadId:'registry',turnId:'turn1',permissions:['appstore:read','ci:read']};
 test('every recipe is compatible with exported OpenUI corpus and capabilities',async()=>{
- const catalog=await loadCatalog();assert.equal(catalog.views?.length,4);
+ const catalog=await loadCatalog();assert.equal(catalog.views?.length,5);
  validateRegistry(catalog);
  for(const recipe of catalog.views??[])assert.ok(recipe.view.component in catalog.components);
 });
