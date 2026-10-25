@@ -158,3 +158,27 @@ test('unstructured MCP text is parsed conservatively and does not trigger unnece
   assert.equal(repairs,0);
  }finally{await a.close();await s.close();}
 });
+
+
+test('optional model text extraction is evidence checked and avoids recovering already-supported price',async()=>{
+ const c=await loadCatalog(),a=await connectMockAppStore(),s=await connectRichMockServices();let repairs=0,extracts=0;
+ try{
+  const engine=new Engine(c,new Store(),async(cap,args)=>{
+   if(cap==='appstore.search')return callAppStoreTool(a.client,'search_apps',args);
+   if(cap==='appstore.details')return callAppStoreTool(a.client,'get_app',args);
+   if(cap==='pricing.get')return 'For this fictional app, the listed price is $9.99.';
+   if(cap==='pricing.recover'){repairs++;return s.invoke(cap,args);}
+   return s.invoke(cap,args);
+  },undefined,undefined,undefined,async(raw,fields)=>{
+   extracts++;
+   assert.match(raw,/\$9\.99/);
+   assert.ok(fields['offer.price']);
+   return [{path:'offer.price',value:'$9.99',evidence:'price is $9.99'}];
+  });
+  await engine.handle('Find drawing apps',{threadId:'model-extract',turnId:'x1',permissions:['appstore:read']});
+  const out=await engine.handle('Show rich details for the first one',{threadId:'model-extract',turnId:'x2',permissions:['appstore:read']});
+  assert.equal(out.kind,'ui');
+  if(out.kind==='ui'){assert.match(out.openui,/extracted/);assert.match(out.openui,/\$9\.99/);}
+  assert.equal(extracts,1);assert.equal(repairs,0);
+ }finally{await a.close();await s.close();}
+});
