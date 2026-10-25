@@ -1,11 +1,17 @@
+import {connectRichMockServices} from './mock-rich-services.ts';
 import {connectMockAppStore,callAppStoreTool} from './mock-app-store.ts';
 import{createServer}from'node:http';import{Engine,Store,loadCatalog,type Invoke,type Planner,type Json}from'./runtime.ts';
 const catalog=await loadCatalog(),store=new Store();
 const mockAppStore=await connectMockAppStore();
+const richServices=await connectRichMockServices();
 const fixture=[{name:'Unit tests #421',repository:'atlas',service:'atlas',branch:'main',conclusion:'failure',url:'https://github.com/example/atlas/actions/runs/421'},{name:'Integration #419',repository:'atlas',service:'atlas',branch:'main',conclusion:'failure',url:'https://github.com/example/atlas/actions/runs/419'},{name:'Release #416',repository:'atlas',service:'atlas',branch:'dev',conclusion:'failure',url:'https://github.com/example/atlas/actions/runs/416'}];
 const invoke:Invoke=async(cap,args)=>{
  const tools={'appstore.search':'search_apps','appstore.details':'get_app','appstore.compare':'compare_apps'} as const;
  if(cap in tools)return callAppStoreTool(mockAppStore.client,tools[cap as keyof typeof tools],args);
+ if(['reviews.get','privacy.get','pricing.get','compatibility.check'].includes(cap)){
+  if(process.env.MOCK_FAIL_REVIEWS==='1'&&cap==='reviews.get')throw Error('Injected reviews MCP failure');
+  return richServices.invoke(cap,args);
+ }
  if(cap==='demo.failedBuilds'){const repo=String(args.repository??'atlas').toLowerCase(),branch=String(args.branch??'all').toLowerCase();const runs=fixture.filter(x=>x.repository===repo&&(branch==='all'||x.branch===branch));return {count:String(runs.length),window:'Last '+String(args.hours??24)+' hours · DEMO DATA',prettyRuns:JSON.stringify(runs,null,2),runs};}
  if(cap==='api.get'){const endpoint=new URL(String(args.endpoint));const allowed=(process.env.API_ALLOWED_ORIGINS??'').split(',').filter(Boolean);if(endpoint.protocol!=='https:'||!allowed.includes(endpoint.origin))throw Error('Denied API origin');const params=args.params;if(params&&typeof params==='object'&&!Array.isArray(params))for(const [k,v]of Object.entries(params))if(['string','number','boolean'].includes(typeof v))endpoint.searchParams.set(k,String(v));const r=await fetch(endpoint,{signal:AbortSignal.timeout(15000),headers:{accept:'application/json'}});if(!r.ok)throw Error('API '+r.status);const data=await r.text();if(data.length>200000)throw Error('API response too big');return JSON.parse(data);}
  if(cap==='mcp.invoke'){const tool=String(args.tool);if(!(process.env.MCP_ALLOWED_TOOLS??'').split(',').includes(tool))throw Error('MCP tool denied');const url=process.env.MCP_GATEWAY_URL;if(!url||new URL(url).protocol!=='https:')throw Error('HTTPS gateway required');const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json',...(process.env.MCP_GATEWAY_TOKEN?{authorization:'Bearer '+process.env.MCP_GATEWAY_TOKEN}:{})},body:JSON.stringify({tool,input:args.input??{}}),signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error('MCP '+r.status);const data=await r.text();if(data.length>200000)throw Error('MCP response too big');return JSON.parse(data);}
