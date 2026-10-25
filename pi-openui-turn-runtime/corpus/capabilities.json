@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "capabilities": {
+    "demo.failedBuilds": {
+      "permissions": [
+        "ci:read"
+      ],
+      "readOnly": true,
+      "args": [
+        "repository",
+        "branch",
+        "hours"
+      ]
+    },
+    "api.get": {
+      "permissions": [
+        "api:read"
+      ],
+      "readOnly": true,
+      "args": [
+        "endpoint",
+        "params"
+      ]
+    },
+    "mcp.invoke": {
+      "permissions": [
+        "mcp:read"
+      ],
+      "readOnly": true,
+      "args": [
+        "tool",
+        "input"
+      ]
+    }
+  }
+}
