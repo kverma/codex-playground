@@ -1,0 +1,238 @@
+{
+  "version": 1,
+  "components": {
+    "MetricCard": {
+      "description": "MetricCard custom component",
+      "args": [
+        "label",
+        "value",
+        "detail"
+      ],
+      "requiredBindings": [
+        "value"
+      ],
+      "propTypes": {
+        "label": "string",
+        "value": "string",
+        "detail": "string"
+      }
+    },
+    "StatusPill": {
+      "description": "StatusPill custom component",
+      "args": [
+        "label",
+        "status"
+      ]
+    },
+    "IncidentCard": {
+      "description": "IncidentCard custom component",
+      "args": [
+        "title",
+        "status",
+        "service",
+        "url"
+      ],
+      "requiredBindings": [
+        "status",
+        "service",
+        "url"
+      ]
+    },
+    "BuildRunCard": {
+      "description": "BuildRunCard custom component",
+      "args": [
+        "name",
+        "conclusion",
+        "repository",
+        "url"
+      ],
+      "requiredBindings": [
+        "name",
+        "conclusion",
+        "repository",
+        "url"
+      ]
+    },
+    "EvidenceCard": {
+      "description": "EvidenceCard custom component",
+      "args": [
+        "title",
+        "snippet",
+        "sourceUrl"
+      ],
+      "requiredBindings": [
+        "snippet",
+        "sourceUrl"
+      ]
+    },
+    "ServiceHealth": {
+      "description": "ServiceHealth custom component",
+      "args": [
+        "service",
+        "health",
+        "detail"
+      ]
+    },
+    "TimelineEvent": {
+      "description": "TimelineEvent custom component",
+      "args": [
+        "time",
+        "title",
+        "detail"
+      ]
+    },
+    "KeyValue": {
+      "description": "KeyValue custom component",
+      "args": [
+        "label",
+        "value"
+      ]
+    },
+    "JsonInspector": {
+      "description": "JsonInspector custom component",
+      "args": [
+        "title",
+        "json"
+      ],
+      "requiredBindings": [
+        "json"
+      ],
+      "propTypes": {
+        "title": "string",
+        "json": "string"
+      }
+    },
+    "EmptyState": {
+      "description": "EmptyState custom component",
+      "args": [
+        "title",
+        "message"
+      ]
+    },
+    "SongCard": {
+      "description": "SongCard custom component",
+      "args": [
+        "title",
+        "artist",
+        "duration"
+      ]
+    },
+    "AlbumCard": {
+      "description": "AlbumCard custom component",
+      "args": [
+        "title",
+        "artist",
+        "songs"
+      ]
+    },
+    "BookCard": {
+      "description": "BookCard custom component",
+      "args": [
+        "title",
+        "author",
+        "isbn"
+      ]
+    },
+    "OfferCard": {
+      "description": "OfferCard custom component",
+      "args": [
+        "name",
+        "price",
+        "eligibility"
+      ]
+    },
+    "SubscriptionDealCard": {
+      "description": "SubscriptionDealCard custom component",
+      "args": [
+        "customer",
+        "sku",
+        "price",
+        "cohort"
+      ]
+    },
+    "AtlasSkuCard": {
+      "description": "AtlasSkuCard custom component",
+      "args": [
+        "sku",
+        "country",
+        "availability",
+        "offerCount"
+      ]
+    },
+    "AppSummaryCard": {
+      "description": "AppSummaryCard Apple App Store mock component; only bound MCP data",
+      "args": [
+        "app"
+      ],
+      "requiredBindings": [
+        "app"
+      ],
+      "propTypes": {
+        "app": "object"
+      }
+    },
+    "AppSearchGrid": {
+      "description": "AppSearchGrid Apple App Store mock component; only bound MCP data",
+      "args": [
+        "query",
+        "apps"
+      ],
+      "requiredBindings": [
+        "query",
+        "apps"
+      ],
+      "propTypes": {
+        "query": "string",
+        "apps": "array"
+      }
+    },
+    "AppDetailView": {
+      "description": "AppDetailView Apple App Store mock component; only bound MCP data",
+      "args": [
+        "app"
+      ],
+      "requiredBindings": [
+        "app"
+      ],
+      "propTypes": {
+        "app": "nullable-object"
+      }
+    },
+    "AppComparisonView": {
+      "description": "AppComparisonView Apple App Store mock component; only bound MCP data",
+      "args": [
+        "apps"
+      ],
+      "requiredBindings": [
+        "apps"
+      ],
+      "propTypes": {
+        "apps": "array"
+      }
+    },
+    "AppRichDetailView": {
+      "description": "App page composed from five independent MCP data sources",
+      "args": [
+        "app",
+        "reviews",
+        "privacy",
+        "pricing",
+        "compatibility"
+      ],
+      "requiredBindings": [
+        "app",
+        "reviews",
+        "privacy",
+        "pricing",
+        "compatibility"
+      ],
+      "propTypes": {
+        "app": "nullable-object",
+        "reviews": "object",
+        "privacy": "object",
+        "pricing": "object",
+        "compatibility": "object"
+      }
+    }
+  }
+}

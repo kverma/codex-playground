@@ -1,0 +1,74 @@
+name: Pi OpenUI Chat Integration
+on:
+  push:
+    branches: [feat/pi-openui-chat-integration]
+    paths:
+      - 'pi-openui-turn-runtime/**'
+      - '.github/workflows/pi-openui-integration.yml'
+  pull_request:
+    paths:
+      - 'pi-openui-turn-runtime/**'
+      - '.github/workflows/pi-openui-integration.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  openui-real-renderer:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pi-openui-turn-runtime
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Export and validate all OpenUI components
+        run: npm run catalog:sync
+      - name: Deterministic runtime tests
+        run: npm test
+      - name: Strict typecheck of generic registry resolver and runtime
+        run: npm run typecheck:runtime
+      - name: Type-check real React/OpenUI integration
+        run: npm run typecheck:web
+      - name: Build OpenUI browser application
+        run: npm run build:web
+      - name: Install headless Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser E2E - render real OpenUI in chat
+        run: |
+          MOCK_PARTIAL_PRIVACY=1 MOCK_PARTIAL_PRICING=1 npm run api > /tmp/pi-openui-api.log 2>&1 &
+          API_PID=$!
+          npm run dev:web -- --host 127.0.0.1 > /tmp/pi-openui-web.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$API_PID" "$WEB_PID" || true; cat /tmp/pi-openui-api.log; cat /tmp/pi-openui-web.log' EXIT
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8787/api/catalog >/dev/null &&
+               curl -fsS http://127.0.0.1:5173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node --import tsx tests/browser.ts
+      - name: Chat-to-OpenUI HTTP smoke
+        run: |
+          npm run api > /tmp/pi-openui-server.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" || true; cat /tmp/pi-openui-server.log' EXIT
+          for i in $(seq 1 40); do
+            curl -fsS http://127.0.0.1:8787/api/catalog > /tmp/pi-openui-catalog.json && break
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:8787/api/chat \
+            -H 'content-type: application/json' \
+            --data '{"threadId":"ci-thread","turnId":"ci-turn","text":"Show failed Atlas builds last 24 hours"}' > /tmp/pi-openui-reply.json
+          node -e 'const r=require("/tmp/pi-openui-reply.json"); if(!r.openui.includes("MetricCard")||!r.openui.includes("root = Stack"))process.exit(1); console.log(r.openui)'
+      - name: Upload built UI and full component catalog
+        uses: actions/upload-artifact@v4
+        with:
+          name: pi-openui-renderer-and-corpus
+          path: |
+            pi-openui-turn-runtime/web/dist
+            pi-openui-turn-runtime/corpus/base.json
+            pi-openui-turn-runtime/artifacts
+          if-no-files-found: error
