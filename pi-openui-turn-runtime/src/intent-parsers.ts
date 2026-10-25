@@ -33,7 +33,8 @@ function queryFromText(text:string):string{
 export function appStoreIntent(text:string,slots:Slots):UIIntent|null{
  const s=text.toLowerCase(),known=Array.isArray(slots.appResultIds)&&slots.appResultIds.length>0;
  const compare=/\b(compare|comparison|versus|vs\.?|side by side)\b/.test(s);
- const details=/\b(detail|details|open|about|more|tell me|drill down|look at)\b/.test(s);
+ const rich=/\b(rich|full|comprehensive|reviews?|privacy|pricing|compatibilit(?:y|ies)|devices?|breakdown)\b/.test(s);
+ const details=rich||/\b(detail|details|open|about|more|tell me|drill down|look at)\b/.test(s);
  const priceOnly=/\b(only free|free ones|just free|paid ones|only paid)\b/.test(s);
  const explicitSearch=/\b(find|search|browse|list|show|discover)\b.*\bapps?\b/.test(s)||/\bapps?\s+(?:for|about)\b/.test(s);
  const domainMention=/\b(app store|appstore)\b/.test(s);
@@ -47,7 +48,7 @@ export function appStoreIntent(text:string,slots:Slots):UIIntent|null{
  }
  if(details&&(known||domainMention)){
   const id=choose(text,slots);if(!id)return null;
-  return {domain:'appstore',action:'inspect',entity:'app',cardinality:'one',params:{id},statePatch:{appIntent:'detail',selectedAppId:id}};
+  return {domain:'appstore',action:'inspect',entity:'app',cardinality:'one',params:{id,storefront:'US',devices:['iPad','iPhone','Mac']},...(rich?{presentation:'rich'}:{}),statePatch:{appIntent:'detail',selectedAppId:id}};
  }
  if(explicitSearch||(priceOnly&&typeof slots.appQuery==='string')||(domainMention&&/\b(find|search)\b/.test(s))){
   const query=priceOnly?String(slots.appQuery):queryFromText(text);
