@@ -43,3 +43,16 @@ form{padding-right:110px}
 .app-comparison-col dl{margin:0}.app-comparison-col dt{color:#798596;font-size:11px}.app-comparison-col dd{margin:3px 0 13px;font-weight:650;font-size:13px}
 .app-empty{padding:24px;background:#f1f5fb;border-radius:14px}
 @media(max-width:750px){.app-grid{grid-template-columns:1fr}.app-tile{gap:9px;padding:11px}.app-icon{width:52px;height:52px}.app-detail-hero{gap:11px}.app-icon.large{width:73px;height:73px}.app-detail-title h2{font-size:21px}.app-shots{gap:5px}.app-screen-symbol{font-size:45px}}
+
+
+/* Independent data-source sections remain visible if one optional tool fails. */
+.rich-detail .rich-sections{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:22px}
+.rich-section{padding:17px;border:1px solid #e4e9f2;border-radius:14px;background:#fbfcff}
+.rich-section header{display:flex;align-items:center;justify-content:space-between;height:auto;padding:0;border:0;gap:8px}
+.rich-section header b{font-size:15px}.rich-section p{font-size:13px;line-height:1.5;color:#495c72}
+.rich-section h3{font-size:23px;margin:16px 0 8px}.rich-section small{color:#758399;font-size:11px}
+.rich-source{font-size:10px;border-radius:20px;padding:5px 8px;font-weight:700}
+.rich-source.ok{background:#e1f6e8;color:#156c33}.rich-source.missing{background:#fff0dd;color:#9b4e15}
+.rich-review{padding:11px 0;border-bottom:1px solid #edf0f5}.rich-review b{font-size:12px}
+.message.plain,.message.unavailable{background:#ffffff;border:1px solid #dce5ef;white-space:pre-wrap;line-height:1.55}
+.message.unavailable{border-left:4px solid #d59235;color:#6b5435}
