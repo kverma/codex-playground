@@ -31,7 +31,7 @@ const components=(value:unknown,catalog:Catalog):void=>{
   if(!own(catalog.components,value.component))fail('unknown component '+value.component);
   const def=catalog.components[value.component]!;
   const props=value.props;
-  if(!isObj(props))fail('props object required');
+  if(!isObj(props))throw Error('Component registry: props object required');
   for(const key of Object.keys(props))if(!def.args.includes(key))fail('unknown '+value.component+'.'+key);
   for(const key of def.requiredBindings??[]){
    const bound=props[key];
@@ -50,8 +50,9 @@ const visit=(v:unknown,cb:(key:string,ref:string)=>void)=>{
   return;
  }
  if(own(v,'$bind')){
-  if(Object.keys(v).length!==1||typeof v.$bind!=='string'||!/^results\.[a-zA-Z][\w-]*(?:\.[a-zA-Z][\w-]*)*$/.test(v.$bind))fail('invalid result reference');
-  cb('result',v.$bind);
+  const ref=v.$bind;
+  if(Object.keys(v).length!==1||typeof ref!=='string'||!/^results\.[a-zA-Z][\w-]*(?:\.[a-zA-Z][\w-]*)*$/.test(ref))throw Error('Component registry: invalid result reference');
+  cb('result',ref);
   return;
  }
  if(Object.keys(v).some(k=>['__proto__','constructor','prototype'].includes(k)))fail('unsafe object key');
@@ -67,7 +68,7 @@ const checkBindingTypes=(node:unknown,recipe:Recipe,catalog:Catalog):void=>{
    if(isObj(value)&&typeof value.$bind==='string'){
     const [,operation,field,...nested]=value.$bind.split('.');
     const op=recipe.operations.find(x=>x.id===operation);
-    if(!op)fail('binding operation not registered');
+    if(!op)throw Error('Component registry: binding operation not registered');
     const declared=catalog.capabilities[op.capability]!.outputs;
     if(declared&&field&&!own(declared,field))fail('undeclared capability output: '+op.capability+'.'+field);
     const actual=field?declared?.[field]:undefined;
