@@ -149,6 +149,44 @@
         "availability",
         "offerCount"
       ]
+    },
+    "AppSummaryCard": {
+      "description": "AppSummaryCard Apple App Store mock component; only bound MCP data",
+      "args": [
+        "app"
+      ],
+      "requiredBindings": [
+        "app"
+      ]
+    },
+    "AppSearchGrid": {
+      "description": "AppSearchGrid Apple App Store mock component; only bound MCP data",
+      "args": [
+        "query",
+        "apps"
+      ],
+      "requiredBindings": [
+        "query",
+        "apps"
+      ]
+    },
+    "AppDetailView": {
+      "description": "AppDetailView Apple App Store mock component; only bound MCP data",
+      "args": [
+        "app"
+      ],
+      "requiredBindings": [
+        "app"
+      ]
+    },
+    "AppComparisonView": {
+      "description": "AppComparisonView Apple App Store mock component; only bound MCP data",
+      "args": [
+        "apps"
+      ],
+      "requiredBindings": [
+        "apps"
+      ]
     }
   }
 }
