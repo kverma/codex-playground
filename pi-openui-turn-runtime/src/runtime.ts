@@ -1,4 +1,5 @@
-import {appStorePlan} from './app-plans.ts';
+import {parseIntent} from './intent-parsers.ts';
+import {resolveView,validateRegistry,type Recipe,type UIIntent} from './registry-resolver.ts';
 import {readFile} from 'node:fs/promises';
 export type Json=null|boolean|number|string|Json[]|{[key:string]:Json};
 export type Props=Record<string,unknown>;
@@ -8,7 +9,7 @@ export type Plan={version:1;operations:Op[];view:Node;statePatch?:Record<string,
 export type Context={threadId:string;turnId:string;permissions:string[]};
 export type Component={description:string;args:string[];requiredBindings?:string[]};
 export type Capability={permissions:string[];readOnly:boolean;args:string[]};
-export type Catalog={components:Record<string,Component>;capabilities:Record<string,Capability>};
+export type Catalog={components:Record<string,Component>;capabilities:Record<string,Capability>;views?:Recipe[]};
 export type Invoke=(name:string,args:Record<string,Json>,ctx:Context)=>Promise<unknown>;
 export type Planner=(text:string,context:Record<string,Json>,catalog:Catalog)=>Promise<unknown>;
 export type Durable={run<T>(id:string,fn:()=>Promise<T>):Promise<T>};
@@ -102,29 +103,22 @@ export class Store{
 }
 export async function loadCatalog():Promise<Catalog>{
  const root=new URL('../corpus/',import.meta.url);
- const [base,custom,caps]=await Promise.all(['base.json','custom.json','capabilities.json'].map(f=>readFile(new URL(f,root),'utf8').then(JSON.parse)));
- return {components:{...base.components,...custom.components},capabilities:caps.capabilities};
-}
-export function defaultPlan(text:string,slots:Record<string,Json>):Plan|null{
- const s=text.toLowerCase();
- if(!/\b(fail(?:ed|ing|ures?)?|ci|builds?|actions)\b/.test(s)&&!(/\b(only|last|branch)\b/.test(s)&&slots.intent==='builds'))return null;
- const requestedRepo=/\b(?:for|of)\s+([a-z0-9_-]+)/i.exec(text)?.[1];
- const repo=requestedRepo&&!['main','master','dev','release','the','branch'].includes(requestedRepo.toLowerCase())?requestedRepo:(typeof slots.repository==='string'?slots.repository:'atlas');
- const time=/\b(?:last|past)\s+(\d+)\s+(hours?|days?)/i.exec(text);
- const hours=time?Number(time[1])*(time[2]!.startsWith('day')?24:1):(typeof slots.hours==='number'?slots.hours:24);
- const branch=/\b(?:on\s+|for\s+|only\s+(?:on\s+)?(?:the\s+)?)?(main|dev|release|master)\s+branch\b/i.exec(text)?.[1]??(typeof slots.branch==='string'?slots.branch:'all');
- return {version:1,operations:[{id:'runs',capability:'demo.failedBuilds',args:{repository:repo,branch,hours}}],statePatch:{intent:'builds',repository:repo,branch,hours},view:{component:'Stack',props:{children:[
-   {component:'TextContent',props:{text:'Failed CI builds · '+repo}},
-   {component:'MetricCard',props:{label:'Failed builds',value:{$bind:'results.runs.count'},detail:{$bind:'results.runs.window'}}},
-   {component:'JsonInspector',props:{title:'Runs with provenance',json:{$bind:'results.runs.prettyRuns'}}}
- ]}}};
+ const [base,custom,caps,views]=await Promise.all(['base.json','custom.json','capabilities.json','view-registrations.json'].map(f=>readFile(new URL(f,root),'utf8').then(JSON.parse)));
+ const catalog:Catalog={components:{...base.components,...custom.components},capabilities:caps.capabilities,views:views.views};
+ validateRegistry(catalog);
+ return catalog;
 }
 export class Engine{
  constructor(public catalog:Catalog,public store:Store,public invoke:Invoke,public planner?:Planner,public durable?:Durable){}
  async handle(text:string,ctx:Context){
   const old=this.store.get(ctx.threadId),retry=old.turns.find(x=>x.turnId===ctx.turnId);
   if(retry)return {...retry,revision:old.revision};
-  const raw=appStorePlan(text,old.slots)??defaultPlan(text,old.slots)??(this.planner?await this.planner(text,old.slots,this.catalog):null);
+  // Domain parsers only produce semantic intents. The chosen view and MCP
+  // capability come entirely from the JSON registry, not from routing code.
+  const intent=parseIntent(text,old.slots);
+  const fallback=intent?null:(this.planner?await this.planner(text,old.slots,this.catalog):null);
+  const isIntent=(v:unknown):v is UIIntent=>isObj(v)&&typeof v.domain==='string'&&typeof v.action==='string'&&typeof v.entity==='string'&&isObj(v.params);
+  const raw=intent?resolveView(intent,this.catalog,ctx).plan:isIntent(fallback)?resolveView(fallback,this.catalog,ctx).plan:fallback;
   if(!raw)throw Error('Arbitrary request requires configured planner');
   const plan=validate(raw,this.catalog,ctx);
   const results:Record<string,unknown>={};
