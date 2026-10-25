@@ -60,6 +60,9 @@ try{
  assert.match(await rich.getByTestId('rich-reviews').innerText(),/Great for my workflow/);
  assert.match(await rich.getByTestId('rich-privacy').innerText(),/Diagnostics/);
  assert.match(await rich.getByTestId('rich-pricing').innerText(),/Free/);
+ assert.match(await rich.getByTestId('price-field-quality').innerText(),/recovered/);
+ assert.match(await rich.getByTestId('privacy-tracking-quality').innerText(),/missing/);
+ assert.match(await rich.getByTestId('rich-privacy').innerText(),/Tracking: Unavailable/);
  assert.match(await rich.getByTestId('rich-devices').innerText(),/Mac/);
  await page.screenshot({path:'artifacts/app-rich-multi-mcp.png',fullPage:true});
 
