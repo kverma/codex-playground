@@ -15,9 +15,9 @@ export type NormalizationRule={
  source:string;
  fields:Record<string,FieldRule>;
 };
-export type FieldStatus='present'|'coerced'|'extracted'|'missing'|'invalid'|'recovered';
+export type FieldStatus='present'|'coerced'|'extracted'|'missing'|'invalid'|'recovered'|'unavailable';
 export type Provenance={status:FieldStatus;source:string;reason?:string;evidence?:string};
-export type Quality={status:'ok'|'partial';source:string;fields:Record<string,Provenance>};
+export type Quality={status:'ok'|'partial'|'unavailable';source:string;fields:Record<string,Provenance>};
 export type ExtractionProposal={path:string;value:unknown;evidence:string};
 export type TextExtractor=(text:string,fields:Record<string,FieldRule>)=>Promise<ExtractionProposal[]>;
 export type Normalized={value:Record<string,unknown>;quality:Quality;missingRecoverable:string[]};
@@ -71,7 +71,7 @@ export function decodeToolPayload(raw:unknown,rule:NormalizationRule):{data:unkn
  }
  return {data:object,text:raw,parsed:false};
 }
-export function normalizeToolResponse(raw:unknown,rule:NormalizationRule,options?:{recovered?:string[];extractions?:ExtractionProposal[]}):Normalized{
+export function normalizeToolResponse(raw:unknown,rule:NormalizationRule,options?:{recovered?:string[];extractions?:ExtractionProposal[];unavailable?:boolean}):Normalized{
  guard(rule);
  const decoded=decodeToolPayload(raw,rule);
  const data=plain(decoded.data)?decoded.data:Object.create(null) as Record<string,unknown>;
@@ -88,12 +88,12 @@ export function normalizeToolResponse(raw:unknown,rule:NormalizationRule,options
   }
  }
  for(const [path,spec] of Object.entries(rule.fields)){
-  let original=get(data,path),aliasUsed=false,proposal=accepted.get(path);
-  if(original===undefined||original===null)for(const alias of spec.aliases??[]){
+  let original=options?.unavailable?undefined:get(data,path),aliasUsed=false,proposal=accepted.get(path);
+  if(!options?.unavailable&&(original===undefined||original===null))for(const alias of spec.aliases??[]){
    const candidate=get(data,alias);
    if(candidate!==undefined&&candidate!==null){original=candidate;aliasUsed=true;break;}
   }
-  if((original===undefined||original===null)&&proposal)original=proposal.value;
+  if(!options?.unavailable&&(original===undefined||original===null)&&proposal)original=proposal.value;
   let status:FieldStatus='present';
   if(original===undefined||original===null)status='missing';
   else if(!ok(original,spec.type)){
@@ -102,10 +102,11 @@ export function normalizeToolResponse(raw:unknown,rule:NormalizationRule,options
    }else status='invalid';
   }
   if(status==='present'&&(aliasUsed||proposal))status=proposal?'extracted':'coerced';
-  if(status==='missing'||status==='invalid'){
-   fields[path]={status,source:rule.source,reason:status==='missing'?'Field not supplied':'Invalid type'};
-   if(spec.required||spec.missing==='fail')throw Error('Essential field '+path+' '+status+' in '+rule.source);
-   if(spec.recoverable)recoverable.push(path);
+  if(options?.unavailable)status='unavailable';
+  if(status==='missing'||status==='invalid'||status==='unavailable'){
+   fields[path]={status,source:rule.source,reason:status==='unavailable'?'Source unavailable':status==='missing'?'Field not supplied':'Invalid type'};
+   if(!options?.unavailable&&(spec.required||spec.missing==='fail'))throw Error('Essential field '+path+' '+status+' in '+rule.source);
+   if(spec.recoverable&&!options?.unavailable)recoverable.push(path);
    if(spec.missing==='unavailable')set(value,path,clone(spec.placeholder));
   }else{
    set(value,path,clone(original));
@@ -113,10 +114,10 @@ export function normalizeToolResponse(raw:unknown,rule:NormalizationRule,options
   }
  }
  // The explicit quality object is metadata, not tool-authored content.
- const quality:Quality={source:rule.source,status:Object.values(fields).some(v=>v.status==='missing'||v.status==='invalid')?'partial':'ok',fields};
+ const quality:Quality={source:rule.source,status:options?.unavailable?'unavailable':Object.values(fields).some(v=>v.status==='missing'||v.status==='invalid')?'partial':'ok',fields};
  value.quality=quality;
  // A uniform display status is set by the normalizer, never trusted from provider.
- value.status=quality.status==='ok'?'ok':'partial';
+ value.status=quality.status;
  value.source=rule.source;
  return {value,quality,missingRecoverable:recoverable};
 }
@@ -125,4 +126,20 @@ export async function normalizeWithExtractor(raw:unknown,rule:NormalizationRule,
  if(!extractor||typeof raw!=='string'||!first.missingRecoverable.length)return first;
  const proposed=await extractor(raw,Object.fromEntries(first.missingRecoverable.map(k=>[k,rule.fields[k]!])));
  return normalizeToolResponse(raw,rule,{extractions:proposed});
+}
+
+
+/** Only merge fields explicitly requested from an independently authorized recovery call. */
+export function mergeRecoveredFields(raw:unknown,recovery:unknown,requested:string[],rule:NormalizationRule):{data:unknown;recovered:string[]}{
+ guard(rule);
+ const first=decodeToolPayload(raw,rule).data,patch=decodeToolPayload(recovery,rule).data;
+ const data:Record<string,unknown>=plain(first)?clone(first) as Record<string,unknown>:Object.create(null);
+ const accepted:string[]=[];
+ for(const path of requested){
+  const spec=rule.fields[path];if(!spec||!spec.recoverable)throw Error('Unapproved recovery path: '+path);
+  const candidate=get(patch,path);
+  if(candidate===undefined||candidate===null||!ok(candidate,spec.type))continue;
+  set(data,path,clone(candidate));accepted.push(path);
+ }
+ return {data,recovered:accepted};
 }
