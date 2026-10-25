@@ -41,7 +41,7 @@ export function validate(raw:unknown,catalog:Catalog,ctx:Context):Plan{
   if(op.dependsOn!==undefined&&(!Array.isArray(op.dependsOn)||op.dependsOn.some(dep=>typeof dep!=='string'||!ids.has(dep)||dep===op.id)))throw Error('Invalid dataflow dependency');
   if(op.required===false){if(op.fallback===undefined)throw Error('Optional dataflow node requires declared unavailable fallback');checkJson(op.fallback);}
   const checkRefs=(v:unknown):void=>{if(Array.isArray(v)){v.forEach(checkRefs);return;}if(!isObj(v))return;
-   if(own(v,'$ref')){const ref=v.$ref;if(Object.keys(v).length!==1||typeof ref!=='string'||!pathPattern.test(ref)||ref.split('.').some(k=>forbidden.has(k))||!op.dependsOn?.includes(ref.split('.')[1]!))throw Error('Undeclared or unsafe operation dependency');return;}
+   if(own(v,'$ref')){const ref=v.$ref;if(Object.keys(v).length!==1||typeof ref!=='string'||!pathPattern.test(ref)||ref.split('.').some(k=>forbidden.has(k))||!(Array.isArray(op.dependsOn)&&op.dependsOn.includes(ref.split('.')[1]!)))throw Error('Undeclared or unsafe operation dependency');return;}
    Object.values(v).forEach(checkRefs);
   };checkRefs(op.args);
  }
