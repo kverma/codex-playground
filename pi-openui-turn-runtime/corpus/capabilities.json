@@ -87,6 +87,64 @@
         "mock": "boolean",
         "source": "string"
       }
+    },
+    "reviews.get": {
+      "args": [
+        "appId"
+      ],
+      "outputs": {
+        "items": "array",
+        "status": "string",
+        "source": "string"
+      },
+      "permissions": [
+        "appstore:read"
+      ],
+      "readOnly": true
+    },
+    "privacy.get": {
+      "args": [
+        "appId"
+      ],
+      "outputs": {
+        "report": "object",
+        "status": "string",
+        "source": "string"
+      },
+      "permissions": [
+        "appstore:read"
+      ],
+      "readOnly": true
+    },
+    "pricing.get": {
+      "args": [
+        "appId",
+        "storefront"
+      ],
+      "outputs": {
+        "offer": "object",
+        "status": "string",
+        "source": "string"
+      },
+      "permissions": [
+        "appstore:read"
+      ],
+      "readOnly": true
+    },
+    "compatibility.check": {
+      "args": [
+        "appId",
+        "devices"
+      ],
+      "outputs": {
+        "devices": "array",
+        "status": "string",
+        "source": "string"
+      },
+      "permissions": [
+        "appstore:read"
+      ],
+      "readOnly": true
     }
   }
 }
