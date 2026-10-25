@@ -302,6 +302,20 @@
             },
             "status": "unavailable",
             "source": "mock-pricing"
+          },
+          "recovery": {
+            "capability": "pricing.recover",
+            "args": {
+              "appId": {
+                "$param": "id"
+              },
+              "storefront": {
+                "$param": "storefront"
+              }
+            },
+            "fields": [
+              "offer.price"
+            ]
           }
         },
         {
