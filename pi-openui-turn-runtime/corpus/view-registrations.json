@@ -1,0 +1,225 @@
+{
+  "version": 1,
+  "views": [
+    {
+      "id": "appstore.search.grid.v1",
+      "domain": "appstore",
+      "action": "search",
+      "entity": "app",
+      "cardinality": "many",
+      "priority": 10,
+      "description": "Search or filter an app catalog and render summary cards",
+      "dataContract": "AppSearchResult.v1",
+      "tags": [
+        "gallery",
+        "search",
+        "apps"
+      ],
+      "operations": [
+        {
+          "id": "search",
+          "capability": "appstore.search",
+          "args": {
+            "query": {
+              "$param": "query"
+            },
+            "price": {
+              "$param": "price"
+            },
+            "limit": {
+              "$param": "limit"
+            }
+          }
+        }
+      ],
+      "view": {
+        "component": "Stack",
+        "props": {
+          "children": [
+            {
+              "component": "TextContent",
+              "props": {
+                "text": "App Store · search results (MOCK)"
+              }
+            },
+            {
+              "component": "AppSearchGrid",
+              "props": {
+                "query": {
+                  "$bind": "results.search.query"
+                },
+                "apps": {
+                  "$bind": "results.search.apps"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "stateCapture": {
+        "appResultIds": "results.search.ids",
+        "appResultNames": "results.search.names"
+      }
+    },
+    {
+      "id": "appstore.detail.v1",
+      "domain": "appstore",
+      "action": "inspect",
+      "entity": "app",
+      "cardinality": "one",
+      "priority": 10,
+      "description": "Inspect a selected app in a detailed page with screenshots",
+      "dataContract": "AppDetails.v1",
+      "tags": [
+        "details",
+        "inspect",
+        "app"
+      ],
+      "operations": [
+        {
+          "id": "detail",
+          "capability": "appstore.details",
+          "args": {
+            "id": {
+              "$param": "id"
+            }
+          }
+        }
+      ],
+      "view": {
+        "component": "Stack",
+        "props": {
+          "children": [
+            {
+              "component": "TextContent",
+              "props": {
+                "text": "App Store · app details (MOCK)"
+              }
+            },
+            {
+              "component": "AppDetailView",
+              "props": {
+                "app": {
+                  "$bind": "results.detail.app"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "appstore.compare.v1",
+      "domain": "appstore",
+      "action": "compare",
+      "entity": "app",
+      "cardinality": "comparison",
+      "priority": 10,
+      "description": "Show a side-by-side comparison of selected apps",
+      "dataContract": "AppComparison.v1",
+      "tags": [
+        "compare",
+        "table"
+      ],
+      "operations": [
+        {
+          "id": "comparison",
+          "capability": "appstore.compare",
+          "args": {
+            "ids": {
+              "$param": "ids"
+            }
+          }
+        }
+      ],
+      "view": {
+        "component": "Stack",
+        "props": {
+          "children": [
+            {
+              "component": "TextContent",
+              "props": {
+                "text": "App Store · side-by-side comparison (MOCK)"
+              }
+            },
+            {
+              "component": "AppComparisonView",
+              "props": {
+                "apps": {
+                  "$bind": "results.comparison.apps"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "ci.builds.metrics.v1",
+      "domain": "ci",
+      "action": "inspect",
+      "entity": "build",
+      "cardinality": "many",
+      "priority": 10,
+      "description": "Build failures with summary and raw run details",
+      "dataContract": "FailedBuildRuns.v1",
+      "tags": [
+        "summary",
+        "metrics"
+      ],
+      "operations": [
+        {
+          "id": "runs",
+          "capability": "demo.failedBuilds",
+          "args": {
+            "repository": {
+              "$param": "repository"
+            },
+            "branch": {
+              "$param": "branch"
+            },
+            "hours": {
+              "$param": "hours"
+            }
+          }
+        }
+      ],
+      "view": {
+        "component": "Stack",
+        "props": {
+          "children": [
+            {
+              "component": "TextContent",
+              "props": {
+                "text": {
+                  "$param": "heading"
+                }
+              }
+            },
+            {
+              "component": "MetricCard",
+              "props": {
+                "label": "Failed builds",
+                "value": {
+                  "$bind": "results.runs.count"
+                },
+                "detail": {
+                  "$bind": "results.runs.window"
+                }
+              }
+            },
+            {
+              "component": "JsonInspector",
+              "props": {
+                "title": "Runs with provenance",
+                "json": {
+                  "$bind": "results.runs.prettyRuns"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
