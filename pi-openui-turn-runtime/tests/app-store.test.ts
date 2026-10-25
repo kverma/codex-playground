@@ -77,5 +77,5 @@ test('unknown app, price filters and unauthorized capabilities fail closed',asyn
  assert.deepEqual(searchApps('drawing','free').ids,['pixelcraft']);
  assert.deepEqual(searchApps('drawing','paid').ids,['sketchflow']);
  const catalog=await loadCatalog(),e=new Engine(catalog,new Store(),async()=>({}));
- await assert.rejects(()=>e.handle('Find drawing apps',{threadId:'unauth',turnId:'t1',permissions:[]}),/not authorized/);
+ await assert.rejects(()=>e.handle('Find drawing apps',{threadId:'unauth',turnId:'t1',permissions:[]}),/No authorized UI recipe/);
 });
