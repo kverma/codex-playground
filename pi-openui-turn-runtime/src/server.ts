@@ -23,7 +23,7 @@ const server=createServer(async(req,res)=>{
  if(req.method==='GET'&&req.url==='/api/catalog')return reply(200,{components:Object.keys(catalog.components),capabilities:Object.keys(catalog.capabilities),viewCount:catalog.views?.length??0});
  if(req.method==='GET'&&req.url?.startsWith('/api/views')){
   const u=new URL(req.url,'http://127.0.0.1');
-  return reply(200,{views:(catalog.views??[]).filter(v=>(!u.searchParams.has('domain')||u.searchParams.get('domain')===v.domain)&&(!u.searchParams.has('action')||u.searchParams.get('action')===v.action)).map(v=>({id:v.id,domain:v.domain,action:v.action,entity:v.entity,cardinality:v.cardinality,description:v.description,tags:v.tags,priority:v.priority,dataContract:v.dataContract,components:[...new Set(JSON.stringify(v.view).match(/\"component\":\"[^\"]+\"/g)??[])]}))});
+  return reply(200,{views:(catalog.views??[]).filter(v=>(!u.searchParams.has('domain')||u.searchParams.get('domain')===v.domain)&&(!u.searchParams.has('action')||u.searchParams.get('action')===v.action)).map(v=>({id:v.id,domain:v.domain,action:v.action,entity:v.entity,cardinality:v.cardinality,description:v.description,tags:v.tags,priority:v.priority,dataContract:v.dataContract,components:[...new Set([...JSON.stringify(v.view).matchAll(/\"component\":\"([^\"]+)\"/g)].map(match=>match[1]))]}))});
  }
  if(req.method==='POST'&&req.url==='/api/chat'){
   let raw='';for await(const piece of req){raw+=String(piece);if(raw.length>20000)throw Error('Request too long');}
