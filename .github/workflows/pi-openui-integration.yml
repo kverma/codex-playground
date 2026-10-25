@@ -33,6 +33,21 @@ jobs:
         run: npm run typecheck:web
       - name: Build OpenUI browser application
         run: npm run build:web
+      - name: Install headless Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Browser E2E - render real OpenUI in chat
+        run: |
+          npm run api > /tmp/pi-openui-api.log 2>&1 &
+          API_PID=$!
+          npm run dev:web -- --host 127.0.0.1 > /tmp/pi-openui-web.log 2>&1 &
+          WEB_PID=$!
+          trap 'kill "$API_PID" "$WEB_PID" || true; cat /tmp/pi-openui-api.log; cat /tmp/pi-openui-web.log' EXIT
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:8787/api/catalog >/dev/null &&
+               curl -fsS http://127.0.0.1:5173/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node --import tsx tests/browser.ts
       - name: Chat-to-OpenUI HTTP smoke
         run: |
           npm run api > /tmp/pi-openui-server.log 2>&1 &
@@ -53,4 +68,5 @@ jobs:
           path: |
             pi-openui-turn-runtime/web/dist
             pi-openui-turn-runtime/corpus/base.json
+            pi-openui-turn-runtime/artifacts
           if-no-files-found: error
