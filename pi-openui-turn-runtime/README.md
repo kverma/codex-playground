@@ -67,3 +67,25 @@ The engine stores returned stable IDs and names in turn state via **validated** 
 Tests: `npm test` includes MCP discovery, invalid arguments, stdio interoperability, unauthorized capability rejection, and a six-turn state-machine test. Chromium tests exercise the actual OpenUI React renderer and upload screenshots for search/detail/compare/free-filter states.
 
 **Scope:** This is a mock App Store capability for deterministic UI development. Real App Store service integration would require a separate authorized provider, data contract, rate-limit and credential handling, and verified rights to use imagery/branding.
+
+
+## Registry-driven component selection
+
+**No chat parser chooses an OpenUI component anymore.** `src/intent-parsers.ts`
+produces semantic intents only. `src/registry-resolver.ts` matches the intent
+against `corpus/view-registrations.json`, checks caller permissions and
+argument/prop contracts, rejects ambiguous candidates, and compiles an
+approved execution/UI plan.
+
+This JSON registry currently defines four task views (App Store search, app
+detail, app comparison, and CI failure summary). You can add a new view from
+any of the 82 upstream OpenUI base components or the 20 custom ones **without
+editing routing code**, provided its data capability is already registered.
+
+See [docs/COMPONENT_DISCOVERY.md](docs/COMPONENT_DISCOVERY.md) for the
+registry format, trust boundaries, selection scoring, and limits.
+
+`GET /api/views` lists the published task recipes;
+`GET /api/views?domain=appstore` filters them. Arbitrary new natural-language
+intents still require a configured semantic planner, and this is not an
+unrestricted automatic layout generator.
