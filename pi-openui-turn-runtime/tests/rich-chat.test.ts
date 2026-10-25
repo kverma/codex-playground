@@ -116,3 +116,45 @@ test('planner-produced unknown semantic intent falls back to ordinary chat, but 
  const denied=new Engine(c,new Store(),async()=>{throw Error('should not invoke');},undefined,undefined,async()=> 'not allowed');
  await assert.rejects(()=>denied.handle('Find drawing apps',{threadId:'p2',turnId:'b',permissions:[]}),/No authorized/);
 });
+
+
+test('partial pricing triggers ONLY targeted recovery, keeps privacy partial, and preserves other MCP results',async()=>{
+ const catalog=await loadCatalog(),store=new Store(),app=await connectMockAppStore(),services=await connectRichMockServices();
+ let priceCalls=0,recoveryCalls=0,reviewCalls=0,privacyCalls=0;
+ const engine=new Engine(catalog,store,async(cap,args)=>{
+  if(cap==='appstore.search')return callAppStoreTool(app.client,'search_apps',args);
+  if(cap==='appstore.details')return callAppStoreTool(app.client,'get_app',args);
+  if(cap==='pricing.get'){priceCalls++;return {offer:{currency:'USD',purchaseType:'One-time'},source:'mock-pricing'};}
+  if(cap==='pricing.recover'){recoveryCalls++;assert.deepEqual(args.fields,['offer.price']);return services.invoke(cap,args);}
+  if(cap==='privacy.get'){privacyCalls++;return {report:{collects:'Diagnostics (optional)',notes:'Sample'},source:'mock-privacy'};}
+  if(cap==='reviews.get')reviewCalls++;
+  return services.invoke(cap,args);
+ });
+ try{
+  await engine.handle('Find drawing apps',{threadId:'partial',turnId:'a',permissions:['appstore:read']});
+  const reply=await engine.handle('Show full details and privacy and reviews for the first one',{threadId:'partial',turnId:'b',permissions:['appstore:read']});
+  assert.equal(reply.kind,'ui');if(reply.kind!=='ui')throw Error('expected rich UI');
+  assert.match(reply.openui,/AppRichDetailView/);
+  assert.match(reply.openui,/\\"status\\": \\"recovered\\"|\\"status\\":\\"recovered\\"|recovered/);
+  assert.match(reply.openui,/partial/);
+  assert.match(reply.openui,/Diagnostics \(optional\)/);
+  assert.match(reply.openui,/Unavailable/);
+  assert.equal(priceCalls,1);assert.equal(recoveryCalls,1);assert.equal(reviewCalls,1);assert.equal(privacyCalls,1);
+ }finally{await app.close();await services.close();}
+});
+test('unstructured MCP text is parsed conservatively and does not trigger unnecessary recovery',async()=>{
+ const c=await loadCatalog(),a=await connectMockAppStore(),s=await connectRichMockServices();let repairs=0;
+ try{
+  const engine=new Engine(c,new Store(),async(cap,args)=>{
+   if(cap==='appstore.search')return callAppStoreTool(a.client,'search_apps',args);
+   if(cap==='appstore.details')return callAppStoreTool(a.client,'get_app',args);
+   if(cap==='pricing.get')return 'price: $9.99\\ncurrency: USD\\npurchaseType: One-time';
+   if(cap==='pricing.recover'){repairs++;return s.invoke(cap,args);}
+   return s.invoke(cap,args);
+  });
+  await engine.handle('Find drawing apps',{threadId:'plain-text-pricing',turnId:'1',permissions:['appstore:read']});
+  const r=await engine.handle('Show rich details for first one',{threadId:'plain-text-pricing',turnId:'2',permissions:['appstore:read']});
+  assert.equal(r.kind,'ui');if(r.kind==='ui'){assert.match(r.openui,/\$9\.99/);assert.match(r.openui,/coerced/);}
+  assert.equal(repairs,0);
+ }finally{await a.close();await s.close();}
+});
