@@ -101,7 +101,8 @@ export async function loadCatalog():Promise<Catalog>{
 export function defaultPlan(text:string,slots:Record<string,Json>):Plan|null{
  const s=text.toLowerCase();
  if(!/\b(fail(?:ed|ing|ures?)?|ci|builds?|actions)\b/.test(s)&&!(/\b(only|last|branch)\b/.test(s)&&slots.intent==='builds'))return null;
- const repo=/\b(?:for|of)\s+([a-z0-9_-]+)/i.exec(text)?.[1]??(typeof slots.repository==='string'?slots.repository:'atlas');
+ const requestedRepo=/\b(?:for|of)\s+([a-z0-9_-]+)/i.exec(text)?.[1];
+ const repo=requestedRepo&&!['main','master','dev','release','the','branch'].includes(requestedRepo.toLowerCase())?requestedRepo:(typeof slots.repository==='string'?slots.repository:'atlas');
  const time=/\b(?:last|past)\s+(\d+)\s+(hours?|days?)/i.exec(text);
  const hours=time?Number(time[1])*(time[2]!.startsWith('day')?24:1):(typeof slots.hours==='number'?slots.hours:24);
  const branch=/\b(?:on\s+|for\s+|only\s+(?:on\s+)?(?:the\s+)?)?(main|dev|release|master)\s+branch\b/i.exec(text)?.[1]??(typeof slots.branch==='string'?slots.branch:'all');
