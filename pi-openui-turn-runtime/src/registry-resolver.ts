@@ -17,7 +17,7 @@ export type UIIntent={
 export type Recipe={
  id:string;domain:string;action:string;entity:string;cardinality:Cardinality;
  priority:number;description:string;dataContract:string;tags:string[];
- operations:Array<{id:string;capability:string;args:Record<string,unknown>}>;
+ operations:Array<{id:string;capability:string;args:Record<string,unknown>;dependsOn?:string[];required?:boolean;fallback?:Json}>;
  view:Node;stateCapture?:Record<string,string>;
 };
 const own=(o:object,k:string)=>Object.prototype.hasOwnProperty.call(o,k);
@@ -48,6 +48,11 @@ const visit=(v:unknown,cb:(key:string,ref:string)=>void)=>{
   if(Object.keys(v).length!==1||typeof param!=='string'||!safe.test(param))fail('invalid parameter reference');
   cb('param',param as string);
   return;
+ }
+ if(own(v,'$ref')){
+  const ref=v.$ref;
+  if(Object.keys(v).length!==1||typeof ref!=='string'||!/^results\.[a-zA-Z][\w-]*(?:\.[a-zA-Z][\w-]*)*$/.test(ref))throw Error('Component registry: invalid operation ref');
+  cb('dependency',ref);return;
  }
  if(own(v,'$bind')){
   const ref=v.$bind;
@@ -99,7 +104,9 @@ export function validateRegistry(catalog:Catalog):void{
    const cap=catalog.capabilities[op.capability]!;
    if(!cap.readOnly)fail('view registry cannot execute mutating capabilities');
    if(!isObj(op.args)||Object.keys(op.args).some(k=>!cap.args.includes(k)))fail('incompatible capability arguments');
-   visit(op.args,(kind,ref)=>{if(kind==='result'&&!operations.has(ref.split('.')[1]!))fail('future operation dependency');});
+   if(op.required===false&&op.fallback===undefined)fail('optional tool requires fallback');
+   if(op.dependsOn?.some(dep=>!operations.has(dep)||dep===op.id))fail('invalid dataflow dependsOn');
+   visit(op.args,(kind,ref)=>{if(kind==='dependency'&&(!op.dependsOn?.includes(ref.split('.')[1]!)||!operations.has(ref.split('.')[1]!)))fail('unregistered DAG dependency');});
   }
   components(v.view,catalog);
   checkBindingTypes(v.view,v,catalog);
@@ -137,11 +144,12 @@ export function resolveView(intent:UIIntent,catalog:Catalog,ctx:Context):{plan:P
    return structuredClone(intent.params[key as string]);
   }
   if(own(v,'$bind'))return {'$bind':v.$bind};
+  if(own(v,'$ref'))return {'$ref':v.$ref};
   return Object.fromEntries(Object.entries(v).map(([k,x])=>[k,substitute(x)]));
  };
  const plan:Plan={
   version:1,
-  operations:recipe.operations.map(op=>({id:op.id,capability:op.capability,args:substitute(op.args) as Record<string,Json>})),
+  operations:recipe.operations.map(op=>({id:op.id,capability:op.capability,args:substitute(op.args) as Record<string,Json>,...(op.dependsOn?{dependsOn:[...op.dependsOn]}:{}),...(op.required===false?{required:false,fallback:structuredClone(op.fallback)}:{})})),
   view:substitute(recipe.view) as Node,
   ...(intent.statePatch?{statePatch:structuredClone(intent.statePatch)}:{}),
   ...(recipe.stateCapture?{stateCapture:{...recipe.stateCapture}}:{})
