@@ -1,4 +1,4 @@
-import {normalizeToolResponse,mergeRecoveredFields,type NormalizationRule} from './tool-normalizer.ts';
+import {normalizeToolResponse,mergeRecoveredFields,normalizeWithExtractor,type TextExtractor,type NormalizationRule} from './tool-normalizer.ts';
 import {parseIntent} from './intent-parsers.ts';
 import {resolveView,validateRegistry,type Recipe,type UIIntent} from './registry-resolver.ts';
 import {readFile} from 'node:fs/promises';
@@ -158,7 +158,7 @@ export async function loadCatalog():Promise<Catalog>{
  return catalog;
 }
 export class Engine{
- constructor(public catalog:Catalog,public store:Store,public invoke:Invoke,public planner?:Planner,public durable?:Durable,public reply?:ReplyGenerator){}
+ constructor(public catalog:Catalog,public store:Store,public invoke:Invoke,public planner?:Planner,public durable?:Durable,public reply?:ReplyGenerator,public extractor?:TextExtractor){}
  async handle(text:string,ctx:Context){
   const old=this.store.get(ctx.threadId),retry=old.turns.find(x=>x.turnId===ctx.turnId);
   if(retry)return {...retry,revision:old.revision};
@@ -208,7 +208,14 @@ export class Engine{
       let output=this.durable?await this.durable.run(ctx.threadId+'/'+ctx.turnId+'/'+op.id,exec):await exec();
       const rule=this.catalog.normalization?.[op.capability];
       if(rule){
-       let normalized=normalizeToolResponse(output,rule);
+       let normalized;
+       if(typeof output==='string'&&this.extractor){
+        try{normalized=await normalizeWithExtractor(output,rule,this.extractor);}
+        catch(error){
+         failures[op.id+':extraction']=error instanceof Error?error.message:'Extractor failed verification';
+         normalized=normalizeToolResponse(output,rule);
+        }
+       }else normalized=normalizeToolResponse(output,rule);
        if(op.recovery&&normalized.missingRecoverable.length){
         const fields=normalized.missingRecoverable.filter(path=>op.recovery!.fields.includes(path));
         if(fields.length){
