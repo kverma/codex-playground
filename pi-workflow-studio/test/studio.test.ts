@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   FileStore, MemoryStore, ToolRegistry, WorkflowEngine, validate,
-  type Json, type Workflow,
+  type Database, type Json, type Workflow,
 } from "../src/core.ts";
 import { WorkflowStudio, ImprovementGate } from "../src/studio.ts";
 
@@ -159,4 +159,30 @@ test("candidate gate rejects escalation even with better scores", async () => {
   const result = await new ImprovementGate(tools, judge).compare(original, candidate, ["case"]);
   assert.equal(result.accepted, false);
   assert.equal(result.reason, "capability escalation");
+});
+
+
+test("crash after a side effect but before receipt persists reuses idempotency key", async () => {
+  class FaultStore extends MemoryStore {
+    failReceipt = true;
+    override write(value: Database): void {
+      if (this.failReceipt && Object.values(value.runs).some(r => r.next === 1)) {
+        this.failReceipt = false;
+        throw new Error("injected receipt disk failure");
+      }
+      super.write(value);
+    }
+  }
+  const { tools, workflow, effects } = fixture();
+  const store = new FaultStore();
+  const engine = new WorkflowEngine(store, tools);
+  engine.publish(workflow, "reviewer", all);
+  engine.start("receipt-crash", workflow.id, 1, [...all]);
+  await assert.rejects(engine.resume("receipt-crash"), /receipt disk failure/);
+  assert.equal(effects(), 1, "the external effect happened");
+  const recovered = new WorkflowEngine(store, tools);
+  const run = await recovered.resume("receipt-crash");
+  assert.equal(run.status, "waiting_approval");
+  assert.equal(run.attempts.fetch, 2);
+  assert.equal(effects(), 1, "duplicate gateway invocation was deduplicated");
 });
