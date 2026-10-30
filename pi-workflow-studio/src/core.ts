@@ -56,7 +56,8 @@ export class MemoryStore implements Store {
 }
 // Single-process, single-writer PoC only. File rename is atomic, not a distributed CAS.
 export class FileStore implements Store {
-  constructor(readonly path: string) {}
+  readonly path: string;
+  constructor(path: string) { this.path = path; }
   read(): Database {
     if (!existsSync(this.path)) return empty();
     return JSON.parse(readFileSync(this.path, "utf8")) as Database;
@@ -151,7 +152,9 @@ function applies(step: Step, run: Run): boolean {
   return JSON.stringify(ordered(run.outputs[step.when.step])) === JSON.stringify(ordered(step.when.equals));
 }
 export class WorkflowEngine {
-  constructor(readonly store: Store, readonly tools: ToolRegistry) {}
+  readonly store: Store;
+  readonly tools: ToolRegistry;
+  constructor(store: Store, tools: ToolRegistry) { this.store = store; this.tools = tools; }
   publish(workflow: Workflow, approvedBy: string, allowedCapabilities: ReadonlySet<string>): Published {
     validate(workflow, this.tools);
     assert(Boolean(approvedBy), "human approver required");
