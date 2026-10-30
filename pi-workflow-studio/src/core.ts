@@ -36,9 +36,9 @@ const copy = <T>(value: T): T => structuredClone(value);
 const slug = /^[a-z][a-z0-9-]{0,62}$/;
 const keyOf = (w: Workflow) => w.id + "@" + w.version;
 const has = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
-const assert = (condition: unknown, message: string): asserts condition => {
+function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
-};
+}
 function ordered(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(ordered);
   if (value && typeof value === "object")
