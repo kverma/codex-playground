@@ -234,19 +234,23 @@ export class WorkflowEngine {
         run.attempts[step.id] = (run.attempts[step.id] ?? 0) + 1;
         run.events.push({ step: step.id, action: "attempt", at: Date.now() });
         this.store.write(state); // checkpoint BEFORE external effect
+        let result: Json;
         try {
-          const result = await tool.execute(bind(step.args, run.outputs), { idempotencyKey, runId });
-          run.outputs[step.id] = copy(result);
-          run.next++; run.status = "ready";
-          run.events.push({ step: step.id, action: "succeeded", at: Date.now() });
-          this.store.write(state); // checkpoint AFTER external effect
-          break;
+          result = await tool.execute(bind(step.args, run.outputs), { idempotencyKey, runId });
         } catch (error) {
           run.error = String(error);
           run.events.push({ step: step.id, action: "attempt_failed", at: Date.now() });
           if (run.attempts[step.id] >= max) run.status = "failed";
           this.store.write(state);
+          continue;
         }
+        // A receipt write failure is NOT a failed tool call. Propagate it to
+        // the host; replay with the same key must be deduplicated by the gateway.
+        run.outputs[step.id] = copy(result);
+        run.next++; run.status = "ready"; run.error = undefined;
+        run.events.push({ step: step.id, action: "succeeded", at: Date.now() });
+        this.store.write(state); // checkpoint AFTER external effect
+        break;
       }
       if (run.status === "failed") return copy(run);
       // A recovered running step may have exhausted its attempt budget before finishing.
