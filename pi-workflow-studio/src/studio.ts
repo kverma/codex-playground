@@ -7,7 +7,9 @@ export interface AuthoringModel {
   }): Promise<unknown>;
 }
 export class WorkflowStudio {
-  constructor(readonly tools: ToolRegistry, readonly model: AuthoringModel) {}
+  readonly tools: ToolRegistry;
+  readonly model: AuthoringModel;
+  constructor(tools: ToolRegistry, model: AuthoringModel) { this.tools = tools; this.model = model; }
   async author(instruction: string, prior?: Workflow): Promise<Workflow> {
     const raw = await this.model.generate({ instruction, prior, tools: this.tools.describe() });
     // Models return JSON data, not JavaScript source.
@@ -35,7 +37,9 @@ export interface Judge {
   evaluate(workflow: Workflow, testId: string): Promise<Score>;
 }
 export class ImprovementGate {
-  constructor(readonly tools: ToolRegistry, readonly judge: Judge) {}
+  readonly tools: ToolRegistry;
+  readonly judge: Judge;
+  constructor(tools: ToolRegistry, judge: Judge) { this.tools = tools; this.judge = judge; }
   async compare(
     original: Workflow, candidate: Workflow, heldOut: string[],
   ): Promise<Evaluation> {
