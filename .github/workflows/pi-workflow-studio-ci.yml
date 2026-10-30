@@ -1,0 +1,28 @@
+name: pi-workflow-studio-ci
+on:
+  push:
+    paths:
+      - 'pi-workflow-studio/**'
+      - '.github/workflows/pi-workflow-studio-ci.yml'
+  pull_request:
+    paths:
+      - 'pi-workflow-studio/**'
+      - '.github/workflows/pi-workflow-studio-ci.yml'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install
+        working-directory: pi-workflow-studio
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        working-directory: pi-workflow-studio
+        run: npm run check
+      - name: Unit and crash recovery tests
+        working-directory: pi-workflow-studio
+        run: npm test
