@@ -9,8 +9,9 @@ production deployment of Marvin.
 
 - Typed, schema-versioned JSON workflow IR with approval, tool, condition,
   ordered data references, retries and manual/event trigger metadata.
-- Model-neutral authoring port accepting data-only candidate JSON; a
-  conversational Pi agent / enterprise model gateway supplies the model.
+- Model-neutral authoring port accepting data-only candidate JSON, plus a
+  native Pi Durable conversation adapter (src/pi-author.ts). It uses the
+  model configured by the host, not a hard-coded model provider.
 - Restricted TypeScript export for review. **Do not execute model-authored TS.**
   The runtime interprets validated data and calls only registered tools.
 - Immutable, hash-pinned published workflow versions; permission checks at
@@ -40,6 +41,18 @@ Tests run with a deterministic local fake tool gateway and no model API keys.
     const registry = createRegistry();
     registry.install(createWorkflowExtension(engine));
 
+For chat-driven authoring, create a dedicated Pi conversation configured with
+the approved enterprise model; then use:
+
+    import { WorkflowStudio } from "./src/studio.ts";
+    import { PiConversationAuthor } from "./src/pi-author.ts";
+    const studio = new WorkflowStudio(tools, new PiConversationAuthor(builderConversation));
+    const draft = await studio.author("Describe the workflow...");
+
+The builder receives only tool names/capabilities, not credentials.
+Test `pi-author.test.ts` exercises this flow with Pi's faux model, not a live
+model provider.
+
 The host must create a task of kind \`marvin.workflow.resume\` with
 \`{runId}\` after an approved workflow starts or receives approval; it also
 needs an authenticated endpoint invoking engine.approve(). Attach your
@@ -63,8 +76,9 @@ enterprise SSO, policy engine, Pi Code Mode/MCP catalog and LLM adapter there.
   metadata does not automatically subscribe to external events.
 - **No real Hermit Python training integration yet.** The gate supports a
   future Hermit/GEPA optimizer via the Judge and AuthoringModel contracts.
-- **No real LLM connected.** Use your approved enterprise model proxy to
-  implement AuthoringModel.generate().
+- **No live LLM credentials used in tests.** The PiConversationAuthor adapter
+  is wired to a real Pi conversation; the host must configure the approved
+  provider and model.
 - **Outputs can contain sensitive data.** Add encryption, redaction and
   retention policy before production.
 - **No isolated execution/sandbox of arbitrary TypeScript.** This is
