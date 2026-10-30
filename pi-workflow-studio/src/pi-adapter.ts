@@ -3,7 +3,7 @@ import type { WorkflowEngine } from "./core.ts";
 
 // Install this extension into a real Pi Durable registry. The workflow catalog,
 // receipts and approvals remain under the WorkflowEngine's storage boundary.
-export function createWorkflowExtension(engine: WorkflowEngine) {
+export function createWorkflowIntegration(engine: WorkflowEngine) {
   const Resume = defineTask<{ runId: string }, { phase: "execute" }, string>({
     name: "marvin.workflow.resume",
     version: 1,
@@ -22,5 +22,9 @@ export function createWorkflowExtension(engine: WorkflowEngine) {
     abort: (_task, runtime, context) =>
       runtime.commit(() => ({ status: "terminal", outcome: { status: "aborted" } }), context),
   });
-  return defineExtension({ name: "marvin-workflow-studio", tasks: [Resume] });
+  return { extension: defineExtension({ name: "marvin-workflow-studio", tasks: [Resume] }), Resume };
+}
+
+export function createWorkflowExtension(engine: WorkflowEngine) {
+  return createWorkflowIntegration(engine).extension;
 }
