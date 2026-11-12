@@ -6,6 +6,10 @@ on:
     paths:
       - 'spin-agent-poc/**'
       - '.github/workflows/spin-agent-poc.yml'
+  pull_request:
+    paths:
+      - 'spin-agent-poc/**'
+      - '.github/workflows/spin-agent-poc.yml'
   workflow_dispatch:
 
 jobs:
