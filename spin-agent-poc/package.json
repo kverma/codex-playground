@@ -1,0 +1,13 @@
+{
+  "name": "spin-agent-poc",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "verify:all": "node scripts/verify.mjs && node --experimental-strip-types --test tests/*.test.ts generated/*.test.ts"
+  },
+  "engines": {
+    "node": ">=22.16"
+  }
+}

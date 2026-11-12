@@ -1,0 +1,39 @@
+name: SPIN Promela agentic counterexample PoC
+on:
+  push:
+    branches:
+      - experiment/spin-promela-agentic-tests
+    paths:
+      - 'spin-agent-poc/**'
+      - '.github/workflows/spin-agent-poc.yml'
+  pull_request:
+    paths:
+      - 'spin-agent-poc/**'
+      - '.github/workflows/spin-agent-poc.yml'
+  workflow_dispatch:
+
+jobs:
+  model-check-and-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install SPIN
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y spin
+          spin -V
+      - name: Verify two Promela models, convert SPIN trail, replay generated tests over HTTP
+        run: |
+          cd spin-agent-poc
+          npm run verify:all
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spin-trails-and-generated-typescript-tests
+          path: |
+            spin-agent-poc/reports/
+            spin-agent-poc/generated/

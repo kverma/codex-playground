@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "source": "hand-authored-seed-not-spin-output",
+  "invariant": "published-revision-never-decreases",
+  "actions": [
+    {
+      "op": "preflight",
+      "revision": 1
+    },
+    {
+      "op": "preflight",
+      "revision": 2
+    },
+    {
+      "op": "commit",
+      "revision": 2
+    },
+    {
+      "op": "commit",
+      "revision": 1
+    }
+  ]
+}
